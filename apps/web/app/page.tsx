@@ -8,7 +8,15 @@ import { ChurchCard } from './components/ChurchCard';
 import styles from './page.module.css';
 
 export default async function HomePage() {
-  const announcements = await getLatestAnnouncements();
+  // El sitio público NUNCA debe caerse por una intermitencia de la API: si
+  // una sección no carga, se degrada a vacío en lugar de tumbar la página
+  // entera con un 500.
+  let announcements: Awaited<ReturnType<typeof getLatestAnnouncements>> = [];
+  try {
+    announcements = await getLatestAnnouncements();
+  } catch {
+    announcements = [];
+  }
 
   let previewChurches: Awaited<ReturnType<typeof getPublicChurches>> = [];
   try {

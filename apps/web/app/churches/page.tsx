@@ -10,7 +10,14 @@ export const metadata: Metadata = {
 };
 
 export default async function ChurchesPage() {
-  const churches = await getPublicChurches();
+  // Si la API está temporalmente inaccesible, mostramos el estado vacío en
+  // lugar de tumbar la página con un 500.
+  let churches: Awaited<ReturnType<typeof getPublicChurches>> = [];
+  try {
+    churches = await getPublicChurches();
+  } catch {
+    churches = [];
+  }
   const activeChurches = churches.filter((church) => church.isActive).length;
 
   return (
