@@ -11,10 +11,19 @@ class AuthService {
 
   Future<SessionResponse> getSession() async {
     final res = await _api.dio.get('/admin/auth/session');
-    if (res.statusCode == 200) {
+    final code = res.statusCode ?? 0;
+    if (code == 200) {
       return SessionResponse.fromJson(res.data as Map<String, dynamic>);
     }
-    return SessionResponse(status: 'UNAUTHENTICATED', account: null);
+    // 401/403 → definitivamente sin sesión válida.
+    if (code == 401 || code == 403) {
+      return SessionResponse(status: 'UNAUTHENTICATED', account: null);
+    }
+    // 5xx u otros: el servidor responde pero con problemas. Lo tratamos como
+    // error transitorio (lanza) en vez de "sin sesión", para no cerrar la
+    // sesión del usuario por un blip del backend. El llamador (bootstrap /
+    // unlock) decide: bootstrap cae a signedOut; unlock se mantiene bloqueado.
+    throw ApiException(code, 'Servicio no disponible temporalmente.');
   }
 
   /// Login con todos los campos que el backend requiere.

@@ -28,6 +28,18 @@ enum AuthPhase {
   authenticated,
 }
 
+/// Resultado de un intento de desbloqueo local (ver [AuthState.unlock]).
+enum UnlockOutcome {
+  /// Desbloqueado y con sesión válida.
+  authenticated,
+
+  /// La sesión ya no es válida: se limpió y hay que iniciar sesión de nuevo.
+  sessionEnded,
+
+  /// No se pudo contactar el servidor: la sesión se conserva; reintentar.
+  networkError,
+}
+
 class AuthState extends ChangeNotifier {
   AuthState({required AuthService auth, required LocalAuthService localAuth})
       : _auth = auth,
@@ -60,6 +72,10 @@ class AuthState extends ChangeNotifier {
     notifyListeners();
 
     if (await _localAuth.hasPin()) {
+      // El cookie jar está cifrado y aún no tenemos la llave: marcarlo sellado
+      // evita que cualquier lectura interprete los bytes cifrados como texto
+      // plano (lo que corrompería el índice del jar).
+      ApiClient.I.markCookiesSealed();
       _account = null;
       _phase = AuthPhase.locked;
       notifyListeners();
@@ -96,23 +112,28 @@ class AuthState extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Desbloqueo local. Dos caminos:
+  /// Desbloqueo local. Tres desenlaces posibles ([UnlockOutcome]):
   ///   - Re-bloqueo por inactividad (ya teníamos [_account] y el jar en
-  ///     memoria): sólo volvemos a authenticated.
+  ///     memoria): volvemos a authenticated de inmediato.
   ///   - Arranque en frío con PIN ([_account] == null): derivamos la llave del
-  ///     PIN, la fijamos en el cookie jar y validamos la sesión. Si la sesión
-  ///     no es válida (o la cookie no se puede descifrar) forzamos re-login
-  ///     limpio, conservando el PIN.
-  Future<void> unlock({String? pin}) async {
+  ///     PIN, la fijamos en el cookie jar y validamos la sesión.
+  ///       · Sesión ACTIVA → authenticated.
+  ///       · Servidor accesible pero sesión inválida/expirada (o cookie que no
+  ///         descifra) → re-login limpio conservando el PIN.
+  ///       · Servidor inaccesible o con fallo transitorio → NO se destruye la
+  ///         sesión; seguimos bloqueados para reintentar. `getSession` lanza en
+  ///         error de red o 5xx, y devuelve UNAUTHENTICATED sólo en 401/403;
+  ///         así "lanza" equivale a "no se pudo determinar" (reintentar).
+  Future<UnlockOutcome> unlock({String? pin}) async {
     if (_account != null) {
       _phase = AuthPhase.authenticated;
       notifyListeners();
-      return;
+      return UnlockOutcome.authenticated;
     }
 
     if (pin == null) {
       await _requireFreshLogin();
-      return;
+      return UnlockOutcome.sessionEnded;
     }
 
     final key = await _localAuth.deriveCookieKey(pin);
@@ -128,11 +149,15 @@ class AuthState extends ChangeNotifier {
         _selectDefaultChurch();
         _phase = AuthPhase.authenticated;
         notifyListeners();
-      } else {
-        await _requireFreshLogin();
+        return UnlockOutcome.authenticated;
       }
-    } catch (_) {
+      // Servidor accesible pero sesión ya no válida: limpiar y re-login.
       await _requireFreshLogin();
+      return UnlockOutcome.sessionEnded;
+    } catch (_) {
+      // Sin conexión: no destruimos la sesión, seguimos bloqueados. La fase no
+      // cambia; el llamador muestra un aviso para reintentar.
+      return UnlockOutcome.networkError;
     }
   }
 

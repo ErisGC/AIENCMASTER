@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/state/auth_state.dart';
 import '../../core/state/locator.dart';
 import '../../core/theme/gem_palette.dart';
 import '../../core/widgets/gem_widgets.dart';
@@ -71,10 +72,22 @@ class _LockScreenState extends State<LockScreen> {
       _pinCtrl.clear();
       return;
     }
-    await Locator.authState.unlock(pin: _pinCtrl.text);
-    // Si la sesión ya no era válida, unlock() deja fase=signedOut y el router
-    // redirige solo; sólo navegamos a home si quedó autenticado.
-    if (mounted) context.go('/');
+    final outcome = await Locator.authState.unlock(pin: _pinCtrl.text);
+    if (!mounted) return;
+    switch (outcome) {
+      case UnlockOutcome.authenticated:
+      case UnlockOutcome.sessionEnded:
+        // authenticated → home; sessionEnded → fase signedOut y el router
+        // redirige solo a /welcome.
+        context.go('/');
+        break;
+      case UnlockOutcome.networkError:
+        // La sesión se conserva y el PIN era correcto: sólo falló la red.
+        // No limpiamos el campo para que reintentar sea un solo toque.
+        setState(() => _error =
+            'No se pudo conectar con el servidor. Revisa tu conexión e inténtalo de nuevo.');
+        break;
+    }
   }
 
   @override

@@ -9,14 +9,19 @@ import 'package:path_provider/path_provider.dart';
 import '../config/app_config.dart';
 import '../security/cookie_crypto.dart';
 
-/// Contenedor mutable de la llave de cifrado del cookie jar. Los pre-handlers
+/// Contenedor mutable del estado de cifrado del cookie jar. Los pre-handlers
 /// del FileStorage lo leen en cada lectura/escritura, de modo que la llave se
 /// puede fijar DESPUÉS de crear el jar (al desbloquear con PIN) sin recrearlo.
-///   - `key == null`  → cookies en claro (sin PIN configurado, o aún bloqueado
-///     antes de desbloquear — en ese estado no se hacen lecturas/escrituras).
-///   - `key != null`  → cookies cifradas AES-256-GCM con esa llave.
+///   - `key != null`         → cookies cifradas AES-256-GCM con esa llave.
+///   - `key == null && !sealed` → cookies en claro (sin PIN configurado).
+///   - `key == null && sealed`  → store cifrado pero aún BLOQUEADO (hay PIN y
+///     todavía no se desbloquea). En este estado NO debemos interpretar los
+///     bytes cifrados como texto plano: devolvemos null (ausente) para no
+///     corromper el índice del jar. En la práctica no se leen cookies en este
+///     estado, pero el flag lo garantiza ante cualquier acceso inesperado.
 class _CookieKeyHolder {
   List<int>? key;
+  bool sealed = false;
 }
 
 /// Wrapper sobre Dio con:
@@ -59,9 +64,15 @@ class ApiClient {
       }
       ..readPreHandler = (bytes) {
         final key = holder.key;
-        if (key == null) return utf8.decode(bytes, allowMalformed: true);
-        // Descifrado fallido → null → el jar lo trata como "sin cookie".
-        return CookieCrypto.decryptToString(bytes, key);
+        if (key != null) {
+          // Descifrado fallido → null → el jar lo trata como "sin cookie".
+          return CookieCrypto.decryptToString(bytes, key);
+        }
+        // Sin llave y store cifrado-pero-bloqueado: no interpretar como texto
+        // plano (serían bytes cifrados → basura → corromperían el índice).
+        if (holder.sealed) return null;
+        // Sin PIN: cookies en claro.
+        return utf8.decode(bytes, allowMalformed: true);
       };
 
     final jar = PersistCookieJar(
@@ -96,6 +107,14 @@ class ApiClient {
   late final PersistCookieJar _jar;
   late final _CookieKeyHolder _keyHolder;
   late final String _cookiesDir;
+
+  /// Marca el store como cifrado-pero-bloqueado: hay un PIN configurado y aún
+  /// no se ha desbloqueado. Se llama en el arranque (bootstrap) antes de que
+  /// cualquier lectura del jar pueda interpretar bytes cifrados como texto
+  /// plano. La llave se fija luego con [setCookieKey] al desbloquear.
+  void markCookiesSealed() {
+    _keyHolder.sealed = true;
+  }
 
   /// Fija la llave de descifrado del cookie jar (al desbloquear con PIN).
   /// Debe llamarse ANTES de la primera petición que use cookies.
