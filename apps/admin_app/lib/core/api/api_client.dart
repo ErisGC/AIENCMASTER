@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:cookie_jar/cookie_jar.dart';
@@ -6,6 +7,17 @@ import 'package:dio_cookie_manager/dio_cookie_manager.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../config/app_config.dart';
+import '../security/cookie_crypto.dart';
+
+/// Contenedor mutable de la llave de cifrado del cookie jar. Los pre-handlers
+/// del FileStorage lo leen en cada lectura/escritura, de modo que la llave se
+/// puede fijar DESPUÉS de crear el jar (al desbloquear con PIN) sin recrearlo.
+///   - `key == null`  → cookies en claro (sin PIN configurado, o aún bloqueado
+///     antes de desbloquear — en ese estado no se hacen lecturas/escrituras).
+///   - `key != null`  → cookies cifradas AES-256-GCM con esa llave.
+class _CookieKeyHolder {
+  List<int>? key;
+}
 
 /// Wrapper sobre Dio con:
 ///   - cookie jar persistente en disco (las cookies HttpOnly admin_session
@@ -33,9 +45,28 @@ class ApiClient {
     if (_instance != null) return;
 
     final cookiesDir = await _cookieDir();
+    final holder = _CookieKeyHolder();
+
+    // Cifrado transparente del cookie jar en reposo. Reutilizamos el
+    // FileStorage probado e inyectamos cifrado/descifrado por sus pre-handlers.
+    // Con la llave en null (sin PIN) se comporta como texto plano, idéntico al
+    // comportamiento anterior.
+    final storage = FileStorage(cookiesDir)
+      ..writePreHandler = (String value) {
+        final key = holder.key;
+        if (key == null) return utf8.encode(value);
+        return CookieCrypto.encryptString(value, key);
+      }
+      ..readPreHandler = (bytes) {
+        final key = holder.key;
+        if (key == null) return utf8.decode(bytes, allowMalformed: true);
+        // Descifrado fallido → null → el jar lo trata como "sin cookie".
+        return CookieCrypto.decryptToString(bytes, key);
+      };
+
     final jar = PersistCookieJar(
       ignoreExpires: false,
-      storage: FileStorage(cookiesDir),
+      storage: storage,
     );
 
     final dio = Dio(BaseOptions(
@@ -58,9 +89,44 @@ class ApiClient {
 
     _instance = ApiClient._(dio);
     _instance!._jar = jar;
+    _instance!._keyHolder = holder;
+    _instance!._cookiesDir = cookiesDir;
   }
 
   late final PersistCookieJar _jar;
+  late final _CookieKeyHolder _keyHolder;
+  late final String _cookiesDir;
+
+  /// Fija la llave de descifrado del cookie jar (al desbloquear con PIN).
+  /// Debe llamarse ANTES de la primera petición que use cookies.
+  void setCookieKey(List<int> key) {
+    _keyHolder.key = key;
+  }
+
+  /// Re-cifra en disco todas las cookies existentes de la llave actual a
+  /// [newKey] y adopta [newKey]. Se usa al configurar el PIN por primera vez
+  /// (de texto plano a cifrado) sin perder la sesión activa.
+  Future<void> rekeyCookies(List<int> newKey) async {
+    final oldKey = _keyHolder.key; // null = texto plano actual
+    final dir = Directory(_cookiesDir);
+    if (dir.existsSync()) {
+      for (final entity in dir.listSync(recursive: true)) {
+        if (entity is! File) continue;
+        try {
+          final bytes = await entity.readAsBytes();
+          if (bytes.isEmpty) continue;
+          final String? plain = oldKey == null
+              ? utf8.decode(bytes, allowMalformed: true)
+              : CookieCrypto.decryptToString(bytes, oldKey);
+          if (plain == null) continue; // ilegible: se deja como está
+          await entity.writeAsBytes(CookieCrypto.encryptString(plain, newKey));
+        } catch (_) {
+          // Un archivo problemático no debe abortar el re-cifrado del resto.
+        }
+      }
+    }
+    _keyHolder.key = newKey;
+  }
 
   /// Borra todas las cookies persistentes (logout local).
   Future<void> clearCookies() async {

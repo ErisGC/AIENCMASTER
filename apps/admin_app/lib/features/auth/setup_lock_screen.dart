@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/api/api_client.dart';
 import '../../core/state/locator.dart';
 import '../../core/theme/gem_palette.dart';
 import '../../core/widgets/gem_widgets.dart';
@@ -57,6 +58,13 @@ class _SetupLockScreenState extends State<SetupLockScreen> {
     try {
       await Locator.localAuth.setPin(pin);
       await Locator.localAuth.setBiometricEnabled(_enableBio);
+      // Cifra en reposo las cookies ya guardadas (texto plano) con la llave
+      // derivada del nuevo PIN, sin perder la sesión activa. A partir de aquí
+      // el bloqueo protege la credencial en disco, no sólo la pantalla.
+      final key = await Locator.localAuth.deriveCookieKey(pin);
+      if (key != null) {
+        await ApiClient.I.rekeyCookies(key);
+      }
       if (!mounted) return;
       context.go('/');
     } catch (_) {

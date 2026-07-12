@@ -85,6 +85,25 @@ class LocalAuthService {
     return p.getString(_kPinHash) != null;
   }
 
+  /// Deriva una llave AES-256 (32 bytes) a partir del PIN para cifrar el
+  /// cookie jar en reposo. Usa un prefijo de dominio distinto al del hash de
+  /// autenticación, de modo que la llave de cifrado y el verificador del PIN
+  /// nunca coinciden aunque compartan la sal.
+  ///
+  /// Devuelve `null` si no hay sal guardada (PIN heredado sin sal): en ese
+  /// caso el cookie jar se mantiene en claro hasta que el PIN se re-guarde
+  /// con sal (lo hace [verifyPin] al migrar) o el usuario reconfigure el PIN.
+  Future<List<int>?> deriveCookieKey(String pin) async {
+    final p = await _prefs;
+    final salt = p.getString(_kPinSalt);
+    if (salt == null) return null;
+    List<int> data = utf8.encode('aienc-cookie-key:$salt:$pin');
+    for (var i = 0; i < _iterations; i++) {
+      data = sha256.convert(data).bytes;
+    }
+    return data; // 32 bytes (SHA-256)
+  }
+
   /// True si el desbloqueo está bloqueado temporalmente por intentos fallidos.
   Future<bool> isLocked() async => _isLocked(await _prefs);
 

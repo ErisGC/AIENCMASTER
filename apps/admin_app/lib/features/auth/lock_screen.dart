@@ -71,7 +71,9 @@ class _LockScreenState extends State<LockScreen> {
       _pinCtrl.clear();
       return;
     }
-    await Locator.authState.unlock();
+    await Locator.authState.unlock(pin: _pinCtrl.text);
+    // Si la sesión ya no era válida, unlock() deja fase=signedOut y el router
+    // redirige solo; sólo navegamos a home si quedó autenticado.
     if (mounted) context.go('/');
   }
 

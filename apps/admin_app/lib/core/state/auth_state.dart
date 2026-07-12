@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import '../api/api_client.dart';
 import '../models/domain.dart';
 import '../services/auth_service.dart';
 import '../services/local_auth_service.dart';
@@ -49,23 +50,28 @@ class AuthState extends ChangeNotifier {
   }
 
   /// Llamado al arrancar la app — comprueba si hay cookies válidas.
+  ///
+  /// Si hay un PIN configurado, la cookie de sesión está cifrada en reposo con
+  /// una llave derivada del PIN: no podemos validarla hasta desbloquear, así
+  /// que vamos directo a la pantalla de bloqueo y la validación ocurre en
+  /// [unlock]. Sin PIN, el jar está en claro y validamos como siempre.
   Future<void> bootstrap() async {
     _phase = AuthPhase.loading;
     notifyListeners();
+
+    if (await _localAuth.hasPin()) {
+      _account = null;
+      _phase = AuthPhase.locked;
+      notifyListeners();
+      return;
+    }
 
     try {
       final session = await _auth.getSession();
       if (session.status == 'ACTIVE' && session.account != null) {
         _account = session.account;
         _selectDefaultChurch();
-
-        final pinSet = await _localAuth.hasPin();
-        final bioEnabled = await _localAuth.isBiometricEnabled();
-        if (pinSet || bioEnabled) {
-          _phase = AuthPhase.locked;
-        } else {
-          _phase = AuthPhase.authenticated;
-        }
+        _phase = AuthPhase.authenticated;
       } else {
         _account = null;
         _activeChurchId = null;
@@ -90,9 +96,57 @@ class AuthState extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> unlock() async {
-    if (_account == null) return;
-    _phase = AuthPhase.authenticated;
+  /// Desbloqueo local. Dos caminos:
+  ///   - Re-bloqueo por inactividad (ya teníamos [_account] y el jar en
+  ///     memoria): sólo volvemos a authenticated.
+  ///   - Arranque en frío con PIN ([_account] == null): derivamos la llave del
+  ///     PIN, la fijamos en el cookie jar y validamos la sesión. Si la sesión
+  ///     no es válida (o la cookie no se puede descifrar) forzamos re-login
+  ///     limpio, conservando el PIN.
+  Future<void> unlock({String? pin}) async {
+    if (_account != null) {
+      _phase = AuthPhase.authenticated;
+      notifyListeners();
+      return;
+    }
+
+    if (pin == null) {
+      await _requireFreshLogin();
+      return;
+    }
+
+    final key = await _localAuth.deriveCookieKey(pin);
+    // key == null → PIN heredado sin sal: el jar sigue en claro (sin llave).
+    if (key != null) {
+      ApiClient.I.setCookieKey(key);
+    }
+
+    try {
+      final session = await _auth.getSession();
+      if (session.status == 'ACTIVE' && session.account != null) {
+        _account = session.account;
+        _selectDefaultChurch();
+        _phase = AuthPhase.authenticated;
+        notifyListeners();
+      } else {
+        await _requireFreshLogin();
+      }
+    } catch (_) {
+      await _requireFreshLogin();
+    }
+  }
+
+  /// Limpia SÓLO las cookies (no el PIN) y exige iniciar sesión de nuevo. Al
+  /// re-loguear, las cookies se re-guardan cifradas con la llave del PIN.
+  Future<void> _requireFreshLogin() async {
+    try {
+      await _auth.logout();
+    } catch (_) {
+      /* logout local ya limpia cookies aunque el servidor falle */
+    }
+    _account = null;
+    _activeChurchId = null;
+    _phase = AuthPhase.signedOut;
     notifyListeners();
   }
 
