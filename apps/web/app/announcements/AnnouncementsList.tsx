@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 
 import { Announcement } from '@/app/lib/announcements';
@@ -68,7 +68,10 @@ export function AnnouncementsList({ initialItems, pageSize }: Props) {
         setHasMore(data.length === pageSize);
       } catch {
         setError('No se pudieron cargar los anuncios. Intenta de nuevo.');
-        if (reset) setItems([]);
+        // No borramos lo que ya estaba visible: si una re-consulta falla,
+        // el usuario conserva lo último que cargó bien (incluido lo que ya
+        // había renderizado el servidor). Antes hacíamos setItems([]) aquí,
+        // lo que tiraba a la basura datos buenos ante un fallo transitorio.
       } finally {
         setLoading(false);
         setLoadingMore(false);
@@ -91,10 +94,19 @@ export function AnnouncementsList({ initialItems, pageSize }: Props) {
     return params.toString();
   }, [pageSize, titleEnabled, title, dateEnabled, fromDate, toDate]);
 
+  const isFirstRun = useRef(true);
   useEffect(() => {
+    // En el primer render confiamos en lo que ya trajo el servidor
+    // (initialItems): así la home y esta página se comportan igual y una
+    // re-consulta fallida del navegador no borra los anuncios ya cargados.
+    // Solo si el servidor no trajo nada intentamos cargar desde el cliente.
+    if (isFirstRun.current) {
+      isFirstRun.current = false;
+      if (initialItems.length > 0) return;
+    }
     setHasMore(true);
     void loadPage(true, 0, buildQuery());
-  }, [loadPage, buildQuery]);
+  }, [loadPage, buildQuery, initialItems.length]);
 
   const handleLoadMore = () => {
     void loadPage(false, offset, buildQuery());
