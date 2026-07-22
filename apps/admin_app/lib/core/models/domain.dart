@@ -581,6 +581,77 @@ class Church {
       );
 }
 
+// ── Representantes / directores ─────────────────────────────────────────
+
+class ChurchDirector {
+  final String id;
+  final String churchId;
+  final String displayName;
+  final String role;
+  final String? phone;
+  final String? email;
+  final String? photoUrl;
+  final String? linkedAdminUsername;
+
+  ChurchDirector({
+    required this.id,
+    required this.churchId,
+    required this.displayName,
+    required this.role,
+    this.phone,
+    this.email,
+    this.photoUrl,
+    this.linkedAdminUsername,
+  });
+
+  factory ChurchDirector.fromJson(Map<String, dynamic> j) => ChurchDirector(
+        id: j['id'] as String,
+        churchId: j['churchId'] as String? ?? '',
+        displayName: j['displayName'] as String? ?? '',
+        role: j['role'] as String? ?? '',
+        phone: j['phone'] as String?,
+        email: j['email'] as String?,
+        photoUrl: (j['linkedAdminPhotoUrl'] as String?) ??
+            (j['photoUrl'] as String?),
+        linkedAdminUsername: j['linkedAdminUsername'] as String?,
+      );
+}
+
+// ── Estudios / mensajes en audio ────────────────────────────────────────
+
+class ChurchStudy {
+  final String id;
+  final String churchId;
+  final String teacherName;
+  final String topic;
+  final String? outline;
+  final String audioUrl;
+  final String? audioFormat;
+  final DateTime? createdAt;
+
+  ChurchStudy({
+    required this.id,
+    required this.churchId,
+    required this.teacherName,
+    required this.topic,
+    this.outline,
+    required this.audioUrl,
+    this.audioFormat,
+    this.createdAt,
+  });
+
+  factory ChurchStudy.fromJson(Map<String, dynamic> j) => ChurchStudy(
+        id: j['id'] as String,
+        churchId: j['churchId'] as String? ?? '',
+        teacherName: j['teacherName'] as String? ?? '',
+        topic: j['topic'] as String? ?? '',
+        outline: j['outline'] as String?,
+        audioUrl: j['audioUrl'] as String? ?? '',
+        audioFormat: j['audioFormat'] as String?,
+        createdAt: DateTime.tryParse(j['createdAt'] as String? ?? ''),
+      );
+}
+
 // ── Anuncios ───────────────────────────────────────────────────────────
 
 class AnnouncementAttachment {

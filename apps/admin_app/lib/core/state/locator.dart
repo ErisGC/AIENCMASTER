@@ -13,6 +13,8 @@ class Locator {
   static late final DeviceIdentityService device;
   static late final LocalAuthService localAuth;
   static late final ChurchService churches;
+  static late final DirectorService directors;
+  static late final StudyService studies;
   static late final AnnouncementService announcements;
   static late final ReportService reports;
   static late final SecurityService security;
@@ -25,6 +27,8 @@ class Locator {
     auth = AuthService(ApiClient.I, device);
     localAuth = LocalAuthService();
     churches = ChurchService(ApiClient.I);
+    directors = DirectorService(ApiClient.I);
+    studies = StudyService(ApiClient.I);
     announcements = AnnouncementService(ApiClient.I);
     reports = ReportService(ApiClient.I);
     security = SecurityService(ApiClient.I);

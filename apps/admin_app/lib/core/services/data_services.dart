@@ -198,6 +198,116 @@ class AnnouncementService {
   }
 }
 
+/// Representantes / directores de una iglesia.
+class DirectorService {
+  DirectorService(this._api);
+  final ApiClient _api;
+
+  Future<List<ChurchDirector>> list(String churchId) async {
+    final res = await _api.dio.get('/admin/churches/$churchId/directors');
+    final raw = res.data;
+    if (raw is List) {
+      return raw
+          .map((e) => ChurchDirector.fromJson(e as Map<String, dynamic>))
+          .toList();
+    }
+    return const [];
+  }
+
+  Future<ChurchDirector> create(
+    String churchId, {
+    required String displayName,
+    String role = '',
+    String phone = '',
+    String email = '',
+    MultipartFile? photo,
+  }) async {
+    final form = FormData.fromMap({
+      'displayName': displayName.trim(),
+      if (role.trim().isNotEmpty) 'role': role.trim(),
+      if (phone.trim().isNotEmpty) 'phone': phone.trim(),
+      if (email.trim().isNotEmpty) 'email': email.trim(),
+      if (photo != null) 'photo': photo,
+    });
+    final res = await _api.dio.post(
+      '/admin/churches/$churchId/directors',
+      data: form,
+      options: Options(contentType: 'multipart/form-data'),
+    );
+    return ChurchDirector.fromJson(res.data as Map<String, dynamic>);
+  }
+
+  Future<ChurchDirector> update(
+    String id, {
+    required String displayName,
+    String role = '',
+    String phone = '',
+    String email = '',
+    MultipartFile? photo,
+  }) async {
+    final form = FormData.fromMap({
+      'displayName': displayName.trim(),
+      'role': role.trim(),
+      // Se envían siempre (aunque vacíos) para permitir limpiar el campo.
+      'phone': phone.trim(),
+      'email': email.trim(),
+      if (photo != null) 'photo': photo,
+    });
+    final res = await _api.dio.patch(
+      '/admin/directors/$id',
+      data: form,
+      options: Options(contentType: 'multipart/form-data'),
+    );
+    return ChurchDirector.fromJson(res.data as Map<String, dynamic>);
+  }
+
+  Future<void> delete(String id) async {
+    await _api.dio.delete('/admin/directors/$id');
+  }
+}
+
+/// Estudios / mensajes en audio de una iglesia.
+class StudyService {
+  StudyService(this._api);
+  final ApiClient _api;
+
+  Future<List<ChurchStudy>> list(String churchId) async {
+    final res = await _api.dio.get('/admin/churches/$churchId/studies');
+    final raw = res.data;
+    if (raw is List) {
+      return raw
+          .map((e) => ChurchStudy.fromJson(e as Map<String, dynamic>))
+          .toList();
+    }
+    return const [];
+  }
+
+  Future<ChurchStudy> create(
+    String churchId, {
+    required String teacherName,
+    required String topic,
+    String outline = '',
+    required MultipartFile audio,
+  }) async {
+    final form = FormData.fromMap({
+      'teacherName': teacherName.trim(),
+      'topic': topic.trim(),
+      if (outline.trim().isNotEmpty) 'outline': outline.trim(),
+      'audio': audio,
+    });
+    final res = await _api.dio.post(
+      '/admin/churches/$churchId/studies',
+      data: form,
+      options: Options(contentType: 'multipart/form-data'),
+    );
+    return ChurchStudy.fromJson(res.data as Map<String, dynamic>);
+  }
+
+  Future<void> delete(String churchId, String id) async {
+    await _api.dio.delete('/admin/churches/$churchId/studies/$id');
+  }
+}
+
 /// Reportes
 class ReportService {
   ReportService(this._api);

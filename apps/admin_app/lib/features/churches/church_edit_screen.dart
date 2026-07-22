@@ -15,6 +15,8 @@ import '../../core/models/domain.dart';
 import '../../core/state/locator.dart';
 import '../../core/theme/gem_palette.dart';
 import '../../core/widgets/gem_widgets.dart';
+import 'directors_screen.dart';
+import 'studies_screen.dart';
 
 /// Edición de iglesia. La app cubre ya todo lo que necesita el admin desde
 /// el campo:
@@ -312,6 +314,8 @@ class _ChurchEditScreenState extends State<ChurchEditScreen> {
                   children: [
                     _buildDataCard(),
                     const SizedBox(height: 14),
+                    _buildManageCard(),
+                    const SizedBox(height: 14),
                     _buildImagesCard(),
                     const SizedBox(height: 14),
                     _buildMapCard(),
@@ -339,6 +343,60 @@ class _ChurchEditScreenState extends State<ChurchEditScreen> {
                 ),
               ),
             ),
+    );
+  }
+
+  Widget _buildManageCard() {
+    final name = _initial?.name ?? _nameCtrl.text.trim();
+    return GemCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text('Contenido de la iglesia',
+              style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 4),
+          const Text(
+            'Gestiona los representantes y los estudios en audio que aparecen '
+            'en la página pública de esta iglesia.',
+            style: TextStyle(
+                color: GemPalette.textMuted, fontSize: 12, height: 1.45),
+          ),
+          const SizedBox(height: 6),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.groups_outlined,
+                color: GemPalette.sapphire),
+            title: const Text('Representantes'),
+            subtitle: const Text('Nombre, cargo, celular, correo y foto'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => DirectorsScreen(
+                  churchId: widget.churchId,
+                  churchName: name,
+                ),
+              ),
+            ),
+          ),
+          const Divider(height: 8),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.audiotrack_outlined,
+                color: GemPalette.amethyst),
+            title: const Text('Estudios en audio'),
+            subtitle: const Text('Sube mensajes con enseñador y tema'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => StudiesScreen(
+                  churchId: widget.churchId,
+                  churchName: name,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
