@@ -6,6 +6,12 @@ import {
   getPublicChurchAnnouncements,
   type ChurchAnnouncementSummary,
 } from '@/app/lib/admin-church-announcements';
+import {
+  getPublicChurchStudies,
+  type ChurchStudy,
+} from '@/app/lib/church-studies';
+import { ChurchMap } from './ChurchMap';
+import { DirectorsSection } from './DirectorsSection';
 import styles from './page.module.css';
 
 type ChurchPageProps = {
@@ -34,11 +40,20 @@ async function safeLoadAnnouncements(
   }
 }
 
+async function safeLoadStudies(id: string): Promise<ChurchStudy[]> {
+  try {
+    return await getPublicChurchStudies(id);
+  } catch {
+    return [];
+  }
+}
+
 export default async function ChurchDetailPage({ params }: ChurchPageProps) {
   const { id } = await params;
-  const [church, announcements] = await Promise.all([
+  const [church, announcements, studies] = await Promise.all([
     loadChurch(id),
     safeLoadAnnouncements(id),
+    safeLoadStudies(id),
   ]);
 
   const mapsHref =
@@ -52,6 +67,8 @@ export default async function ChurchDetailPage({ params }: ChurchPageProps) {
     month: 'long',
     day: 'numeric',
   });
+
+  const hasDirectors = !!church.directors && church.directors.length > 0;
 
   return (
     <main className={styles.page}>
@@ -98,9 +115,6 @@ export default async function ChurchDetailPage({ params }: ChurchPageProps) {
 
               <div className={styles.heroMeta}>
                 {church.address && <span>{church.address}</span>}
-                {church.avgAttendance != null && (
-                  <span>Promedio de asistencia: {church.avgAttendance}</span>
-                )}
               </div>
 
               {mapsHref && (
@@ -110,7 +124,7 @@ export default async function ChurchDetailPage({ params }: ChurchPageProps) {
                   rel="noreferrer"
                   className={styles.mapsLink}
                 >
-                  Ver ubicacion en Maps
+                  Ver ubicación en Maps
                 </a>
               )}
             </div>
@@ -119,7 +133,7 @@ export default async function ChurchDetailPage({ params }: ChurchPageProps) {
 
         <div className={styles.grid}>
           <section className={styles.card}>
-            <h2 className={styles.cardTitle}>Informacion general</h2>
+            <h2 className={styles.cardTitle}>Información general</h2>
 
             <dl className={styles.details}>
               <div className={styles.detailRow}>
@@ -129,57 +143,31 @@ export default async function ChurchDetailPage({ params }: ChurchPageProps) {
 
               {church.address && (
                 <div className={styles.detailRow}>
-                  <dt>Direccion</dt>
+                  <dt>Dirección</dt>
                   <dd>{church.address}</dd>
                 </div>
               )}
 
-              {church.representatives && (
+              {/* Texto legacy de representantes: solo como respaldo cuando aún
+                  no se han cargado tarjetas de representantes. */}
+              {!hasDirectors && church.representatives && (
                 <div className={styles.detailRow}>
                   <dt>Representantes</dt>
                   <dd>{church.representatives}</dd>
                 </div>
               )}
-
-              {church.avgAttendance != null && (
-                <div className={styles.detailRow}>
-                  <dt>Promedio de asistencia</dt>
-                  <dd>{church.avgAttendance}</dd>
-                </div>
-              )}
             </dl>
           </section>
 
-          <section className={styles.card}>
-            <h2 className={styles.cardTitle}>Ubicacion</h2>
-
-            {church.mapsLat != null && church.mapsLng != null ? (
-              <div className={styles.coords}>
-                <div className={styles.detailRow}>
-                  <span>Latitud</span>
-                  <strong>{church.mapsLat}</strong>
-                </div>
-                <div className={styles.detailRow}>
-                  <span>Longitud</span>
-                  <strong>{church.mapsLng}</strong>
-                </div>
-              </div>
-            ) : (
-              <p className={styles.emptyText}>Esta iglesia aun no tiene una ubicacion publica registrada.</p>
-            )}
-
-            {mapsHref && (
-              <a
-                href={mapsHref}
-                target="_blank"
-                rel="noreferrer"
-                className={styles.secondaryLink}
-              >
-                Abrir en Google Maps
-              </a>
-            )}
-          </section>
+          <ChurchMap
+            lat={church.mapsLat ?? null}
+            lng={church.mapsLng ?? null}
+            mapsHref={mapsHref}
+            name={church.name}
+          />
         </div>
+
+        <DirectorsSection directors={church.directors ?? []} />
 
         {announcements.length > 0 && (
           <section className={styles.announcementsSection}>
@@ -218,7 +206,7 @@ export default async function ChurchDetailPage({ params }: ChurchPageProps) {
                           rel="noreferrer"
                           className={styles.announcementAttachLink}
                         >
-                          📎 {att.name || att.format.toUpperCase()}
+                          {att.name || att.format.toUpperCase()}
                         </a>
                       ))}
                     </div>
@@ -229,42 +217,39 @@ export default async function ChurchDetailPage({ params }: ChurchPageProps) {
           </section>
         )}
 
-        {church.directors && church.directors.length > 0 && (
-          <section className={styles.directorsSection}>
-            <header className={styles.directorsHead}>
-              <h2 className={styles.cardTitle}>Directores</h2>
-              <span className={styles.directorsCount}>
-                {church.directors.length}{' '}
-                {church.directors.length === 1 ? 'persona' : 'personas'}
+        {studies.length > 0 && (
+          <section className={styles.studiesSection}>
+            <header className={styles.studiesHead}>
+              <h2 className={styles.cardTitle}>Estudios y mensajes</h2>
+              <span className={styles.studiesCount}>
+                {studies.length} {studies.length === 1 ? 'audio' : 'audios'}
               </span>
             </header>
 
-            <ul className={styles.directorsGrid}>
-              {church.directors.map((d) => (
-                <li key={d.id} className={styles.directorCard}>
-                  <div className={styles.directorAvatarWrap}>
-                    {d.photoUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={d.photoUrl}
-                        alt={d.displayName}
-                        className={styles.directorAvatar}
-                        loading="lazy"
-                      />
-                    ) : (
-                      <div className={styles.directorAvatarFallback}>
-                        {d.displayName.charAt(0).toUpperCase()}
-                      </div>
-                    )}
+            <ul className={styles.studiesList}>
+              {studies.map((s) => (
+                <li key={s.id} className={styles.studyCard}>
+                  <div className={styles.studyMeta}>
+                    <span className={styles.studyTeacher}>{s.teacherName}</span>
+                    <span className={styles.studyDate}>
+                      {dateFormatter.format(new Date(s.createdAt))}
+                    </span>
                   </div>
-                  <div className={styles.directorBody}>
-                    <strong className={styles.directorName}>
-                      {d.displayName}
-                    </strong>
-                    {d.role && (
-                      <span className={styles.directorRole}>{d.role}</span>
-                    )}
-                  </div>
+                  <h3 className={styles.studyTopic}>{s.topic}</h3>
+                  <audio
+                    className={styles.studyAudio}
+                    controls
+                    preload="none"
+                    src={s.audioUrl}
+                  >
+                    Tu navegador no soporta la reproducción de audio.
+                  </audio>
+                  {s.outline && (
+                    <details className={styles.studyOutline}>
+                      <summary>Ver bosquejo</summary>
+                      <p>{s.outline}</p>
+                    </details>
+                  )}
                 </li>
               ))}
             </ul>

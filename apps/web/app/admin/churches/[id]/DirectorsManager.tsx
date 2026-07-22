@@ -24,6 +24,8 @@ export function DirectorsManager({ churchId }: Props) {
   // Form state (creación)
   const [displayName, setDisplayName] = useState('');
   const [role, setRole] = useState('');
+  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -33,6 +35,8 @@ export function DirectorsManager({ churchId }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editDisplayName, setEditDisplayName] = useState('');
   const [editRole, setEditRole] = useState('');
+  const [editPhone, setEditPhone] = useState('');
+  const [editEmail, setEditEmail] = useState('');
   const [editPhotoFile, setEditPhotoFile] = useState<File | null>(null);
 
   const refresh = useCallback(async () => {
@@ -68,6 +72,8 @@ export function DirectorsManager({ churchId }: Props) {
   function resetCreateForm() {
     setDisplayName('');
     setRole('');
+    setPhone('');
+    setEmail('');
     setPhotoFile(null);
     setPhotoPreview(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
@@ -86,6 +92,8 @@ export function DirectorsManager({ churchId }: Props) {
     const form = new FormData();
     form.append('displayName', displayName.trim());
     if (role.trim()) form.append('role', role.trim());
+    if (phone.trim()) form.append('phone', phone.trim());
+    if (email.trim()) form.append('email', email.trim());
     if (photoFile) form.append('photo', photoFile);
 
     try {
@@ -117,6 +125,8 @@ export function DirectorsManager({ churchId }: Props) {
     setEditingId(d.id);
     setEditDisplayName(d.displayName);
     setEditRole(d.role);
+    setEditPhone(d.phone ?? '');
+    setEditEmail(d.email ?? '');
     setEditPhotoFile(null);
   }
 
@@ -129,6 +139,9 @@ export function DirectorsManager({ churchId }: Props) {
     const form = new FormData();
     form.append('displayName', editDisplayName.trim());
     form.append('role', editRole.trim());
+    // Se envían siempre (aunque vacíos) para permitir limpiar el campo.
+    form.append('phone', editPhone.trim());
+    form.append('email', editEmail.trim());
     if (editPhotoFile) form.append('photo', editPhotoFile);
     try {
       await adminUpdateDirector(editingId, form);
@@ -175,6 +188,30 @@ export function DirectorsManager({ churchId }: Props) {
               maxLength={120}
               onChange={(e) => setRole(e.target.value)}
               placeholder="Ej: Pastor principal"
+            />
+          </label>
+        </div>
+
+        <div className={styles.row}>
+          <label className={styles.field}>
+            <span>Celular (opcional)</span>
+            <input
+              value={phone}
+              maxLength={40}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="Ej: 300 123 4567"
+              inputMode="tel"
+            />
+          </label>
+
+          <label className={styles.field}>
+            <span>Correo (opcional)</span>
+            <input
+              value={email}
+              maxLength={150}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="Ej: pastor@iglesia.com"
+              type="email"
             />
           </label>
         </div>
@@ -249,6 +286,20 @@ export function DirectorsManager({ churchId }: Props) {
                         maxLength={120}
                       />
                       <input
+                        value={editPhone}
+                        onChange={(e) => setEditPhone(e.target.value)}
+                        placeholder="Celular"
+                        maxLength={40}
+                        inputMode="tel"
+                      />
+                      <input
+                        value={editEmail}
+                        onChange={(e) => setEditEmail(e.target.value)}
+                        placeholder="Correo"
+                        maxLength={150}
+                        type="email"
+                      />
+                      <input
                         type="file"
                         accept="image/*"
                         onChange={(e) =>
@@ -260,6 +311,11 @@ export function DirectorsManager({ churchId }: Props) {
                     <>
                       <strong>{d.displayName}</strong>
                       {d.role && <span className={styles.itemRole}>{d.role}</span>}
+                      {(d.phone || d.email) && (
+                        <span className={styles.itemContact}>
+                          {[d.phone, d.email].filter(Boolean).join(' · ')}
+                        </span>
+                      )}
                       {d.linkedAdminUsername && (
                         <span className={styles.linkedFlag}>
                           Vinculado a @{d.linkedAdminUsername}

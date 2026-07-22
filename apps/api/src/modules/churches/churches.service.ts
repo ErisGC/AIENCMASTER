@@ -15,6 +15,30 @@ type IncomingFile = {
   buffer: Buffer;
 };
 
+/**
+ * Proyección PÚBLICA de una iglesia: expone solo los campos que un visitante
+ * anónimo puede ver. Deja fuera `avgAttendance` (privado por designio del
+ * cliente) y los `*PublicId` internos de Cloudinary. Esta es la única fuente
+ * de verdad de lo que sale al público, así ningún endpoint filtra de más.
+ */
+function toPublicChurch(church: Church) {
+  return {
+    id: church.id,
+    name: church.name,
+    city: church.city,
+    address: church.address ?? null,
+    mapsLat: church.mapsLat ?? null,
+    mapsLng: church.mapsLng ?? null,
+    mapsUrl: church.mapsUrl ?? null,
+    mainImageUrl: church.mainImageUrl ?? null,
+    coverImageUrl: church.coverImageUrl ?? null,
+    representatives: church.representatives ?? null,
+    isActive: church.isActive,
+    createdAt: church.createdAt,
+    updatedAt: church.updatedAt,
+  };
+}
+
 @Injectable()
 export class ChurchesService {
   constructor(
@@ -31,9 +55,9 @@ export class ChurchesService {
     });
 
     // Para iglesias inactivas solo exponemos campos públicos mínimos.
-    // Las activas conservan todos sus datos.
+    // Las activas se serializan con la proyección pública (sin asistencia).
     return churches.map((church) => {
-      if (church.isActive) return church;
+      if (church.isActive) return toPublicChurch(church);
 
       return {
         id: church.id,
@@ -56,7 +80,7 @@ export class ChurchesService {
 
     const directors = await this.directorsService.findPublicByChurch(id);
 
-    return { ...entity, directors };
+    return { ...toPublicChurch(entity), directors };
   }
 
   findAllForAdmin() {

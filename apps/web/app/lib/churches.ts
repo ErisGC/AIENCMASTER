@@ -9,6 +9,8 @@ export type ChurchPublicDirector = {
   id: string;
   displayName: string;
   role: string;
+  phone: string | null;
+  email: string | null;
   photoUrl: string | null;
 };
 
@@ -29,9 +31,9 @@ export type Church = {
   mainImageUrl?: string | null;
   coverImageUrl?: string | null;
 
-  /* Info adicional */
+  /* Info adicional. avgAttendance NO se expone al público (privado por
+     designio del cliente); por eso no está en este tipo. */
   representatives?: string | null;
-  avgAttendance?: number | null;
 
   /* Directores (sólo en findOnePublic) */
   directors?: ChurchPublicDirector[];

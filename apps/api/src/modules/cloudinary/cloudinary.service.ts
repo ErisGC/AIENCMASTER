@@ -80,10 +80,22 @@ export class CloudinaryService implements OnModuleInit {
     });
   }
 
-  /** Delete a resource by its public ID. */
-  async delete(publicId: string): Promise<void> {
+  /**
+   * Delete a resource by its public ID.
+   *
+   * `resourceType` must match how the asset was stored. Cloudinary treats
+   * audio as `video`, so deleting a study audio requires passing "video";
+   * images use the default. Passing the wrong type silently no-ops on
+   * Cloudinary's side, which is why we thread it through.
+   */
+  async delete(
+    publicId: string,
+    resourceType: "image" | "video" | "raw" = "image",
+  ): Promise<void> {
     try {
-      await cloudinary.uploader.destroy(publicId);
+      await cloudinary.uploader.destroy(publicId, {
+        resource_type: resourceType,
+      });
     } catch (error) {
       this.logger.warn(
         `Failed to delete Cloudinary resource ${publicId}: ${String(error)}`,

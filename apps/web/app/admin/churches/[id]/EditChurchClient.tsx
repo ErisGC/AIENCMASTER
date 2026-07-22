@@ -14,6 +14,7 @@ import {
 } from '@/app/lib/admin-churches';
 import { DirectorsManager } from './DirectorsManager';
 import { ChurchAnnouncementsManager } from './ChurchAnnouncementsManager';
+import { ChurchStudiesManager } from './ChurchStudiesManager';
 
 type PickedPoint = { lat: number; lng: number; url?: string };
 
@@ -540,6 +541,9 @@ export function EditChurchClient({ initialChurch }: { initialChurch: Church }) {
 
         {/* ANUNCIOS DE LA IGLESIA */}
         <ChurchAnnouncementsManager churchId={initialChurch.id} />
+
+        {/* ESTUDIOS EN AUDIO */}
+        <ChurchStudiesManager churchId={initialChurch.id} />
 
         {/* DANGER */}
         <section className={`${styles.card} ${styles.dangerCard}`}>

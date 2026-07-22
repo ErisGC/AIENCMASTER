@@ -12,6 +12,7 @@ import { AdminDevice } from "../modules/admin-security/admin_device.entity";
 import { AdminInvitation } from "../modules/admin-security/admin-invitation.entity";
 import { ChurchAnnouncement } from "../modules/church-announcements/church-announcement.entity";
 import { ChurchAnnouncementAttachment } from "../modules/church-announcements/church-announcement-attachment.entity";
+import { ChurchStudy } from "../modules/church-studies/church-study.entity";
 import { ChurchDirector } from "../modules/churches/church-director.entity";
 import { Church } from "../modules/churches/church.entity";
 import { Report } from "../modules/reports/report.entity";
@@ -49,6 +50,7 @@ const ENTITIES = [
   ChurchDirector,
   ChurchAnnouncement,
   ChurchAnnouncementAttachment,
+  ChurchStudy,
   Report,
   SiteBackground,
   SiteSettings,

@@ -70,6 +70,8 @@ export class DirectorsService {
       id: d.id,
       displayName: d.displayName,
       role: d.role,
+      phone: d.phone ?? null,
+      email: d.email ?? null,
       photoUrl: d.linkedAdminAccount?.profilePhotoUrl ?? d.photoUrl ?? null,
     }));
   }
@@ -88,6 +90,8 @@ export class DirectorsService {
       churchId: d.churchId,
       displayName: d.displayName,
       role: d.role,
+      phone: d.phone ?? null,
+      email: d.email ?? null,
       photoUrl: d.photoUrl,
       linkedAdminAccountId: d.linkedAdminAccountId,
       linkedAdminPhotoUrl: d.linkedAdminAccount?.profilePhotoUrl ?? null,
@@ -143,6 +147,8 @@ export class DirectorsService {
       churchId,
       displayName: dto.displayName.trim(),
       role: (dto.role ?? "").trim(),
+      phone: dto.phone?.trim() || null,
+      email: dto.email?.trim().toLowerCase() || null,
       linkedAdminAccountId: dto.linkedAdminAccountId ?? null,
       photoUrl,
       photoPublicId,
@@ -164,6 +170,9 @@ export class DirectorsService {
     if (dto.displayName !== undefined)
       director.displayName = dto.displayName.trim();
     if (dto.role !== undefined) director.role = dto.role.trim();
+    if (dto.phone !== undefined) director.phone = dto.phone?.trim() || null;
+    if (dto.email !== undefined)
+      director.email = dto.email?.trim().toLowerCase() || null;
     if (dto.sortOrder !== undefined) director.sortOrder = dto.sortOrder;
     if (dto.linkedAdminAccountId !== undefined) {
       director.linkedAdminAccountId = dto.linkedAdminAccountId ?? null;

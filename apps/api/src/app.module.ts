@@ -1,3 +1,5 @@
+import { join } from "path";
+
 import { Module } from "@nestjs/common";
 import { TypeOrmModule, type TypeOrmModuleOptions } from "@nestjs/typeorm";
 import { ConfigModule } from "@nestjs/config";
@@ -6,6 +8,7 @@ import { validateEnvironment } from "./config/environment.validation";
 import { AdminSecurityModule } from "./modules/admin-security/admin-security.module";
 import { AnnouncementsModule } from "./modules/announcements/announcements.module";
 import { ChurchAnnouncementsModule } from "./modules/church-announcements/church-announcements.module";
+import { ChurchStudiesModule } from "./modules/church-studies/church-studies.module";
 import { ChurchesModule } from "./modules/churches/churches.module";
 import { ReportsModule } from "./modules/reports/reports.module";
 import { SiteModule } from "./modules/site/site.module";
@@ -39,6 +42,12 @@ function buildTypeOrmOptions(): TypeOrmModuleOptions {
     type: "postgres",
     autoLoadEntities: true,
     synchronize,
+    // Con synchronize apagado, el esquema evoluciona por migraciones. Las
+    // aplicamos automáticamente al arrancar (idempotente: TypeORM lleva
+    // registro en la tabla "migrations"), así un deploy nuevo actualiza el
+    // esquema sin intervención manual. __dirname apunta a dist/ en runtime.
+    migrations: [join(__dirname, "database", "migrations", "*.{js,ts}")],
+    migrationsRun: true,
   };
 
   if (databaseUrl) {
@@ -69,6 +78,7 @@ function buildTypeOrmOptions(): TypeOrmModuleOptions {
     AdminSecurityModule,
     AnnouncementsModule,
     ChurchAnnouncementsModule,
+    ChurchStudiesModule,
     ChurchesModule,
     ReportsModule,
     SiteModule,

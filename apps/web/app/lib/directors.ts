@@ -12,6 +12,8 @@ export interface AdminDirector {
   churchId: string;
   displayName: string;
   role: string;
+  phone: string | null;
+  email: string | null;
   photoUrl: string | null;
   linkedAdminAccountId: string | null;
   linkedAdminPhotoUrl: string | null;

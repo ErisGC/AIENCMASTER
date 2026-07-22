@@ -7,7 +7,24 @@ import { BadRequestException } from "@nestjs/common";
 export const MAX_IMAGE_BYTES = 10 * 1024 * 1024; // 10 MB
 export const MAX_VIDEO_BYTES = 50 * 1024 * 1024; // 50 MB
 export const MAX_PDF_BYTES = 15 * 1024 * 1024; // 15 MB
+// Estudios en audio: tope prudente que cabe en el límite global de multipart
+// (50 MB) y no satura la RAM del servidor. Para archivos más grandes se debe
+// migrar a subida directa firmada a Cloudinary (ver church-studies.service).
+export const MAX_AUDIO_BYTES = 25 * 1024 * 1024; // 25 MB
 export const MAX_FILES_PER_ANNOUNCEMENT = 20;
+
+const ALLOWED_AUDIO_MIMES = new Set([
+  "audio/mpeg",
+  "audio/mp3",
+  "audio/mp4",
+  "audio/aac",
+  "audio/m4a",
+  "audio/x-m4a",
+  "audio/ogg",
+  "audio/wav",
+  "audio/x-wav",
+  "audio/webm",
+]);
 
 const ALLOWED_IMAGE_MIMES = new Set([
   "image/jpeg",
@@ -108,6 +125,20 @@ export function validateUploadedFiles(files: ValidatableFile[]): void {
   }
   for (const f of files) {
     validateUploadedFile(f);
+  }
+}
+
+/** For church studies: only audio files are allowed, up to 25 MB. */
+export function validateStudyAudio(file: ValidatableFile): void {
+  if (!ALLOWED_AUDIO_MIMES.has(file.mimetype)) {
+    throw new BadRequestException(
+      `Solo se permiten archivos de audio para los estudios (recibido: ${file.mimetype}).`,
+    );
+  }
+  if (file.buffer.byteLength > MAX_AUDIO_BYTES) {
+    throw new BadRequestException(
+      `El audio ${file.filename} excede el tamaño máximo (25 MB).`,
+    );
   }
 }
 

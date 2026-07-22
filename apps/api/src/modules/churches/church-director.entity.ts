@@ -35,6 +35,14 @@ export class ChurchDirector {
   @Column({ type: "text", default: "" })
   role!: string;
 
+  /** Celular de contacto (opcional). Se muestra en la tarjeta pública. */
+  @Column({ type: "text", nullable: true })
+  phone!: string | null;
+
+  /** Correo de contacto (opcional). Se muestra en la tarjeta pública. */
+  @Column({ type: "text", nullable: true })
+  email!: string | null;
+
   /** Foto subida específicamente para el director (independiente del admin). */
   @Column({ type: "text", nullable: true })
   photoUrl!: string | null;
