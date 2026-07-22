@@ -2,7 +2,7 @@ name: admin_app
 description: "AIENC Admin - Panel administrativo movil"
 publish_to: 'none'
 
-version: 0.1.7+8
+version: 0.1.8+9
 
 environment:
   sdk: ^3.11.1

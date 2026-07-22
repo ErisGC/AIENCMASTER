@@ -41,7 +41,12 @@ class UpdateService {
         _latestApiUrl,
         options: Options(
           responseType: ResponseType.json,
-          headers: {'Accept': 'application/vnd.github+json'},
+          headers: {
+            'Accept': 'application/vnd.github+json',
+            // GitHub RECHAZA (403) cualquier petición sin User-Agent. No basta
+            // con el default implícito del cliente HTTP; lo fijamos explícito.
+            'User-Agent': 'AIENC-Admin-App',
+          },
           // No fallar si GitHub responde 4xx; lo tratamos como "sin update".
           validateStatus: (s) => s != null && s < 500,
         ),
