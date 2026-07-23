@@ -7,6 +7,7 @@ import '../../core/api/api_client.dart';
 import '../../core/models/domain.dart';
 import '../../core/state/locator.dart';
 import '../../core/theme/gem_palette.dart';
+import '../../core/widgets/coach_card.dart';
 import '../../core/widgets/gem_widgets.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -207,8 +208,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (widget.showcaseKey != null && widget.coachCard != null) {
       return Showcase.withWidget(
         key: widget.showcaseKey!,
-        height: 280,
-        width: MediaQuery.of(context).size.width - 32,
+        height: coachHeight(context),
+        width: coachWidth(context),
         container: widget.coachCard!,
         child: header,
       );

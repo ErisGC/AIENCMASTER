@@ -70,6 +70,31 @@ export default async function ChurchDetailPage({ params }: ChurchPageProps) {
 
   const hasDirectors = !!church.directors && church.directors.length > 0;
 
+  // Compatibilidad: las iglesias antiguas sólo tienen el campo de texto
+  // `representatives`. Mientras no se carguen representantes como registros
+  // (con foto, celular y correo), mostramos esos nombres igualmente como
+  // tarjetas para que la ficha exista desde el primer día; al abrirlas indican
+  // que aún no hay datos de contacto. En cuanto se crea el registro real,
+  // manda el registro y este respaldo desaparece.
+  const legacyNames =
+    !hasDirectors && church.representatives
+      ? church.representatives
+          .split(/[,;/]|\sy\s/i)
+          .map((s) => s.trim())
+          .filter(Boolean)
+      : [];
+
+  const directorsToShow = hasDirectors
+    ? church.directors!
+    : legacyNames.map((name, i) => ({
+        id: `legacy-${i}`,
+        displayName: name,
+        role: '',
+        phone: null,
+        email: null,
+        photoUrl: null,
+      }));
+
   return (
     <main className={styles.page}>
       <div className={styles.shell}>
@@ -148,9 +173,9 @@ export default async function ChurchDetailPage({ params }: ChurchPageProps) {
                 </div>
               )}
 
-              {/* Texto legacy de representantes: solo como respaldo cuando aún
-                  no se han cargado tarjetas de representantes. */}
-              {!hasDirectors && church.representatives && (
+              {/* Los representantes se muestran como tarjetas más abajo; sólo
+                  dejamos la fila de texto si no hay ni un nombre que mostrar. */}
+              {directorsToShow.length === 0 && church.representatives && (
                 <div className={styles.detailRow}>
                   <dt>Representantes</dt>
                   <dd>{church.representatives}</dd>
@@ -167,7 +192,7 @@ export default async function ChurchDetailPage({ params }: ChurchPageProps) {
           />
         </div>
 
-        <DirectorsSection directors={church.directors ?? []} />
+        <DirectorsSection directors={directorsToShow} />
 
         {announcements.length > 0 && (
           <section className={styles.announcementsSection}>

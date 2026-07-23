@@ -29,11 +29,18 @@ class _LockScreenState extends State<LockScreen> {
     _bootstrapLock();
   }
 
+  /// La huella sólo puede sustituir al PIN cuando la sesión YA está cargada en
+  /// memoria (caso "sólo huella", o re-bloqueo por inactividad). En un arranque
+  /// en frío CON PIN las cookies están cifradas con la llave derivada de ese
+  /// PIN, así que la huella no bastaría para descifrarlas: ahí exigimos el PIN.
+  bool get _canUseBio =>
+      _bioAvailable && _bioEnabled && Locator.authState.account != null;
+
   Future<void> _bootstrapLock() async {
     _bioAvailable = await Locator.localAuth.biometricsAvailable();
     _bioEnabled = await Locator.localAuth.isBiometricEnabled();
     if (mounted) setState(() {});
-    if (_bioAvailable && _bioEnabled) {
+    if (_canUseBio) {
       _tryBiometric();
     }
   }
@@ -134,7 +141,7 @@ class _LockScreenState extends State<LockScreen> {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 28),
-              if (_bioAvailable && _bioEnabled)
+              if (_canUseBio)
                 OutlinedButton.icon(
                   icon: const Icon(Icons.fingerprint),
                   label: const Text('Desbloquear con biometría'),

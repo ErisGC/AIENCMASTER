@@ -52,9 +52,12 @@ class _LoginScreenState extends State<LoginScreen> {
         return;
       }
       await Locator.authState.onLoginSuccess(session.account!);
+      // Solo ofrecemos configurar la protección local la PRIMERA vez. Si el
+      // usuario ya decidió (huella, PIN o nada), respetamos su elección y
+      // entramos directo: antes se le forzaba esta pantalla en cada login.
+      final yaDecidio = await Locator.localAuth.lockChoiceMade();
       if (!mounted) return;
-      // Tras login, ofrecer configurar biometría/PIN o ir directo al home.
-      context.go('/setup-lock');
+      context.go(yaDecidio ? '/' : '/setup-lock');
     } on ApiException catch (e) {
       setState(() => _error = e.message);
     } catch (e) {

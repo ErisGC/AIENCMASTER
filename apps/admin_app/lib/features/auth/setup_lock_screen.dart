@@ -7,8 +7,9 @@ import '../../core/state/locator.dart';
 import '../../core/theme/gem_palette.dart';
 import '../../core/widgets/gem_widgets.dart';
 
-/// Tras login se ofrece (no obligatorio) activar biometría y PIN para
-/// no tener que escribir contraseña en cada arranque.
+/// Elección de cómo proteger la app. Es OPCIONAL y se pregunta UNA sola vez:
+/// la decisión queda guardada y en los siguientes ingresos se respeta.
+/// Se puede cambiar después desde Seguridad.
 class SetupLockScreen extends StatefulWidget {
   const SetupLockScreen({super.key});
 
@@ -19,8 +20,9 @@ class SetupLockScreen extends StatefulWidget {
 class _SetupLockScreenState extends State<SetupLockScreen> {
   final _pinCtrl = TextEditingController();
   final _confirmCtrl = TextEditingController();
-  bool _enableBio = false;
+
   bool _bioAvailable = false;
+  bool _showPinForm = false;
   bool _saving = false;
   String? _error;
 
@@ -28,12 +30,7 @@ class _SetupLockScreenState extends State<SetupLockScreen> {
   void initState() {
     super.initState();
     Locator.localAuth.biometricsAvailable().then((b) {
-      if (mounted) {
-        setState(() {
-          _bioAvailable = b;
-          _enableBio = b;
-        });
-      }
+      if (mounted) setState(() => _bioAvailable = b);
     });
   }
 
@@ -44,7 +41,37 @@ class _SetupLockScreenState extends State<SetupLockScreen> {
     super.dispose();
   }
 
-  Future<void> _save() async {
+  /// Opción 1: huella. Pedimos una confirmación real antes de activarla, para
+  /// no dejar al usuario con un bloqueo que su teléfono no puede satisfacer.
+  Future<void> _useBiometrics() async {
+    if (_saving) return;
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+    try {
+      final ok = await Locator.localAuth.authenticate(
+        reason: 'Confirma tu huella para activarla en AIENC',
+      );
+      if (!ok) {
+        setState(() => _error =
+            'No se pudo verificar la huella. Puedes intentarlo de nuevo o continuar sin protección.');
+        return;
+      }
+      await Locator.localAuth.setBiometricEnabled(true);
+      await Locator.localAuth.markLockChoiceMade();
+      if (!mounted) return;
+      context.go('/');
+    } catch (_) {
+      setState(() => _error = 'No se pudo activar la huella.');
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  /// Opción 2: PIN de 6 dígitos (para teléfonos sin huella o si se prefiere).
+  Future<void> _savePin() async {
+    if (_saving) return;
     final pin = _pinCtrl.text;
     if (pin.length != 6) {
       setState(() => _error = 'El PIN debe tener exactamente 6 dígitos.');
@@ -54,43 +81,46 @@ class _SetupLockScreenState extends State<SetupLockScreen> {
       setState(() => _error = 'Los PIN no coinciden.');
       return;
     }
-    setState(() => _saving = true);
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
     try {
       await Locator.localAuth.setPin(pin);
-      await Locator.localAuth.setBiometricEnabled(_enableBio);
-      // Cifra en reposo las cookies ya guardadas (texto plano) con la llave
-      // derivada del nuevo PIN, sin perder la sesión activa. A partir de aquí
-      // el bloqueo protege la credencial en disco, no sólo la pantalla.
+      // Cifra en reposo las cookies ya guardadas con la llave derivada del PIN,
+      // sin perder la sesión activa.
       final key = await Locator.localAuth.deriveCookieKey(pin);
       if (key != null) {
         await ApiClient.I.rekeyCookies(key);
       }
+      await Locator.localAuth.markLockChoiceMade();
       if (!mounted) return;
       context.go('/');
     } catch (_) {
-      setState(() => _error = 'No se pudo guardar la configuración.');
+      setState(() => _error = 'No se pudo guardar el PIN.');
     } finally {
       if (mounted) setState(() => _saving = false);
     }
   }
 
+  /// Opción 3: sin protección. Se recuerda para no volver a preguntar.
   Future<void> _skip() async {
-    // Sin PIN: el próximo arranque pedirá contraseña otra vez.
-    if (mounted) context.go('/');
+    if (_saving) return;
+    setState(() => _saving = true);
+    try {
+      await Locator.localAuth.setBiometricEnabled(false);
+      await Locator.localAuth.markLockChoiceMade();
+      if (!mounted) return;
+      context.go('/');
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Asegurar acceso'),
-        actions: [
-          TextButton(
-            onPressed: _saving ? null : _skip,
-            child: const Text('Omitir'),
-          ),
-        ],
-      ),
+      appBar: AppBar(title: const Text('Proteger la app')),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(20),
@@ -102,63 +132,94 @@ class _SetupLockScreenState extends State<SetupLockScreen> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Text(
-                      'Define un PIN para esta app',
+                      '¿Cómo quieres entrar a la app?',
                       style: Theme.of(context).textTheme.headlineSmall,
                     ),
                     const SizedBox(height: 6),
                     const Text(
-                      'En el próximo arranque podrás desbloquear con tu '
-                      'huella o pegando este PIN, sin tener que volver a '
-                      'escribir tu contraseña.',
+                      'Esto es opcional y solo se pregunta una vez. Puedes '
+                      'cambiarlo después desde Seguridad. Pase lo que pase, '
+                      'todo lo que hagas queda registrado en la auditoría.',
                       style:
                           TextStyle(color: GemPalette.textMuted, height: 1.5),
                     ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: _pinCtrl,
-                      decoration: const InputDecoration(
-                        labelText: 'PIN (6 dígitos)',
+                    const SizedBox(height: 18),
+
+                    if (_bioAvailable) ...[
+                      GemPrimaryButton(
+                        label: 'Entrar con mi huella',
+                        loading: _saving,
+                        onPressed: _useBiometrics,
                       ),
-                      keyboardType: TextInputType.number,
-                      obscureText: true,
-                      maxLength: 6,
-                      inputFormatters: [
-                        FilteringTextInputFormatter.digitsOnly,
-                      ],
-                    ),
-                    TextField(
-                      controller: _confirmCtrl,
-                      decoration: const InputDecoration(
-                        labelText: 'Confirmar PIN',
-                      ),
-                      keyboardType: TextInputType.number,
-                      obscureText: true,
-                      maxLength: 6,
-                      inputFormatters: [
-                        FilteringTextInputFormatter.digitsOnly,
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    if (_bioAvailable)
-                      SwitchListTile.adaptive(
-                        contentPadding: EdgeInsets.zero,
-                        value: _enableBio,
-                        onChanged: (v) => setState(() => _enableBio = v),
-                        title: const Text('Activar biometría'),
-                        subtitle: const Text(
-                          'Huella o reconocimiento facial del dispositivo',
-                          style: TextStyle(color: GemPalette.textMuted),
-                        ),
-                      ),
-                    if (_error != null) ...[
                       const SizedBox(height: 8),
+                      const Text(
+                        'Recomendado: usa la huella o el rostro que ya tienes '
+                        'configurado en el teléfono.',
+                        style: TextStyle(
+                            color: GemPalette.textMuted, fontSize: 12),
+                      ),
+                      const SizedBox(height: 16),
+                    ] else ...[
+                      const Text(
+                        'Este teléfono no tiene huella o rostro configurado. '
+                        'Puedes usar un PIN o entrar sin protección.',
+                        style: TextStyle(
+                            color: GemPalette.textMuted, fontSize: 12),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+
+                    if (!_showPinForm)
+                      OutlinedButton.icon(
+                        icon: const Icon(Icons.pin_outlined, size: 18),
+                        label: const Text('Prefiero un PIN de 6 dígitos'),
+                        onPressed: _saving
+                            ? null
+                            : () => setState(() => _showPinForm = true),
+                      ),
+
+                    if (_showPinForm) ...[
+                      TextField(
+                        controller: _pinCtrl,
+                        decoration: const InputDecoration(
+                          labelText: 'PIN (6 dígitos)',
+                        ),
+                        keyboardType: TextInputType.number,
+                        obscureText: true,
+                        maxLength: 6,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                        ],
+                      ),
+                      TextField(
+                        controller: _confirmCtrl,
+                        decoration: const InputDecoration(
+                          labelText: 'Confirmar PIN',
+                        ),
+                        keyboardType: TextInputType.number,
+                        obscureText: true,
+                        maxLength: 6,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      GemPrimaryButton(
+                        label: 'Guardar PIN',
+                        loading: _saving,
+                        onPressed: _savePin,
+                      ),
+                    ],
+
+                    if (_error != null) ...[
+                      const SizedBox(height: 12),
                       GemErrorBanner(message: _error!),
                     ],
-                    const SizedBox(height: 16),
-                    GemPrimaryButton(
-                      label: 'Guardar y continuar',
-                      loading: _saving,
-                      onPressed: _save,
+
+                    const SizedBox(height: 18),
+                    TextButton(
+                      onPressed: _saving ? null : _skip,
+                      child: const Text('Entrar sin protección'),
                     ),
                   ],
                 ),

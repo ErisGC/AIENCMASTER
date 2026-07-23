@@ -87,7 +87,11 @@ class AuthState extends ChangeNotifier {
       if (session.status == 'ACTIVE' && session.account != null) {
         _account = session.account;
         _selectDefaultChurch();
-        _phase = AuthPhase.authenticated;
+        // Sin PIN las cookies están en claro, así que ya tenemos la sesión.
+        // Si el usuario activó la huella, pedimos biometría antes de mostrar
+        // el panel; si no activó nada, entra directo.
+        final bioEnabled = await _localAuth.isBiometricEnabled();
+        _phase = bioEnabled ? AuthPhase.locked : AuthPhase.authenticated;
       } else {
         _account = null;
         _activeChurchId = null;
@@ -182,9 +186,13 @@ class AuthState extends ChangeNotifier {
   }
 
   /// Bloqueo por inactividad: la app estuvo en segundo plano más del umbral
-  /// (2 min) y al volver se exige re-autenticación LOCAL (no re-invitación).
-  ///   - Con PIN o biometría configurados → pantalla de bloqueo.
-  ///   - Sin ninguno → cierra sesión y obliga a re-loguear con credenciales.
+  /// (2 min) y al volver se exige re-autenticación LOCAL.
+  ///   - Con PIN o huella configurados → pantalla de bloqueo.
+  ///   - Sin ninguno → NO se hace nada: el usuario eligió expresamente no
+  ///     proteger la app, así que cerrarle la sesión sería castigarlo por su
+  ///     elección (además le forzaba a re-loguear y a reconfigurar el PIN en
+  ///     cada regreso). La sesión sigue protegida por su TTL en el servidor y
+  ///     todas sus acciones quedan en la auditoría.
   /// Sólo aplica si estábamos autenticados (no molesta en login/lock/loading).
   Future<void> lockForInactivity() async {
     if (_account == null || _phase != AuthPhase.authenticated) return;
@@ -193,8 +201,6 @@ class AuthState extends ChangeNotifier {
     if (pinSet || bioEnabled) {
       _phase = AuthPhase.locked;
       notifyListeners();
-    } else {
-      await signOut();
     }
   }
 

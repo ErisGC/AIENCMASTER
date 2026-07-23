@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/services/update_service.dart';
 import '../../core/state/locator.dart';
 import '../../core/theme/gem_palette.dart';
+import '../../core/widgets/coach_card.dart';
 import '../dashboard/dashboard_screen.dart';
 import '../announcements/announcements_screen.dart';
 import '../churches/churches_screen.dart';
@@ -189,8 +190,8 @@ class _HomeShellState extends State<HomeShell> {
       ),
       bottomNavigationBar: Showcase.withWidget(
         key: _navKey,
-        height: 320,
-        width: MediaQuery.of(ctx).size.width - 32,
+        height: coachHeight(ctx),
+        width: coachWidth(ctx),
         container: _navCoach(ctx, account, isRoot),
         child: Container(
           decoration: const BoxDecoration(
@@ -322,77 +323,16 @@ class _HomeShellState extends State<HomeShell> {
     required String body,
     required bool isLast,
   }) {
-    return Material(
-      color: Colors.transparent,
-      child: Container(
-        decoration: BoxDecoration(
-          color: GemPalette.surfaceElevated,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: GemPalette.borderSoft),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.45),
-              blurRadius: 28,
-              offset: const Offset(0, 12),
-            ),
-          ],
-        ),
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              step,
-              style: const TextStyle(
-                color: GemPalette.topaz,
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 1.4,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              title,
-              style: const TextStyle(
-                color: GemPalette.textPrimary,
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(height: 10),
-            Flexible(
-              child: SingleChildScrollView(
-                child: Text(
-                  body,
-                  style: const TextStyle(
-                    color: GemPalette.textMuted,
-                    height: 1.45,
-                    fontSize: 13.5,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                TextButton(
-                  onPressed: () {
-                    ShowCaseWidget.of(ctx).dismiss();
-                    _markTutorialSeen();
-                  },
-                  child: const Text('Omitir'),
-                ),
-                const Spacer(),
-                FilledButton(
-                  onPressed: () => ShowCaseWidget.of(ctx).next(),
-                  child: Text(isLast ? 'Entendido' : 'Siguiente'),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
+    return buildCoachCard(
+      step: step,
+      title: title,
+      body: body,
+      isLast: isLast,
+      onNext: () => ShowCaseWidget.of(ctx).next(),
+      onSkip: () {
+        ShowCaseWidget.of(ctx).dismiss();
+        _markTutorialSeen();
+      },
     );
   }
 }

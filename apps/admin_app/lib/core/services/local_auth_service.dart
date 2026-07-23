@@ -2,14 +2,15 @@ import 'dart:convert';
 import 'dart:math';
 
 import 'package:crypto/crypto.dart';
+import 'package:local_auth/local_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Manejo de re-login local con PIN.
+/// Protección local de la app: huella (biometría del teléfono) y/o PIN.
 ///
-/// La biometría (huella/cara) está documentada como TODO — pull-ea
-/// `objective_c` que no compila en Windows cuando el path del Flutter SDK
-/// tiene espacios. Volverá a activarse cuando movamos el SDK o cuando
-/// `local_auth` deje de depender de `objective_c`.
+/// El bloqueo local es OPCIONAL y la elección del usuario se recuerda: si
+/// decide no proteger la app, entra directo y no se le vuelve a preguntar ni
+/// se le cierra la sesión por inactividad. La trazabilidad de quién hace qué
+/// la cubre la auditoría del servidor, no el bloqueo local.
 ///
 /// Endurecimiento del PIN:
 ///   - Se guarda como SHA-256 salado e iterado (no en claro, no FNV débil).
@@ -25,6 +26,14 @@ class LocalAuthService {
   static const _kPinFails = 'local_pin_fails';
   static const _kPinLockUntil = 'local_pin_lock_until';
   static const _kLastUser = 'local_last_user';
+  static const _kBiometricEnabled = 'local_biometric_enabled';
+
+  /// Marca que el usuario YA decidió cómo quiere proteger la app (con huella,
+  /// con PIN, o sin nada). Mientras esté puesta no se le vuelve a preguntar:
+  /// antes se le forzaba la pantalla de configuración en cada inicio de sesión.
+  static const _kLockChoiceMade = 'local_lock_choice_made';
+
+  final LocalAuthentication _bio = LocalAuthentication();
 
   /// Iteraciones del KDF. Suficiente para encarecer la fuerza bruta sin
   /// retrasar perceptiblemente el desbloqueo legítimo.
@@ -35,13 +44,53 @@ class LocalAuthService {
 
   Future<SharedPreferences> get _prefs => SharedPreferences.getInstance();
 
-  /// Por ahora siempre `false` — biometría queda como TODO.
-  Future<bool> biometricsAvailable() async => false;
-  Future<bool> isBiometricEnabled() async => false;
-  Future<void> setBiometricEnabled(bool _) async {
-    /* no-op */
+  /// ¿El teléfono tiene huella/rostro configurado y utilizable?
+  Future<bool> biometricsAvailable() async {
+    try {
+      if (!await _bio.isDeviceSupported()) return false;
+      return await _bio.canCheckBiometrics;
+    } catch (_) {
+      return false;
+    }
   }
-  Future<bool> authenticate({String? reason}) async => false;
+
+  /// ¿El usuario activó el desbloqueo por huella para esta app?
+  Future<bool> isBiometricEnabled() async {
+    final p = await _prefs;
+    if (!(p.getBool(_kBiometricEnabled) ?? false)) return false;
+    // Si el usuario quitó la huella del teléfono, dejamos de exigirla para no
+    // dejarlo encerrado fuera de la app.
+    return biometricsAvailable();
+  }
+
+  Future<void> setBiometricEnabled(bool value) async {
+    final p = await _prefs;
+    await p.setBool(_kBiometricEnabled, value);
+  }
+
+  /// Lanza el diálogo biométrico del sistema. Devuelve true si autenticó.
+  Future<bool> authenticate({String? reason}) async {
+    try {
+      return await _bio.authenticate(
+        localizedReason: reason ?? 'Confirma tu identidad para entrar a AIENC',
+        biometricOnly: true,
+        persistAcrossBackgrounding: true,
+      );
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// ¿Ya eligió el usuario cómo proteger la app? (para no volver a preguntar)
+  Future<bool> lockChoiceMade() async {
+    final p = await _prefs;
+    return p.getBool(_kLockChoiceMade) ?? false;
+  }
+
+  Future<void> markLockChoiceMade() async {
+    final p = await _prefs;
+    await p.setBool(_kLockChoiceMade, true);
+  }
 
   Future<void> setPin(String pin) async {
     final p = await _prefs;
@@ -126,6 +175,9 @@ class LocalAuthService {
     return p.getString(_kLastUser);
   }
 
+  /// Borra la protección local. Se usa al CERRAR SESIÓN explícitamente: en ese
+  /// dispositivo puede entrar otro admin, así que su protección debe ser suya
+  /// (y por eso también se olvida la elección previa).
   Future<void> clearAll() async {
     final p = await _prefs;
     await p.remove(_kPinHash);
@@ -133,6 +185,8 @@ class LocalAuthService {
     await p.remove(_kPinFails);
     await p.remove(_kPinLockUntil);
     await p.remove(_kLastUser);
+    await p.remove(_kBiometricEnabled);
+    await p.remove(_kLockChoiceMade);
   }
 
   /* ── internos ── */

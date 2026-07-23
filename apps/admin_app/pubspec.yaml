@@ -2,7 +2,7 @@ name: admin_app
 description: "AIENC Admin - Panel administrativo movil"
 publish_to: 'none'
 
-version: 0.1.8+9
+version: 0.1.9+10
 
 environment:
   sdk: ^3.11.1
@@ -84,6 +84,7 @@ dependencies:
   # Información del dispositivo Android (modelo, marca) para componer el
   # deviceName legible que se muestra al ROOT al aprobar acceso.
   device_info_plus: ^11.2.0
+  local_auth: ^3.0.2
 
 dev_dependencies:
   flutter_test:

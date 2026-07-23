@@ -144,6 +144,52 @@ class _SecurityScreenState extends State<SecurityScreen> {
                           ),
                           const SizedBox(height: 10),
                           GemCard(
+                            onTap: () => context.push('/setup-lock'),
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 44,
+                                  height: 44,
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(12),
+                                    gradient: const LinearGradient(
+                                      colors: [
+                                        GemPalette.emerald,
+                                        GemPalette.sapphire,
+                                      ],
+                                    ),
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: const Icon(Icons.fingerprint,
+                                      color: Colors.white),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text('Protección de la app',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .titleMedium),
+                                      const Text(
+                                        'Entra con tu huella, con un PIN, o sin clave. Puedes cambiarlo cuando quieras',
+                                        style: TextStyle(
+                                            color: GemPalette.textMuted,
+                                            fontSize: 12.5,
+                                            height: 1.35),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const Icon(Icons.chevron_right,
+                                    color: GemPalette.textMuted),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          GemCard(
                             onTap: () => Navigator.of(context).push(
                               MaterialPageRoute(
                                 builder: (_) => const _GlobalAuditScreen(),
