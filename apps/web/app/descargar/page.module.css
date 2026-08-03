@@ -1,0 +1,115 @@
+.page {
+  width: min(560px, calc(100% - 2rem));
+  margin: 0 auto;
+  min-height: 68vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 0 3rem;
+}
+
+.card {
+  width: 100%;
+  text-align: center;
+  padding: clamp(1.6rem, 5vw, 2.6rem);
+  border-radius: 28px;
+  border: 1px solid var(--border-soft);
+  background: var(--gradient-surface);
+  box-shadow: var(--shadow-2);
+}
+
+.eyebrow {
+  margin: 0;
+  font-size: 0.76rem;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--text-muted);
+}
+
+.title {
+  margin: 0.5rem 0 0;
+  font-size: clamp(2rem, 6vw, 2.6rem);
+  font-weight: 820;
+  letter-spacing: -0.03em;
+  color: var(--text-main);
+}
+
+.lead {
+  margin: 0.75rem auto 0;
+  max-width: 42ch;
+  color: var(--text-soft);
+  line-height: 1.6;
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1.8rem;
+  min-height: 54px;
+  width: 100%;
+  max-width: 320px;
+  padding: 0.9rem 1.6rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: var(--gem-sapphire);
+  color: #fff;
+  font-size: 1.02rem;
+  font-weight: 700;
+  text-decoration: none;
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    filter 180ms ease;
+}
+
+.button:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-2);
+  filter: brightness(1.05);
+}
+
+.button:active {
+  transform: translateY(0);
+}
+
+.note {
+  margin: 0.85rem 0 0;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.steps {
+  margin-top: 1.8rem;
+  padding-top: 1.4rem;
+  border-top: 1px solid var(--border-soft);
+  text-align: left;
+}
+
+.stepsTitle {
+  margin: 0 0 0.75rem;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.stepsList {
+  margin: 0;
+  padding-left: 1.15rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  color: var(--text-soft);
+  line-height: 1.55;
+  font-size: 0.94rem;
+}
+
+.stepsFoot {
+  margin: 1rem 0 0;
+  font-size: 0.88rem;
+  color: var(--text-muted);
+}
+
+.inlineLink {
+  color: var(--gem-sapphire);
+  font-weight: 600;
+}
