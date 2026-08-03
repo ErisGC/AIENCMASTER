@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/api/api_client.dart';
+import '../../core/services/local_auth_service.dart';
 import '../../core/state/locator.dart';
 import '../../core/theme/gem_palette.dart';
 import '../../core/widgets/gem_widgets.dart';
@@ -58,8 +59,13 @@ class _SetupLockScreenState extends State<SetupLockScreen> {
             'No se pudo verificar la huella. Puedes intentarlo de nuevo o continuar sin protección.');
         return;
       }
-      await Locator.localAuth.setBiometricEnabled(true);
-      await Locator.localAuth.markLockChoiceMade();
+      // Al elegir huella el PIN deja de existir. Y como las cookies podían
+      // estar cifradas con la llave de ese PIN, hay que devolverlas a texto
+      // plano ANTES de borrarlo: si no, quedarían cifradas con una llave que
+      // ya nadie puede derivar y el próximo arranque perdería la sesión.
+      await ApiClient.I.rekeyCookies(null);
+      await Locator.localAuth.clearPin();
+      await Locator.localAuth.setLockMode(LockMode.bio);
       if (!mounted) return;
       context.go('/');
     } catch (_) {
@@ -93,7 +99,7 @@ class _SetupLockScreenState extends State<SetupLockScreen> {
       if (key != null) {
         await ApiClient.I.rekeyCookies(key);
       }
-      await Locator.localAuth.markLockChoiceMade();
+      await Locator.localAuth.setLockMode(LockMode.pin);
       if (!mounted) return;
       context.go('/');
     } catch (_) {
@@ -108,8 +114,11 @@ class _SetupLockScreenState extends State<SetupLockScreen> {
     if (_saving) return;
     setState(() => _saving = true);
     try {
-      await Locator.localAuth.setBiometricEnabled(false);
-      await Locator.localAuth.markLockChoiceMade();
+      // Igual que con la huella: si venía de PIN, devolvemos las cookies a
+      // texto plano antes de borrarlo para no perder la sesión.
+      await ApiClient.I.rekeyCookies(null);
+      await Locator.localAuth.clearPin();
+      await Locator.localAuth.setLockMode(LockMode.none);
       if (!mounted) return;
       context.go('/');
     } finally {

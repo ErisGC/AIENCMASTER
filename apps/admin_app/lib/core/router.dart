@@ -5,6 +5,7 @@ import '../features/auth/welcome_screen.dart';
 import '../features/auth/login_screen.dart';
 import '../features/auth/invite_screen.dart';
 import '../features/auth/lock_screen.dart';
+import '../features/auth/reauth_screen.dart';
 import '../features/auth/setup_lock_screen.dart';
 import '../features/churches/church_edit_screen.dart';
 import '../features/reports/new_report_screen.dart';
@@ -69,8 +70,21 @@ GoRouter buildRouter() {
         return '/lock';
       }
 
+      // Falta confirmar la contraseña de la cuenta: forzar /reauth.
+      if (phase == AuthPhase.needsPassword) {
+        if (loc == '/reauth') return null;
+        return '/reauth';
+      }
+
       // Authenticated: prohibir pantallas de auth.
-      final authPaths = {'/welcome', '/login', '/invite', '/splash', '/lock'};
+      final authPaths = {
+        '/welcome',
+        '/login',
+        '/invite',
+        '/splash',
+        '/lock',
+        '/reauth',
+      };
       if (authPaths.contains(loc)) return '/';
       return null;
     },
@@ -97,6 +111,10 @@ GoRouter buildRouter() {
       GoRoute(
         path: '/lock',
         pageBuilder: (_, state) => _page(state, const LockScreen()),
+      ),
+      GoRoute(
+        path: '/reauth',
+        pageBuilder: (_, state) => _page(state, const ReauthScreen()),
       ),
       GoRoute(
         path: '/setup-lock',

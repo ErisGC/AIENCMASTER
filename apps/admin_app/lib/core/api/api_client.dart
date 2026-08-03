@@ -120,12 +120,19 @@ class ApiClient {
   /// Debe llamarse ANTES de la primera petición que use cookies.
   void setCookieKey(List<int> key) {
     _keyHolder.key = key;
+    _keyHolder.sealed = false;
   }
 
   /// Re-cifra en disco todas las cookies existentes de la llave actual a
   /// [newKey] y adopta [newKey]. Se usa al configurar el PIN por primera vez
   /// (de texto plano a cifrado) sin perder la sesión activa.
-  Future<void> rekeyCookies(List<int> newKey) async {
+  ///
+  /// Si [newKey] es null se hace el camino inverso: se descifran y se dejan en
+  /// texto plano. Eso ocurre al cambiar de PIN a huella (o a sin protección),
+  /// donde ya no existe una llave derivada del PIN — sin esto, las cookies
+  /// quedarían cifradas con una llave que nadie puede volver a derivar y la
+  /// sesión se perdería.
+  Future<void> rekeyCookies(List<int>? newKey) async {
     final oldKey = _keyHolder.key; // null = texto plano actual
     final dir = Directory(_cookiesDir);
     if (dir.existsSync()) {
@@ -138,13 +145,21 @@ class ApiClient {
               ? utf8.decode(bytes, allowMalformed: true)
               : CookieCrypto.decryptToString(bytes, oldKey);
           if (plain == null) continue; // ilegible: se deja como está
-          await entity.writeAsBytes(CookieCrypto.encryptString(plain, newKey));
+          await entity.writeAsBytes(
+            newKey == null
+                ? utf8.encode(plain)
+                : CookieCrypto.encryptString(plain, newKey),
+          );
         } catch (_) {
           // Un archivo problemático no debe abortar el re-cifrado del resto.
         }
       }
     }
     _keyHolder.key = newKey;
+    // Tras re-cifrar conocemos el estado real del store, así que levantamos el
+    // "sellado" del arranque. Sin esto, al pasar a texto plano las lecturas
+    // seguirían devolviendo null y se perdería la sesión.
+    _keyHolder.sealed = false;
   }
 
   /// Borra todas las cookies persistentes (logout local).

@@ -323,7 +323,7 @@ class _HomeShellState extends State<HomeShell> {
     required String body,
     required bool isLast,
   }) {
-    return buildCoachCard(
+    return CoachCard(
       step: step,
       title: title,
       body: body,

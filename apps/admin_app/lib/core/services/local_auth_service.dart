@@ -18,6 +18,22 @@ import 'package:shared_preferences/shared_preferences.dart';
 ///     para frenar fuerza bruta sobre el dispositivo.
 ///   - Las cookies HttpOnly están en cookie_jar (archivos dentro del sandbox
 ///     del app), inaccesibles para otras apps.
+/// Cómo protege el usuario la app. Es la ÚNICA fuente de verdad: antes se
+/// deducía de "¿hay PIN?" + "¿biometría activa?" por separado, y eso permitía
+/// estados contradictorios (elegir huella pero seguir con PIN guardado, con lo
+/// que el arranque exigía PIN).
+enum LockMode {
+  /// Sin bloqueo local: entra directo.
+  none,
+
+  /// PIN de 6 dígitos. Las cookies se cifran en reposo con su llave.
+  pin,
+
+  /// Huella/rostro del teléfono. Las cookies quedan en el sandbox sin cifrar
+  /// (mismo caso que `none`), y la huella controla el acceso a la app.
+  bio,
+}
+
 class LocalAuthService {
   LocalAuthService();
 
@@ -27,6 +43,13 @@ class LocalAuthService {
   static const _kPinLockUntil = 'local_pin_lock_until';
   static const _kLastUser = 'local_last_user';
   static const _kBiometricEnabled = 'local_biometric_enabled';
+  static const _kLockMode = 'local_lock_mode';
+  static const _kLastPasswordAt = 'local_last_password_at';
+
+  /// Cada cuánto se vuelve a pedir la CONTRASEÑA de la cuenta (además del
+  /// PIN/huella), para que el admin no la olvide y como control periódico.
+  /// Es el único número que hay que tocar para cambiar esa frecuencia.
+  static const passwordMaxAge = Duration(days: 14);
 
   /// Marca que el usuario YA decidió cómo quiere proteger la app (con huella,
   /// con PIN, o sin nada). Mientras esté puesta no se le vuelve a preguntar:
@@ -90,6 +113,69 @@ class LocalAuthService {
   Future<void> markLockChoiceMade() async {
     final p = await _prefs;
     await p.setBool(_kLockChoiceMade, true);
+  }
+
+  /// Modo de bloqueo vigente. Si aún no está escrito (instalaciones previas a
+  /// esta versión) se deduce del estado antiguo, dando prioridad al PIN porque
+  /// es lo que determina si las cookies están cifradas.
+  Future<LockMode> lockMode() async {
+    final p = await _prefs;
+    switch (p.getString(_kLockMode)) {
+      case 'pin':
+        return LockMode.pin;
+      case 'bio':
+        return LockMode.bio;
+      case 'none':
+        return LockMode.none;
+    }
+    if (p.getString(_kPinHash) != null) return LockMode.pin;
+    if (p.getBool(_kBiometricEnabled) ?? false) return LockMode.bio;
+    return LockMode.none;
+  }
+
+  Future<void> setLockMode(LockMode mode) async {
+    final p = await _prefs;
+    await p.setString(_kLockMode, mode.name);
+    await p.setBool(_kBiometricEnabled, mode == LockMode.bio);
+    await p.setBool(_kLockChoiceMade, true);
+  }
+
+  /// Estado heredado incoherente: en versiones previas se podía elegir huella
+  /// mientras el PIN seguía guardado, y como las cookies estaban cifradas con
+  /// la llave del PIN, el arranque acababa exigiendo PIN igualmente. En cuanto
+  /// tengamos esa llave (justo tras desbloquear) se puede migrar a huella y
+  /// respetar lo que el usuario eligió.
+  Future<bool> pendingBioMigration() async {
+    final p = await _prefs;
+    if (p.getString(_kLockMode) != null) return false;
+    return p.getString(_kPinHash) != null &&
+        (p.getBool(_kBiometricEnabled) ?? false);
+  }
+
+  /// Borra el PIN (al cambiar a huella o a sin protección). No toca la sesión.
+  Future<void> clearPin() async {
+    final p = await _prefs;
+    await p.remove(_kPinHash);
+    await p.remove(_kPinSalt);
+    await p.remove(_kPinFails);
+    await p.remove(_kPinLockUntil);
+  }
+
+  /// Marca que el usuario acaba de escribir su contraseña (login o re-confirmación).
+  Future<void> markPasswordVerified() async {
+    final p = await _prefs;
+    await p.setInt(_kLastPasswordAt, DateTime.now().millisecondsSinceEpoch);
+  }
+
+  /// ¿Toca volver a pedir la contraseña de la cuenta? Es un control periódico:
+  /// el PIN/huella sirven para el día a día, pero cada [passwordMaxAge] se pide
+  /// la contraseña real (evita olvidarla y re-valida al titular).
+  Future<bool> passwordDue() async {
+    final p = await _prefs;
+    final last = p.getInt(_kLastPasswordAt);
+    if (last == null) return false; // nunca registrado: no molestar de golpe
+    final elapsed = DateTime.now().millisecondsSinceEpoch - last;
+    return elapsed > passwordMaxAge.inMilliseconds;
   }
 
   Future<void> setPin(String pin) async {
@@ -187,6 +273,8 @@ class LocalAuthService {
     await p.remove(_kLastUser);
     await p.remove(_kBiometricEnabled);
     await p.remove(_kLockChoiceMade);
+    await p.remove(_kLockMode);
+    await p.remove(_kLastPasswordAt);
   }
 
   /* ── internos ── */

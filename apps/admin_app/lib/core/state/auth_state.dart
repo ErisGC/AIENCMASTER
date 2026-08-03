@@ -24,6 +24,12 @@ enum AuthPhase {
   /// y todavía no ha desbloqueado en este arranque.
   locked,
 
+  /// Sabemos QUIÉN es (hay bloqueo local configurado y usuario recordado) pero
+  /// hace falta su contraseña: o la sesión del servidor caducó, o toca el
+  /// control periódico. No es un signedOut: no se pierde la configuración ni
+  /// hay que escribir el usuario de nuevo.
+  needsPassword,
+
   /// Listo: pantallas de la app son accesibles.
   authenticated,
 }
@@ -61,20 +67,27 @@ class AuthState extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Llamado al arrancar la app — comprueba si hay cookies válidas.
+  /// Llamado al arrancar la app. El camino depende del modo de bloqueo:
   ///
-  /// Si hay un PIN configurado, la cookie de sesión está cifrada en reposo con
-  /// una llave derivada del PIN: no podemos validarla hasta desbloquear, así
-  /// que vamos directo a la pantalla de bloqueo y la validación ocurre en
-  /// [unlock]. Sin PIN, el jar está en claro y validamos como siempre.
+  ///   - [LockMode.pin]: el jar está cifrado con la llave del PIN, así que no
+  ///     podemos leer la sesión todavía → pantalla de bloqueo; la validación
+  ///     ocurre en [unlock].
+  ///   - [LockMode.bio]: el jar está en claro → validamos la sesión y pedimos
+  ///     la huella antes de mostrar el panel.
+  ///   - [LockMode.none]: validamos y entramos directo.
+  ///
+  /// Si la sesión del servidor ya no vale pero SÍ hay bloqueo configurado y un
+  /// usuario recordado, no se cae a signedOut: se pide sólo la contraseña
+  /// ([AuthPhase.needsPassword]) conservando toda la configuración.
   Future<void> bootstrap() async {
     _phase = AuthPhase.loading;
     notifyListeners();
 
-    if (await _localAuth.hasPin()) {
-      // El cookie jar está cifrado y aún no tenemos la llave: marcarlo sellado
-      // evita que cualquier lectura interprete los bytes cifrados como texto
-      // plano (lo que corrompería el índice del jar).
+    final mode = await _localAuth.lockMode();
+
+    if (mode == LockMode.pin) {
+      // Marcar el store como sellado evita que una lectura interprete bytes
+      // cifrados como texto plano (corrompería el índice del jar).
       ApiClient.I.markCookiesSealed();
       _account = null;
       _phase = AuthPhase.locked;
@@ -87,22 +100,34 @@ class AuthState extends ChangeNotifier {
       if (session.status == 'ACTIVE' && session.account != null) {
         _account = session.account;
         _selectDefaultChurch();
-        // Sin PIN las cookies están en claro, así que ya tenemos la sesión.
-        // Si el usuario activó la huella, pedimos biometría antes de mostrar
-        // el panel; si no activó nada, entra directo.
-        final bioEnabled = await _localAuth.isBiometricEnabled();
-        _phase = bioEnabled ? AuthPhase.locked : AuthPhase.authenticated;
+        // Control periódico: aunque la sesión siga viva, cada cierto tiempo se
+        // vuelve a pedir la contraseña de la cuenta.
+        if (await _localAuth.passwordDue()) {
+          _phase = AuthPhase.needsPassword;
+        } else {
+          _phase =
+              mode == LockMode.bio ? AuthPhase.locked : AuthPhase.authenticated;
+        }
       } else {
-        _account = null;
-        _activeChurchId = null;
-        _phase = AuthPhase.signedOut;
+        await _askPasswordOrSignOut(mode);
       }
     } catch (_) {
-      _account = null;
-      _activeChurchId = null;
-      _phase = AuthPhase.signedOut;
+      // Sin conexión tampoco echamos al usuario: si tiene bloqueo configurado
+      // le pedimos su contraseña (podrá reintentar cuando haya red).
+      await _askPasswordOrSignOut(mode);
     }
     notifyListeners();
+  }
+
+  /// No hay sesión utilizable. Si el usuario tiene bloqueo local configurado y
+  /// lo recordamos, sólo pedimos la contraseña; si no, sesión cerrada.
+  Future<void> _askPasswordOrSignOut(LockMode mode) async {
+    _account = null;
+    _activeChurchId = null;
+    final user = await _localAuth.lastUser();
+    _phase = (mode != LockMode.none && user != null)
+        ? AuthPhase.needsPassword
+        : AuthPhase.signedOut;
   }
 
   /// Tras login exitoso. Si el dispositivo tiene biometría disponible o el
@@ -112,6 +137,8 @@ class AuthState extends ChangeNotifier {
     _account = account;
     _selectDefaultChurch();
     await _localAuth.setLastUser(account.username);
+    // Acaba de escribir su contraseña: reinicia el reloj del control periódico.
+    await _localAuth.markPasswordVerified();
     _phase = AuthPhase.authenticated;
     notifyListeners();
   }
@@ -151,11 +178,23 @@ class AuthState extends ChangeNotifier {
       if (session.status == 'ACTIVE' && session.account != null) {
         _account = session.account;
         _selectDefaultChurch();
-        _phase = AuthPhase.authenticated;
+        // Ya tenemos la llave del PIN: si el usuario había elegido huella en
+        // una versión anterior (y el PIN se quedó pegado), migramos ahora para
+        // que a partir del próximo arranque entre con huella como pidió.
+        if (await _localAuth.pendingBioMigration()) {
+          await ApiClient.I.rekeyCookies(null);
+          await _localAuth.clearPin();
+          await _localAuth.setLockMode(LockMode.bio);
+        }
+        // El PIN fue correcto, pero puede tocar el control periódico.
+        _phase = await _localAuth.passwordDue()
+            ? AuthPhase.needsPassword
+            : AuthPhase.authenticated;
         notifyListeners();
         return UnlockOutcome.authenticated;
       }
-      // Servidor accesible pero sesión ya no válida: limpiar y re-login.
+      // Servidor accesible pero la sesión ya no vale: NO se pierde el PIN ni la
+      // configuración, sólo se pide la contraseña de la cuenta.
       await _requireFreshLogin();
       return UnlockOutcome.sessionEnded;
     } catch (_) {
@@ -165,17 +204,17 @@ class AuthState extends ChangeNotifier {
     }
   }
 
-  /// Limpia SÓLO las cookies (no el PIN) y exige iniciar sesión de nuevo. Al
-  /// re-loguear, las cookies se re-guardan cifradas con la llave del PIN.
+  /// Limpia SÓLO las cookies (no el PIN ni el modo de bloqueo). Si sabemos
+  /// quién es el usuario, basta con que confirme su contraseña; si no, sesión
+  /// cerrada. Al re-loguear, las cookies se vuelven a guardar con la protección
+  /// que tuviera configurada.
   Future<void> _requireFreshLogin() async {
     try {
       await _auth.logout();
     } catch (_) {
       /* logout local ya limpia cookies aunque el servidor falle */
     }
-    _account = null;
-    _activeChurchId = null;
-    _phase = AuthPhase.signedOut;
+    await _askPasswordOrSignOut(await _localAuth.lockMode());
     notifyListeners();
   }
 
@@ -196,9 +235,7 @@ class AuthState extends ChangeNotifier {
   /// Sólo aplica si estábamos autenticados (no molesta en login/lock/loading).
   Future<void> lockForInactivity() async {
     if (_account == null || _phase != AuthPhase.authenticated) return;
-    final pinSet = await _localAuth.hasPin();
-    final bioEnabled = await _localAuth.isBiometricEnabled();
-    if (pinSet || bioEnabled) {
+    if (await _localAuth.lockMode() != LockMode.none) {
       _phase = AuthPhase.locked;
       notifyListeners();
     }

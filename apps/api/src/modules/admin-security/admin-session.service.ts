@@ -621,6 +621,19 @@ export class AdminSessionService {
         };
       }
 
+      // Renovación deslizante: esta rama (dispositivo ROOT) devolvía ACTIVE
+      // sin refrescar las cookies, así que la sesión caducaba por antigüedad
+      // aunque el admin siguiera usando la app. Reescribimos ambas cookies con
+      // TTL nuevo reutilizando el MISMO trustedToken (ya validado arriba): no
+      // se rota el token del dispositivo, así que no hay riesgo de perder el
+      // vínculo ROOT si la respuesta no llegara.
+      await this.writeActiveSessionCookies(
+        reply,
+        account,
+        device,
+        trustedToken,
+      );
+
       return {
         status: "ACTIVE",
         bootstrapAvailable,
