@@ -20,7 +20,8 @@ import 'studies_screen.dart';
 
 /// Edición de iglesia. La app cubre ya todo lo que necesita el admin desde
 /// el campo:
-///   - Datos generales (nombre, ciudad, dirección, representantes, asistencia)
+///   - Datos generales (nombre, ciudad, dirección, asistencia)
+///   - Representantes y estudios (pantallas propias)
 ///   - Activar / desactivar
 ///   - Imágenes (logo + portada) via image_picker
 ///   - Ubicación en mapa (tap = poner marker, "Usar mi ubicación", quitar)
@@ -37,7 +38,6 @@ class _ChurchEditScreenState extends State<ChurchEditScreen> {
   final _nameCtrl = TextEditingController();
   final _cityCtrl = TextEditingController();
   final _addressCtrl = TextEditingController();
-  final _repsCtrl = TextEditingController();
   final _avgAttendanceCtrl = TextEditingController();
   bool _isActive = true;
 
@@ -71,7 +71,6 @@ class _ChurchEditScreenState extends State<ChurchEditScreen> {
     _nameCtrl.dispose();
     _cityCtrl.dispose();
     _addressCtrl.dispose();
-    _repsCtrl.dispose();
     _avgAttendanceCtrl.dispose();
     _mapController.dispose();
     super.dispose();
@@ -88,7 +87,6 @@ class _ChurchEditScreenState extends State<ChurchEditScreen> {
       _nameCtrl.text = c.name;
       _cityCtrl.text = c.city;
       _addressCtrl.text = c.address ?? '';
-      _repsCtrl.text = c.representatives ?? '';
       _avgAttendanceCtrl.text =
           c.avgAttendance != null ? c.avgAttendance.toString() : '';
       _isActive = c.isActive;
@@ -230,7 +228,6 @@ class _ChurchEditScreenState extends State<ChurchEditScreen> {
         name: name,
         city: city,
         address: _addressCtrl.text.trim(),
-        representatives: _repsCtrl.text.trim(),
         avgAttendance: avg,
         isActive: _isActive,
         mapsLat: _point?.latitude,
@@ -422,12 +419,6 @@ class _ChurchEditScreenState extends State<ChurchEditScreen> {
             controller: _addressCtrl,
             decoration:
                 const InputDecoration(labelText: 'Dirección (opcional)'),
-          ),
-          const SizedBox(height: 10),
-          TextField(
-            controller: _repsCtrl,
-            decoration: const InputDecoration(
-                labelText: 'Representantes (opcional)'),
           ),
           const SizedBox(height: 10),
           TextField(

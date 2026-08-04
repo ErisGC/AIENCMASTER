@@ -69,11 +69,6 @@ export class CreateChurchDto {
   coverImagePublicId?: string | null;
 
   @IsOptional()
-  @IsString()
-  @MaxLength(1000)
-  representatives?: string | null;
-
-  @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(0)

@@ -31,9 +31,9 @@ export type Church = {
   mainImageUrl?: string | null;
   coverImageUrl?: string | null;
 
-  /* Info adicional. avgAttendance NO se expone al público (privado por
-     designio del cliente); por eso no está en este tipo. */
-  representatives?: string | null;
+  /* avgAttendance NO se expone al público (privado por designio del cliente);
+     por eso no está en este tipo. Los representantes tampoco son texto: van
+     como registros en `directors`. */
 
   /* Directores (sólo en findOnePublic) */
   directors?: ChurchPublicDirector[];

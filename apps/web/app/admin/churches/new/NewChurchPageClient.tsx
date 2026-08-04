@@ -28,7 +28,6 @@ export function NewChurchPageClient() {
   const [name, setName] = useState('');
   const [city, setCity] = useState('');
   const [address, setAddress] = useState('');
-  const [representatives, setRepresentatives] = useState('');
   const [avgAttendance, setAvgAttendance] = useState('');
   const [isActive, setIsActive] = useState(true);
   const [point, setPoint] = useState<PickedPoint | null>(null);
@@ -108,7 +107,6 @@ export function NewChurchPageClient() {
     form.append('name', name.trim());
     form.append('city', city.trim());
     if (address.trim()) form.append('address', address.trim());
-    if (representatives.trim()) form.append('representatives', representatives.trim());
     if (avgAttendance.trim()) form.append('avgAttendance', String(Number(avgAttendance)));
     form.append('isActive', isActive ? 'true' : 'false');
 
@@ -154,11 +152,6 @@ export function NewChurchPageClient() {
           <div className={`${styles.field} ${styles.full}`}>
             <label>Dirección (opcional)</label>
             <input value={address} onChange={(e) => setAddress(e.target.value)} />
-          </div>
-
-          <div className={`${styles.field} ${styles.full}`}>
-            <label>Representantes (opcional)</label>
-            <input value={representatives} onChange={(e) => setRepresentatives(e.target.value)} />
           </div>
 
           <div className={styles.field}>

@@ -54,9 +54,8 @@ export class Church {
   coverImagePublicId?: string | null;
 
   /* ─────────── Info adicional ─────────── */
-
-  @Column({ type: "text", nullable: true })
-  representatives?: string | null;
+  // Los representantes ya NO son un texto libre: son registros propios
+  // (ChurchDirector) con nombre, cargo, celular, correo y foto.
 
   @Column({ type: "int", nullable: true })
   avgAttendance?: number | null;

@@ -44,11 +44,7 @@ export function ChurchCard({ church }: { church: Church }) {
         </div>
 
         <div className={styles.footer}>
-          <span className={styles.meta}>
-            {church.representatives
-              ? church.representatives
-              : 'Informacion institucional'}
-          </span>
+          <span className={styles.meta}>{church.city}</span>
 
           {church.isActive ? (
             <span className={styles.cta} aria-hidden="true">

@@ -34,7 +34,6 @@ export function EditChurchClient({ initialChurch }: { initialChurch: Church }) {
   const [name, setName] = useState(initialChurch.name ?? '');
   const [city, setCity] = useState(initialChurch.city ?? '');
   const [address, setAddress] = useState(initialChurch.address ?? '');
-  const [representatives, setRepresentatives] = useState(initialChurch.representatives ?? '');
   const [avgAttendance, setAvgAttendance] = useState(
     initialChurch.avgAttendance != null ? String(initialChurch.avgAttendance) : '',
   );
@@ -135,7 +134,6 @@ export function EditChurchClient({ initialChurch }: { initialChurch: Church }) {
     form.append('city', city.trim());
 
     form.append('address', address.trim());
-    form.append('representatives', representatives.trim());
 
     if (avgAttendance.trim()) {
       const n = Number(avgAttendance);
@@ -168,7 +166,6 @@ export function EditChurchClient({ initialChurch }: { initialChurch: Church }) {
       setName(updated.name ?? '');
       setCity(updated.city ?? '');
       setAddress(updated.address ?? '');
-      setRepresentatives(updated.representatives ?? '');
       setAvgAttendance(updated.avgAttendance != null ? String(updated.avgAttendance) : '');
       setIsActive(!!updated.isActive);
 
@@ -334,14 +331,6 @@ export function EditChurchClient({ initialChurch }: { initialChurch: Church }) {
             <div className={`${styles.field} ${styles.full}`}>
               <label>Dirección (opcional)</label>
               <input value={address} onChange={(e) => setAddress(e.target.value)} />
-            </div>
-
-            <div className={`${styles.field} ${styles.full}`}>
-              <label>Representantes (opcional)</label>
-              <input
-                value={representatives}
-                onChange={(e) => setRepresentatives(e.target.value)}
-              />
             </div>
 
             <div className={styles.field}>

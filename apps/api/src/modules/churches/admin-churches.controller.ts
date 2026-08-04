@@ -135,10 +135,6 @@ export class AdminChurchesController {
     const address = normalizeOptionalText(rawFields.address);
     if (address !== undefined) payload.address = address;
 
-    const representatives = normalizeOptionalText(rawFields.representatives);
-    if (representatives !== undefined)
-      payload.representatives = representatives;
-
     const mapsUrl = normalizeOptionalText(rawFields.mapsUrl);
     if (mapsUrl !== undefined) payload.mapsUrl = mapsUrl;
 
@@ -217,13 +213,6 @@ export class AdminChurchesController {
 
     const address = normalizeOptionalText(rawFields.address, null);
     if (address !== undefined) payload.address = address;
-
-    const representatives = normalizeOptionalText(
-      rawFields.representatives,
-      null,
-    );
-    if (representatives !== undefined)
-      payload.representatives = representatives;
 
     const mapsUrl = normalizeOptionalText(rawFields.mapsUrl, null);
     if (mapsUrl !== undefined) payload.mapsUrl = mapsUrl;

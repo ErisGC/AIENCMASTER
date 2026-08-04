@@ -32,7 +32,6 @@ function toPublicChurch(church: Church) {
     mapsUrl: church.mapsUrl ?? null,
     mainImageUrl: church.mainImageUrl ?? null,
     coverImageUrl: church.coverImageUrl ?? null,
-    representatives: church.representatives ?? null,
     isActive: church.isActive,
     createdAt: church.createdAt,
     updatedAt: church.updatedAt,

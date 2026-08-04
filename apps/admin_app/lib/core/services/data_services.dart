@@ -26,7 +26,7 @@ class ChurchService {
 
   /// El endpoint PATCH de iglesias en el backend procesa `req.parts()` —
   /// debemos enviar multipart/form-data. Soporta:
-  ///   - Campos de texto (name, city, address, representatives, avgAttendance)
+  ///   - Campos de texto (name, city, address, avgAttendance)
   ///   - Estado activa (isActive)
   ///   - Ubicación (mapsLat, mapsLng, mapsUrl) — strings vacíos = quitar
   ///   - Imágenes (mainImage, coverImage) como MultipartFile
@@ -35,7 +35,6 @@ class ChurchService {
     String? name,
     String? city,
     String? address,
-    String? representatives,
     int? avgAttendance,
     bool? isActive,
     double? mapsLat,
@@ -49,7 +48,6 @@ class ChurchService {
     if (name != null) fields['name'] = name.trim();
     if (city != null) fields['city'] = city.trim();
     if (address != null) fields['address'] = address.trim();
-    if (representatives != null) fields['representatives'] = representatives.trim();
     if (avgAttendance != null) fields['avgAttendance'] = avgAttendance.toString();
     if (isActive != null) fields['isActive'] = isActive ? 'true' : 'false';
 

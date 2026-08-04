@@ -49,9 +49,12 @@
   border: 1px solid var(--border-soft);
 }
 
+/* Se reacomoda sola: dos columnas cuando hay sitio, una sola cuando el panel
+   se estrecha (antes eran dos columnas fijas y los campos quedaban aplastados
+   y con el texto cortado al cambiar el zoom). */
 .row {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
   gap: 0.85rem;
 }
 
@@ -67,16 +70,27 @@
   color: var(--text);
 }
 
-.field input {
+.field input,
+.field textarea {
   padding: 0.6rem 0.8rem;
   border-radius: 10px;
   border: 1px solid var(--border-soft);
   background: var(--surface);
   color: var(--text);
   font-size: 0.9rem;
+  font-family: inherit;
+  /* Sin esto los campos desbordan su columna en vez de encogerse. */
+  min-width: 0;
+  width: 100%;
 }
 
-.field input:focus {
+.field textarea {
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.field input:focus,
+.field textarea:focus {
   outline: none;
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-weak);
@@ -163,6 +177,9 @@
   display: flex;
   gap: 0.85rem;
   align-items: center;
+  /* Si no hay ancho para todo, los botones bajan a otra línea en vez de
+     estrujar el texto (que acababa partiéndose letra por letra). */
+  flex-wrap: wrap;
   padding: 0.75rem 0.95rem;
   border-radius: 14px;
   background: var(--surface);
@@ -198,7 +215,8 @@
 }
 
 .itemBody {
-  flex: 1;
+  /* Base mínima legible: por debajo de eso preferimos que bajen los botones. */
+  flex: 1 1 11rem;
   display: flex;
   flex-direction: column;
   gap: 0.18rem;
@@ -207,6 +225,7 @@
 
 .itemBody strong {
   font-size: 0.92rem;
+  overflow-wrap: anywhere;
 }
 
 .itemRole {
@@ -239,12 +258,18 @@
   background: var(--surface);
   color: var(--text);
   font-size: 0.85rem;
+  font-family: inherit;
+  min-width: 0;
+  width: 100%;
 }
 
 .itemActions {
   display: flex;
   gap: 0.4rem;
   flex-wrap: wrap;
+  /* Los botones conservan su tamaño y se alinean a la derecha. */
+  flex-shrink: 0;
+  margin-left: auto;
 }
 
 .editBtn,

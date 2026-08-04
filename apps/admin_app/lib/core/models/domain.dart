@@ -541,7 +541,6 @@ class Church {
   final String name;
   final String city;
   final String? address;
-  final String? representatives;
   final int? avgAttendance;
   final bool isActive;
   final String? mainImageUrl;
@@ -555,7 +554,6 @@ class Church {
     required this.name,
     required this.city,
     this.address,
-    this.representatives,
     this.avgAttendance,
     this.isActive = true,
     this.mainImageUrl,
@@ -570,7 +568,6 @@ class Church {
         name: j['name'] as String? ?? '',
         city: j['city'] as String? ?? '',
         address: j['address'] as String?,
-        representatives: j['representatives'] as String?,
         avgAttendance: (j['avgAttendance'] as num?)?.toInt(),
         isActive: j['isActive'] as bool? ?? true,
         mainImageUrl: j['mainImageUrl'] as String?,

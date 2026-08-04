@@ -17,7 +17,6 @@ export type Church = {
   coverImageUrl?: string | null;
   coverImagePublicId?: string | null;
 
-  representatives?: string | null;
   avgAttendance?: number | null;
 
   isActive: boolean;
