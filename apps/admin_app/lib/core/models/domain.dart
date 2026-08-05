@@ -446,7 +446,7 @@ class InvitationPreview {
   factory InvitationPreview.fromJson(Map<String, dynamic> j) =>
       InvitationPreview(
         valid: j['valid'] as bool? ?? false,
-        status: j['status'] as String? ?? 'EXPIRED',
+        status: j['status'] as String? ?? 'UNKNOWN',
         username: j['username'] as String?,
         displayName: j['displayName'] as String?,
         targetRole: j['targetRole'] as String?,
@@ -491,7 +491,7 @@ class AdminInvitation {
         targetRole: j['targetRole'] as String? ?? 'ADMIN',
         assignedChurchId: j['assignedChurchId'] as String?,
         assignedChurchName: j['assignedChurchName'] as String?,
-        status: j['status'] as String? ?? 'EXPIRED',
+        status: j['status'] as String? ?? 'UNKNOWN',
         expiresAt: DateTime.tryParse(j['expiresAt'] as String? ?? '') ??
             DateTime.now(),
         acceptedAt: j['acceptedAt'] != null

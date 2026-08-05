@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
 import 'core/router.dart';
+import 'core/state/auth_state.dart';
 import 'core/state/locator.dart';
 import 'core/theme/app_theme.dart';
 
@@ -57,6 +58,7 @@ class _AdminAppState extends State<AdminApp> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    Locator.authState.removeListener(_consumePendingLink);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -77,11 +79,36 @@ class _AdminAppState extends State<AdminApp> with WidgetsBindingObserver {
     }
   }
 
+  /// Enlace recibido antes de que terminara el arranque. Ver [_handleDeepLink].
+  Uri? _pendingLink;
+
   void _handleDeepLink(Uri uri) {
     if (uri.scheme != 'aiencadmin') return;
+
+    // Mientras la sesión arranca, el router manda CUALQUIER ruta a /splash.
+    // Si navegáramos ahora, el destino con el token se perdería y el invitado
+    // acabaría en la pantalla inicial sin su invitación (que es justo lo que
+    // pasaba). Guardamos el enlace y lo aplicamos al terminar el arranque.
+    if (Locator.authState.phase == AuthPhase.loading) {
+      _pendingLink = uri;
+      Locator.authState.addListener(_consumePendingLink);
+      return;
+    }
+    _navigateForLink(uri);
+  }
+
+  void _consumePendingLink() {
+    if (Locator.authState.phase == AuthPhase.loading) return;
+    Locator.authState.removeListener(_consumePendingLink);
+    final uri = _pendingLink;
+    _pendingLink = null;
+    if (uri != null) _navigateForLink(uri);
+  }
+
+  void _navigateForLink(Uri uri) {
     if (uri.host == 'invite') {
-      final token = uri.queryParameters['token'];
-      _router.go('/invite?token=${token ?? ''}');
+      final token = uri.queryParameters['token'] ?? '';
+      _router.go('/invite?token=${Uri.encodeQueryComponent(token)}');
     } else {
       _router.go('/');
     }

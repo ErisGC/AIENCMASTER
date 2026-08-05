@@ -44,9 +44,37 @@ class _InviteScreenState extends State<InviteScreen> {
     super.dispose();
   }
 
+  /// Acepta lo que sea que pegue el invitado y saca el token:
+  /// el enlace de la app (aiencadmin://invite?token=XYZ), el enlace web
+  /// (https://…/admin/invite/XYZ), un "token=XYZ" suelto, o el token pelado.
+  /// Antes había que aislar el token a mano y cualquier resto invalidaba todo.
+  String _extractToken(String raw) {
+    final value = raw.trim();
+    if (value.isEmpty) return value;
+
+    final uri = Uri.tryParse(value);
+    if (uri != null && uri.hasScheme) {
+      final fromQuery = uri.queryParameters['token'];
+      if (fromQuery != null && fromQuery.trim().isNotEmpty) {
+        return fromQuery.trim();
+      }
+      if (uri.pathSegments.isNotEmpty) {
+        final last = uri.pathSegments.last.trim();
+        if (last.isNotEmpty) return Uri.decodeComponent(last);
+      }
+    }
+
+    final match = RegExp(r'token=([^&\s]+)').firstMatch(value);
+    if (match != null) return Uri.decodeComponent(match.group(1)!).trim();
+
+    return value;
+  }
+
   Future<void> _loadPreview() async {
-    final t = _tokenCtrl.text.trim();
+    final t = _extractToken(_tokenCtrl.text);
     if (t.isEmpty) return;
+    // Dejamos en el campo el token ya limpio, para que se vea qué se envió.
+    if (t != _tokenCtrl.text) _tokenCtrl.text = t;
     setState(() {
       _loading = true;
       _error = null;
@@ -56,9 +84,15 @@ class _InviteScreenState extends State<InviteScreen> {
       final p = await Locator.auth.previewInvitation(t);
       setState(() => _preview = p);
     } on ApiException catch (e) {
-      setState(() => _error = e.message);
+      setState(() => _error = e.statusCode == 404
+          // El backend responde 404 cuando el token no corresponde a ninguna
+          // invitación: casi siempre es un enlace incompleto al copiarlo.
+          ? 'No encontramos esa invitación. Revisa que hayas pegado el enlace '
+              'completo, o pídele uno nuevo al administrador.'
+          : e.message);
     } catch (_) {
-      setState(() => _error = 'No se pudo verificar el token.');
+      setState(() => _error =
+          'No se pudo verificar la invitación. Revisa tu conexión.');
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -81,7 +115,7 @@ class _InviteScreenState extends State<InviteScreen> {
       _error = null;
     });
     try {
-      await Locator.auth.acceptInvitation(_tokenCtrl.text.trim(), pwd);
+      await Locator.auth.acceptInvitation(_extractToken(_tokenCtrl.text), pwd);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -120,30 +154,28 @@ class _InviteScreenState extends State<InviteScreen> {
                     ),
                     const SizedBox(height: 6),
                     const Text(
-                      'El ROOT te envió un enlace tipo '
-                      '"aiencadmin://invite?token=...". Pégalo aquí o sólo '
-                      'el token (la parte después de `token=`).',
+                      'Pega aquí el enlace completo que te enviaron. No hace '
+                      'falta recortar nada: la app toma el token sola.',
                       style:
                           TextStyle(color: GemPalette.textMuted, height: 1.5),
                     ),
                     const SizedBox(height: 14),
                     TextField(
                       controller: _tokenCtrl,
-                      decoration: InputDecoration(
-                        labelText: 'Token de invitación',
-                        suffixIcon: IconButton(
-                          icon: _loading
-                              ? const SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child:
-                                      CircularProgressIndicator(strokeWidth: 2),
-                                )
-                              : const Icon(Icons.search),
-                          onPressed: _loading ? null : _loadPreview,
-                        ),
+                      minLines: 1,
+                      maxLines: 3,
+                      autocorrect: false,
+                      enableSuggestions: false,
+                      decoration: const InputDecoration(
+                        labelText: 'Enlace o token de invitación',
                       ),
                       onSubmitted: (_) => _loadPreview(),
+                    ),
+                    const SizedBox(height: 12),
+                    GemPrimaryButton(
+                      label: 'Verificar invitación',
+                      loading: _loading,
+                      onPressed: _loadPreview,
                     ),
                   ],
                 ),

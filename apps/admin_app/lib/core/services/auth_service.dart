@@ -64,12 +64,20 @@ class AuthService {
     }
   }
 
+  /// Consulta los datos de una invitación antes de aceptarla.
+  ///
+  /// Usa `getJson`, que LANZA si la respuesta no es 2xx. Antes se leía
+  /// `res.data` directamente y, como el cliente no falla ante un 4xx, el
+  /// cuerpo del error ("Invitación inválida", 404) se interpretaba como una
+  /// invitación sin campo `status` — y el modelo asumía EXPIRED. Resultado:
+  /// a un token incorrecto o incompleto se le respondía "esta invitación
+  /// expiró", que es falso y desorienta.
   Future<InvitationPreview> previewInvitation(String token) async {
-    final res = await _api.dio.get(
+    final data = await _api.getJson<Map<String, dynamic>>(
       '/admin/auth/invitations/preview',
-      queryParameters: {'token': token},
+      query: {'token': token.trim()},
     );
-    return InvitationPreview.fromJson(res.data as Map<String, dynamic>);
+    return InvitationPreview.fromJson(data);
   }
 
   Future<Map<String, dynamic>> acceptInvitation(
