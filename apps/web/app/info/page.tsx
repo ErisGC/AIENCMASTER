@@ -4,7 +4,7 @@ import styles from './page.module.css';
 export const metadata: Metadata = {
   title: 'Información — AIENC',
   description:
-    'Historia, objetivos y credo de la Asociación de Iglesias Evangélicas del Norte de Colombia.',
+    'Historia, objetivos y credo de la Iglesia Asociación de Iglesias Evangélicas del Norte de Colombia.',
 };
 
 export default function InfoPage() {
@@ -14,8 +14,8 @@ export default function InfoPage() {
       <header className={styles.header} data-reveal>
         <h1 className={styles.title}>Información institucional</h1>
         <p className={styles.subtitle}>
-          Historia, objetivos, credo y datos de contacto de la Asociación de
-          Iglesias Evangélicas del Norte de Colombia.
+          Historia, objetivos, credo y datos de contacto de la Iglesia
+          Asociación de Iglesias Evangélicas del Norte de Colombia.
         </p>
       </header>
 

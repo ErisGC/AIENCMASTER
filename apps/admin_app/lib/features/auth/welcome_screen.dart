@@ -56,7 +56,7 @@ class WelcomeScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  'Panel administrativo móvil para la Asociación de '
+                  'Panel administrativo móvil para la Iglesia Asociación de '
                   'Iglesias Evangélicas del Norte de Colombia.',
                   style: TextStyle(
                     color: GemPalette.textMuted,

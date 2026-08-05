@@ -6,7 +6,7 @@ import styles from './page.module.css';
 
 export const metadata: Metadata = {
   title: 'Anuncios — AIENC',
-  description: 'Comunicados y publicaciones oficiales de la Asociación de Iglesias Evangélicas del Norte de Colombia.',
+  description: 'Comunicados y publicaciones oficiales de la Iglesia Asociación de Iglesias Evangélicas del Norte de Colombia.',
 };
 
 const PAGE_SIZE = 9;

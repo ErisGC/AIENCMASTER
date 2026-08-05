@@ -28,8 +28,8 @@ export function SiteFooter() {
             <span className={styles.brandName}>AIENC</span>
           </div>
           <p className={styles.brandText}>
-            Asociación de Iglesias Evangélicas del Norte de Colombia. Portal
-            institucional con anuncios e información oficial.
+            Iglesia Asociación de Iglesias Evangélicas del Norte de Colombia.
+            Portal institucional con anuncios e información oficial.
           </p>
         </div>
 

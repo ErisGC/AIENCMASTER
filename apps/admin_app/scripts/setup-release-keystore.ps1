@@ -102,7 +102,7 @@ Write-Host "Datos del certificado (quedan visibles en cada APK firmado)." -Foreg
 $cnDefault = 'AIENC Admin'
 $cn = Read-Host "  Nombre comun (CN) [$cnDefault]"
 if ([string]::IsNullOrWhiteSpace($cn)) { $cn = $cnDefault }
-$orgDefault = 'Asociacion de Iglesias Evangelicas del Norte de Colombia'
+$orgDefault = 'Iglesia Asociacion de Iglesias Evangelicas del Norte de Colombia'
 $org = Read-Host "  Organizacion (O) [$orgDefault]"
 if ([string]::IsNullOrWhiteSpace($org)) { $org = $orgDefault }
 $ouDefault = 'Tecnologia'

@@ -34,7 +34,7 @@ export default async function HomePage() {
 
         <div className={styles.heroInner}>
           <span className={styles.heroEyebrow}>
-            Asociación de Iglesias Evangélicas del Norte de Colombia
+            Iglesia Asociación de Iglesias Evangélicas del Norte de Colombia
           </span>
           <h1 className={styles.heroTitle}>AIENC</h1>
           <p className={styles.heroLead}>
@@ -65,15 +65,15 @@ export default async function HomePage() {
             <div>
               <span className={styles.eyebrow}>Portal institucional</span>
               <h2 className={styles.bandTitle}>
-                Una sola plataforma para toda la Asociación
+                Una sola plataforma para toda la AIENC
               </h2>
             </div>
             <div>
               <p className={styles.bandText}>
                 La AIENC reúne a las iglesias evangélicas del norte de Colombia
                 bajo una identidad común. Este portal centraliza los comunicados
-                oficiales y la información institucional verificada por la
-                administración de la Asociación.
+                oficiales y la información institucional verificada por su
+                administración.
               </p>
               <Link href="/info" className={styles.textLink}>
                 Conoce nuestra historia →

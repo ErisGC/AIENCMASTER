@@ -20,8 +20,7 @@ export default function DescargarPage() {
         <h1 className={styles.title}>AIENC Admin</h1>
         <p className={styles.lead}>
           La aplicación para gestionar anuncios, iglesias, informes y estudios
-          desde el teléfono. Es para uso de los administradores de la
-          Asociación.
+          desde el teléfono. Es para uso de los administradores de la AIENC.
         </p>
 
         <DownloadClient />

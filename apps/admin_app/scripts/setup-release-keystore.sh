@@ -71,8 +71,8 @@ echo ""
 echo "Datos del certificado (visibles en cada APK firmado)."
 read -p "  Nombre común (CN) [AIENC Admin]: " cn
 cn="${cn:-AIENC Admin}"
-read -p "  Organización (O) [Asociacion de Iglesias Evangelicas del Norte de Colombia]: " org
-org="${org:-Asociacion de Iglesias Evangelicas del Norte de Colombia}"
+read -p "  Organización (O) [Iglesia Asociacion de Iglesias Evangelicas del Norte de Colombia]: " org
+org="${org:-Iglesia Asociacion de Iglesias Evangelicas del Norte de Colombia}"
 read -p "  Unidad organizacional (OU) [Tecnologia]: " ou
 ou="${ou:-Tecnologia}"
 read -p "  Ciudad (L) [Barranquilla]: " city
