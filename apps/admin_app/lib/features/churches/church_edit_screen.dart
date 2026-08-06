@@ -15,6 +15,7 @@ import '../../core/models/domain.dart';
 import '../../core/state/locator.dart';
 import '../../core/theme/gem_palette.dart';
 import '../../core/widgets/gem_widgets.dart';
+import 'church_announcements_screen.dart';
 import 'directors_screen.dart';
 import 'studies_screen.dart';
 
@@ -369,6 +370,23 @@ class _ChurchEditScreenState extends State<ChurchEditScreen> {
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute(
                 builder: (_) => DirectorsScreen(
+                  churchId: widget.churchId,
+                  churchName: name,
+                ),
+              ),
+            ),
+          ),
+          const Divider(height: 8),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading:
+                const Icon(Icons.campaign_outlined, color: GemPalette.emerald),
+            title: const Text('Anuncios de la iglesia'),
+            subtitle: const Text('Publica y edita los anuncios locales'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => ChurchAnnouncementsScreen(
                   churchId: widget.churchId,
                   churchName: name,
                 ),

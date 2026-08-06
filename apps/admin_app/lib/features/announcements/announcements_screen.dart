@@ -212,15 +212,24 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen>
       );
     }
     if (items.isEmpty) {
+      // Esta pestaña trabaja sobre "mi iglesia". El administrador principal no
+      // está asignado a ninguna, así que en vez de dejar la pantalla muda le
+      // indicamos dónde se gestionan los anuncios de cada iglesia.
+      final sinIglesia =
+          !isGlobal && Locator.authState.activeChurchId == null;
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
           child: Text(
             isGlobal
                 ? 'Aún no hay anuncios globales publicados.'
-                : 'Aún no hay anuncios para esta iglesia.',
+                : sinIglesia
+                    ? 'Tu cuenta no está asignada a una iglesia concreta.\n\n'
+                        'Para publicar anuncios de una iglesia, entra a '
+                        'Iglesias, ábrela y usa "Anuncios de la iglesia".'
+                    : 'Aún no hay anuncios para esta iglesia.',
             textAlign: TextAlign.center,
-            style: const TextStyle(color: GemPalette.textMuted),
+            style: const TextStyle(color: GemPalette.textMuted, height: 1.5),
           ),
         ),
       );
