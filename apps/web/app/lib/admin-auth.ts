@@ -165,12 +165,22 @@ async function adminRequest<T>(path: string, init?: RequestInit): Promise<T> {
     (headers as Record<string, string>)['Content-Type'] = 'application/json';
   }
 
-  const res = await fetch(`${API_BASE_URL}${path}`, {
-    ...init,
-    headers,
-    credentials: 'include',
-    cache: 'no-store',
-  });
+  // Si el servidor no responde (reinicio de despliegue, corte de red), fetch
+  // lanza un TypeError con el texto en inglés "Failed to fetch", que llegaba
+  // tal cual a la pantalla de acceso. Lo traducimos a algo accionable.
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE_URL}${path}`, {
+      ...init,
+      headers,
+      credentials: 'include',
+      cache: 'no-store',
+    });
+  } catch {
+    throw new Error(
+      'No se pudo contactar el servidor. Revisa tu conexión e inténtalo de nuevo en un momento.',
+    );
+  }
 
   if (!res.ok) {
     const text = await res.text().catch(() => '');
