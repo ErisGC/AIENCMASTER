@@ -70,11 +70,13 @@ class ChurchService {
       data: form,
       options: Options(contentType: 'multipart/form-data'),
     );
+    _api.ensureOk(res);
     return Church.fromJson(res.data as Map<String, dynamic>);
   }
 
   Future<Church> toggleActive(String id) async {
     final res = await _api.dio.patch('/admin/churches/$id/toggle');
+    _api.ensureOk(res);
     return Church.fromJson(res.data as Map<String, dynamic>);
   }
 }
@@ -128,6 +130,7 @@ class AnnouncementService {
       data: form,
       options: Options(contentType: 'multipart/form-data'),
     );
+    _api.ensureOk(res);
     return Announcement.fromJson(res.data as Map<String, dynamic>);
   }
 
@@ -149,7 +152,7 @@ class AnnouncementService {
   }
 
   Future<void> deleteGlobal(String id) async {
-    await _api.dio.delete('/admin/announcements/$id');
+    await _api.deleteVoid('/admin/announcements/$id');
   }
 
   Future<Announcement> createForChurch({
@@ -170,6 +173,7 @@ class AnnouncementService {
       data: form,
       options: Options(contentType: 'multipart/form-data'),
     );
+    _api.ensureOk(res);
     return Announcement.fromJson(res.data as Map<String, dynamic>);
   }
 
@@ -192,7 +196,7 @@ class AnnouncementService {
   }
 
   Future<void> deleteFromChurch(String churchId, String id) async {
-    await _api.dio.delete('/admin/churches/$churchId/announcements/$id');
+    await _api.deleteVoid('/admin/churches/$churchId/announcements/$id');
   }
 }
 
@@ -232,6 +236,7 @@ class DirectorService {
       data: form,
       options: Options(contentType: 'multipart/form-data'),
     );
+    _api.ensureOk(res);
     return ChurchDirector.fromJson(res.data as Map<String, dynamic>);
   }
 
@@ -256,11 +261,12 @@ class DirectorService {
       data: form,
       options: Options(contentType: 'multipart/form-data'),
     );
+    _api.ensureOk(res);
     return ChurchDirector.fromJson(res.data as Map<String, dynamic>);
   }
 
   Future<void> delete(String id) async {
-    await _api.dio.delete('/admin/directors/$id');
+    await _api.deleteVoid('/admin/directors/$id');
   }
 }
 
@@ -298,11 +304,12 @@ class StudyService {
       data: form,
       options: Options(contentType: 'multipart/form-data'),
     );
+    _api.ensureOk(res);
     return ChurchStudy.fromJson(res.data as Map<String, dynamic>);
   }
 
   Future<void> delete(String churchId, String id) async {
-    await _api.dio.delete('/admin/churches/$churchId/studies/$id');
+    await _api.deleteVoid('/admin/churches/$churchId/studies/$id');
   }
 }
 
@@ -519,6 +526,6 @@ class InvitationService {
   }
 
   Future<void> revoke(String id) async {
-    await _api.dio.delete('/admin/security/invitations/$id');
+    await _api.deleteVoid('/admin/security/invitations/$id');
   }
 }

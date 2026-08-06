@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Param,
+  Patch,
   ParseUUIDPipe,
   Post,
   Put,
@@ -125,6 +126,24 @@ export class AdminAnnouncementsController {
     });
 
     return announcement;
+  }
+
+  /// Mismo comportamiento que PUT.
+  ///
+  /// La app móvil edita con PATCH (igual que hace con los anuncios de iglesia,
+  /// los informes y los directores), pero aquí sólo existía PUT: la edición
+  /// devolvía 404 y, como la app no comprobaba el estado, parecía guardarse.
+  /// Se acepta PATCH en el servidor para que también funcione en las versiones
+  /// de la app ya instaladas, sin esperar a que actualicen.
+  @Patch(":id")
+  @RequireGlobalPermission(GlobalPermission.MANAGE_GLOBAL_ANNOUNCEMENTS)
+  updateViaPatch(
+    @Param("id", new ParseUUIDPipe({ version: "4" })) id: string,
+    @Body() dto: UpdateAnnouncementDto,
+    @Req() req: AdminRequest,
+    @AdminAuth() actor: AuthenticatedAdminContext,
+  ) {
+    return this.update(id, dto, req, actor);
   }
 
   @Delete(":id")

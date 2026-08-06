@@ -58,7 +58,10 @@ class AuthService {
 
   Future<void> logout() async {
     try {
-      await _api.dio.post('/admin/auth/logout');
+      await _api.postJson<dynamic>('/admin/auth/logout');
+    } catch (_) {
+      // Cerrar sesión en el dispositivo no puede depender de que el servidor
+      // responda: si falla, igual limpiamos las cookies locales.
     } finally {
       await _api.clearCookies();
     }

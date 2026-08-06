@@ -178,36 +178,49 @@ class ApiClient {
   Future<T> getJson<T>(String path, {Map<String, dynamic>? query}) async {
     final res =
         await _dio.get(path, queryParameters: query);
-    _ensureOk(res);
+    ensureOk(res);
     return res.data as T;
   }
 
   /// Helper POST tipado.
   Future<T> postJson<T>(String path, {Object? body}) async {
     final res = await _dio.post(path, data: body);
-    _ensureOk(res);
+    ensureOk(res);
     return res.data as T;
   }
 
   Future<T> patchJson<T>(String path, {Object? body}) async {
     final res = await _dio.patch(path, data: body);
-    _ensureOk(res);
+    ensureOk(res);
     return res.data as T;
   }
 
   Future<T> putJson<T>(String path, {Object? body}) async {
     final res = await _dio.put(path, data: body);
-    _ensureOk(res);
+    ensureOk(res);
     return res.data as T;
   }
 
   Future<T> deleteJson<T>(String path) async {
     final res = await _dio.delete(path);
-    _ensureOk(res);
+    ensureOk(res);
     return res.data as T;
   }
 
-  void _ensureOk(Response res) {
+  /// DELETE sin cuerpo de respuesta, validando el estado.
+  Future<void> deleteVoid(String path) async {
+    final res = await _dio.delete(path);
+    ensureOk(res);
+  }
+
+  /// Lanza si la respuesta no es 2xx.
+  ///
+  /// Es PÚBLICO a propósito: el cliente está configurado para no lanzar ante
+  /// 4xx (`validateStatus` acepta hasta 599), así que quien use `dio`
+  /// directamente —por ejemplo para enviar multipart— debe validar el estado a
+  /// mano. Sin esto, un rechazo del servidor se veía como éxito y la app
+  /// anunciaba "eliminado" o "guardado" sin que hubiera pasado nada.
+  void ensureOk(Response res) {
     final code = res.statusCode ?? 0;
     if (code >= 200 && code < 300) return;
     throw ApiException.fromResponse(res);
