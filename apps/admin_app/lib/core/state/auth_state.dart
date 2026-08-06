@@ -96,7 +96,7 @@ class AuthState extends ChangeNotifier {
     }
 
     try {
-      final session = await _auth.getSession();
+      final session = await _getSessionWithRetry();
       if (session.status == 'ACTIVE' && session.account != null) {
         _account = session.account;
         _selectDefaultChurch();
@@ -117,6 +117,25 @@ class AuthState extends ChangeNotifier {
       await _askPasswordOrSignOut(mode);
     }
     notifyListeners();
+  }
+
+  /// Consulta la sesión tolerando fallos transitorios.
+  ///
+  /// `getSession` lanza cuando no puede concluir (sin red, servidor arrancando
+  /// en frío, 5xx). Sin reintentos, ese tropiezo momentáneo terminaba pidiendo
+  /// la contraseña de la cuenta como si la sesión hubiera caducado, que es
+  /// justo lo que no queremos. Un 401/403 NO lanza, así que una sesión
+  /// realmente inválida sigue resolviéndose en el primer intento.
+  Future<SessionResponse> _getSessionWithRetry() async {
+    const esperas = [Duration(milliseconds: 700), Duration(milliseconds: 1800)];
+    for (var intento = 0; ; intento++) {
+      try {
+        return await _auth.getSession();
+      } catch (_) {
+        if (intento >= esperas.length) rethrow;
+        await Future<void>.delayed(esperas[intento]);
+      }
+    }
   }
 
   /// No hay sesión utilizable. Si el usuario tiene bloqueo local configurado y

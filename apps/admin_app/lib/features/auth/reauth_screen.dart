@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/api/api_client.dart';
+import '../../core/state/auth_state.dart';
 import '../../core/state/locator.dart';
 import '../../core/theme/gem_palette.dart';
 import '../../core/widgets/gem_widgets.dart';
@@ -70,6 +71,22 @@ class _ReauthScreenState extends State<ReauthScreen> {
     }
   }
 
+  /// Vuelve a comprobar la sesión. Si seguía válida (el fallo era de red),
+  /// el router entra solo al panel sin pedir nada.
+  Future<void> _retrySession() async {
+    setState(() {
+      _submitting = true;
+      _error = null;
+    });
+    await Locator.authState.bootstrap();
+    if (!mounted) return;
+    setState(() => _submitting = false);
+    if (Locator.authState.phase == AuthPhase.needsPassword) {
+      setState(() => _error =
+          'La sesión ya no está activa. Confirma tu contraseña para continuar.');
+    }
+  }
+
   /// Salida explícita: borra la protección local y vuelve al inicio.
   Future<void> _useAnotherAccount() async {
     await Locator.authState.signOut();
@@ -124,6 +141,13 @@ class _ReauthScreenState extends State<ReauthScreen> {
                       onPressed: _submit,
                     ),
                     const SizedBox(height: 6),
+                    // Si llegamos aquí por un corte de red o porque el
+                    // servidor estaba arrancando, la sesión puede seguir viva:
+                    // reintentar evita escribir la contraseña sin necesidad.
+                    TextButton(
+                      onPressed: _submitting ? null : _retrySession,
+                      child: const Text('Reintentar sin contraseña'),
+                    ),
                     TextButton(
                       onPressed: _submitting ? null : _useAnotherAccount,
                       child: const Text('Entrar con otra cuenta'),

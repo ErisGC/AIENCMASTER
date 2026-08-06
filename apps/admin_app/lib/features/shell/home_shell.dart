@@ -31,6 +31,20 @@ class HomeShell extends StatefulWidget {
 class _HomeShellState extends State<HomeShell> {
   static const _kTutorialSeen = 'aienc_tutorial_seen_v1';
 
+  /// Paso por el que va el tutorial (índice del punto que se está mostrando).
+  /// Permite reanudarlo justo donde se quedó, no sólo repetirlo entero.
+  static const _kTutorialStep = 'aienc_tutorial_step_v1';
+
+  /// Total de puntos del recorrido (panel + barra de navegación).
+  static const _tutorialTotal = 2;
+
+  int _tutorialStep = 0;
+
+  /// Desde qué paso se lanzó el recorrido en curso. showcaseview numera los
+  /// pasos según la lista que recibe, así que al reanudar hay que sumarle este
+  /// desplazamiento para saber el paso real.
+  int _tutorialOffset = 0;
+
   final _updateService = UpdateService();
 
   // Objetivos del tutorial. Ambos son visibles en la pestaña 0 (Métricas),
@@ -103,8 +117,11 @@ class _HomeShellState extends State<HomeShell> {
   Future<void> _maybeAutoTutorial() async {
     final prefs = await SharedPreferences.getInstance();
     final seen = prefs.getBool(_kTutorialSeen) ?? false;
+    final step = prefs.getInt(_kTutorialStep) ?? 0;
+    if (mounted && step != _tutorialStep) setState(() => _tutorialStep = step);
     if (seen || !mounted) return;
-    _startTutorial();
+    // Primera vez: si quedó a medias por cerrar la app, se reanuda ahí.
+    _startTutorial(from: step);
   }
 
   /// Marca el tutorial como visto. Basta con que lo omita o lo termine una vez.
@@ -113,15 +130,31 @@ class _HomeShellState extends State<HomeShell> {
     await prefs.setBool(_kTutorialSeen, true);
   }
 
-  /// Arranca (o reinicia) el recorrido. Vuelve a la pestaña Métricas para que
-  /// ambos puntos del spotlight estén montados y visibles.
-  void _startTutorial() {
+  /// Al terminar el recorrido completo el progreso vuelve a cero, para que
+  /// "repetir" siempre empiece limpio.
+  Future<void> _onTutorialFinished() async {
+    await _markTutorialSeen();
+    await _saveStep(0);
+  }
+
+  Future<void> _saveStep(int step) async {
+    if (mounted) setState(() => _tutorialStep = step);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_kTutorialStep, step);
+  }
+
+  /// Arranca el recorrido desde [from]. Vuelve a la pestaña Métricas para que
+  /// los puntos del spotlight estén montados y visibles.
+  void _startTutorial({int from = 0}) {
     if (_scCtx == null || !mounted) return;
+    final keys = [_dashKey, _navKey];
+    final inicio = from.clamp(0, keys.length - 1);
+    _tutorialOffset = inicio;
     if (_idx != 0) setState(() => _idx = 0);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final c = _scCtx;
       if (!mounted || c == null) return;
-      ShowCaseWidget.of(c).startShowCase([_dashKey, _navKey]);
+      ShowCaseWidget.of(c).startShowCase(keys.sublist(inicio));
     });
   }
 
@@ -130,7 +163,9 @@ class _HomeShellState extends State<HomeShell> {
   @override
   Widget build(BuildContext context) {
     return ShowCaseWidget(
-      onFinish: _markTutorialSeen,
+      onFinish: _onTutorialFinished,
+      // Guardamos el paso en curso para poder reanudar donde se quedó.
+      onStart: (index, _) => _saveStep(_tutorialOffset + (index ?? 0)),
       builder: (ctx) {
         _scCtx = ctx;
         return _buildScaffold(ctx);
@@ -176,7 +211,12 @@ class _HomeShellState extends State<HomeShell> {
           icon: Icons.shield_outlined,
           activeIcon: Icons.shield,
           label: 'Seguridad',
-          child: const SecurityScreen(),
+          child: SecurityScreen(
+            tutorialStep: _tutorialStep,
+            tutorialTotal: _tutorialTotal,
+            onRestartTutorial: () => _startTutorial(from: 0),
+            onContinueTutorial: () => _startTutorial(from: _tutorialStep),
+          ),
         ),
     ];
 

@@ -228,7 +228,7 @@ Receta completa con env vars, secrets y workflow CI en
 | `WEB_ORIGIN` | ✓ | Dominio del frontend (sin barra final) |
 | `MOBILE_APP_ORIGIN` | si app móvil | `aiencadmin://app` |
 | `ADMIN_SESSION_SECRET` | ✓ | ≥32 chars, JWT secret |
-| `ADMIN_SESSION_TTL_SECONDS` | ✓ | Duración sesión activa |
+| `ADMIN_SESSION_TTL_SECONDS` | ✓ | Duración sesión activa. Recomendado `2592000` (30 días); la sesión se renueva en cada uso y la app pide la contraseña cada 14 días |
 | `ADMIN_PENDING_SESSION_TTL_SECONDS` | ✓ | Duración sesión pendiente |
 | `ADMIN_TRUSTED_DEVICE_TTL_SECONDS` | ✓ | Duración cookie de dispositivo |
 | `ADMIN_ACCESS_REQUEST_TTL_SECONDS` | ✓ | Duración solicitud de acceso |

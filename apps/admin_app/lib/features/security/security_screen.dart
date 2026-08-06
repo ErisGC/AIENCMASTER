@@ -11,7 +11,20 @@ import 'account_permissions_screen.dart';
 import 'invitations_screen.dart';
 
 class SecurityScreen extends StatefulWidget {
-  const SecurityScreen({super.key});
+  const SecurityScreen({
+    super.key,
+    this.tutorialStep = 0,
+    this.tutorialTotal = 0,
+    this.onRestartTutorial,
+    this.onContinueTutorial,
+  });
+
+  /// Paso por el que va el tutorial guiado y total de pasos, para ofrecer
+  /// "continuar" sólo cuando quedó a medias.
+  final int tutorialStep;
+  final int tutorialTotal;
+  final VoidCallback? onRestartTutorial;
+  final VoidCallback? onContinueTutorial;
 
   @override
   State<SecurityScreen> createState() => _SecurityScreenState();
@@ -188,6 +201,8 @@ class _SecurityScreenState extends State<SecurityScreen> {
                               ],
                             ),
                           ),
+                          const SizedBox(height: 10),
+                          _buildTutorialCard(),
                           const SizedBox(height: 10),
                           GemCard(
                             onTap: () => Navigator.of(context).push(
@@ -377,6 +392,77 @@ class _SecurityScreenState extends State<SecurityScreen> {
       case null:
         break;
     }
+  }
+
+  /// Tarjeta del tutorial guiado: permite reanudarlo donde quedó o repetirlo
+  /// completo en cualquier momento.
+  Widget _buildTutorialCard() {
+    final total = widget.tutorialTotal;
+    final paso = widget.tutorialStep;
+    // Sólo tiene sentido "continuar" si quedó a medias (ni al inicio ni al fin).
+    final puedeContinuar =
+        widget.onContinueTutorial != null && paso > 0 && paso < total;
+
+    return GemCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  gradient: const LinearGradient(
+                    colors: [GemPalette.topaz, GemPalette.amethyst],
+                  ),
+                ),
+                alignment: Alignment.center,
+                child: const Icon(Icons.school_outlined, color: Colors.white),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Tutorial guiado',
+                        style: Theme.of(context).textTheme.titleMedium),
+                    Text(
+                      puedeContinuar
+                          ? 'Lo dejaste en el paso $paso de $total'
+                          : 'Un recorrido corto por las secciones de la app',
+                      style: const TextStyle(
+                          color: GemPalette.textMuted,
+                          fontSize: 12.5,
+                          height: 1.35),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              if (puedeContinuar) ...[
+                TextButton.icon(
+                  icon: const Icon(Icons.play_arrow_rounded, size: 18),
+                  label: const Text('Continuar'),
+                  onPressed: widget.onContinueTutorial,
+                ),
+                const SizedBox(width: 4),
+              ],
+              TextButton.icon(
+                icon: const Icon(Icons.replay_rounded, size: 18),
+                label: const Text('Repetir desde el inicio'),
+                onPressed: widget.onRestartTutorial,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 }
 
