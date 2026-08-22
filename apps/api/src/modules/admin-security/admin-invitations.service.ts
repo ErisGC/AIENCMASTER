@@ -130,6 +130,22 @@ export class AdminInvitationsService {
           "Tu cuenta ya no es ROOT activa; no puedes crear otra cuenta ROOT",
         );
       }
+
+      // La plataforma admite UNA sola cuenta principal. Esa regla la imponen
+      // el índice único de admin_accounts, el de admin_devices y la
+      // verificación de arranque (AdminSecurityIntegrityService, que impide
+      // que la API encienda si hay más de un ROOT). Sin este control la
+      // invitación se creaba y sólo fallaba al activarla, con un error de
+      // servidor incomprensible para quien la recibía.
+      const rootCount = await this.accountRepo.count({
+        where: { role: AdminRole.ROOT },
+      });
+      if (rootCount > 0) {
+        throw new ConflictException(
+          "Ya existe una cuenta de administrador principal y el sistema sólo admite una. " +
+            "Para dar acceso a otra persona, invítala como administrador y asígnale los permisos que necesite.",
+        );
+      }
     }
 
     const existingAccount = await this.accountRepo.findOne({
@@ -352,6 +368,21 @@ export class AdminInvitationsService {
           await invitationRepo.save(invitation);
           throw new ForbiddenException(
             "La invitación quedó inválida: quien la creó ya no es ROOT activo. Solicita una nueva invitación a otra cuenta ROOT.",
+          );
+        }
+
+        // Sólo puede existir una cuenta principal (índices únicos + control de
+        // arranque en AdminSecurityIntegrityService). Si ya hay una, guardar
+        // otra rompería el índice y Postgres devolvería un error crudo, que al
+        // usuario le llegaba como "Error del servidor". Se corta antes, con un
+        // mensaje que explica qué hacer.
+        const rootCount = await accountRepo.count({
+          where: { role: AdminRole.ROOT },
+        });
+        if (rootCount > 0) {
+          throw new ConflictException(
+            "Ya existe una cuenta de administrador principal y el sistema sólo admite una. " +
+              "Pide que te inviten como administrador, o que la cuenta principal actual te ceda ese rol.",
           );
         }
       }
