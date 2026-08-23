@@ -9,6 +9,7 @@ import '../../core/theme/gem_palette.dart';
 import '../../core/widgets/gem_widgets.dart';
 import 'account_permissions_screen.dart';
 import 'invitations_screen.dart';
+import '../support/support_screen.dart';
 
 class SecurityScreen extends StatefulWidget {
   const SecurityScreen({
@@ -32,6 +33,9 @@ class SecurityScreen extends StatefulWidget {
 
 class _SecurityScreenState extends State<SecurityScreen> {
   List<AdminAccount> _accounts = [];
+  int _soporteSinLeer = 0;
+
+  bool get _esPrincipal => Locator.authState.account?.isRoot ?? false;
   bool _loading = true;
   String? _error;
 
@@ -41,14 +45,30 @@ class _SecurityScreenState extends State<SecurityScreen> {
     _load();
   }
 
+  Future<void> _cargarSinLeer() async {
+    if (!_esPrincipal) return;
+    try {
+      final n = await Locator.support.unread();
+      if (mounted) setState(() => _soporteSinLeer = n);
+    } catch (_) {
+      // El contador es un extra: si falla, no estorba el resto.
+    }
+  }
+
   Future<void> _load() async {
     setState(() {
       _loading = true;
       _error = null;
     });
     try {
-      final list = await Locator.security.listAccounts();
-      if (mounted) setState(() => _accounts = list);
+      // El listado de cuentas es exclusivo del administrador principal; un
+      // administrador normal entra a esta sección por su protección, el
+      // tutorial y el canal de soporte.
+      if (_esPrincipal) {
+        final list = await Locator.security.listAccounts();
+        if (mounted) setState(() => _accounts = list);
+      }
+      await _cargarSinLeer();
     } catch (e) {
       if (mounted) setState(() => _error = userMessageFor(e));
     } finally {
@@ -107,7 +127,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
                       child: ListView(
                         padding: const EdgeInsets.fromLTRB(16, 8, 16, 90),
                         children: [
-                          GemCard(
+                          if (_esPrincipal) GemCard(
                             onTap: () async {
                               await Navigator.of(context).push(
                                 MaterialPageRoute(
@@ -143,6 +163,91 @@ class _SecurityScreenState extends State<SecurityScreen> {
                                       const Text(
                                         'Generar enlaces para nuevos administradores y revocar los pendientes',
                                         style: TextStyle(
+                                            color: GemPalette.textMuted,
+                                            fontSize: 12.5,
+                                            height: 1.35),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const Icon(Icons.chevron_right,
+                                    color: GemPalette.textMuted),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          GemCard(
+                            onTap: () async {
+                              await Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => const SupportScreen(),
+                                ),
+                              );
+                              if (mounted) await _load();
+                            },
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 44,
+                                  height: 44,
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(12),
+                                    gradient: const LinearGradient(
+                                      colors: [
+                                        GemPalette.amethyst,
+                                        GemPalette.sapphire,
+                                      ],
+                                    ),
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: const Icon(Icons.forum_outlined,
+                                      color: Colors.white),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Text(
+                                            _esPrincipal
+                                                ? 'Bandeja de soporte'
+                                                : 'Soporte',
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .titleMedium,
+                                          ),
+                                          if (_soporteSinLeer > 0) ...[
+                                            const SizedBox(width: 8),
+                                            Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      horizontal: 7,
+                                                      vertical: 2),
+                                              decoration: BoxDecoration(
+                                                color: GemPalette.danger,
+                                                borderRadius:
+                                                    BorderRadius.circular(100),
+                                              ),
+                                              child: Text(
+                                                '$_soporteSinLeer',
+                                                style: const TextStyle(
+                                                    color: Colors.white,
+                                                    fontSize: 11,
+                                                    fontWeight:
+                                                        FontWeight.w800),
+                                              ),
+                                            ),
+                                          ],
+                                        ],
+                                      ),
+                                      Text(
+                                        _esPrincipal
+                                            ? 'Reportes y sugerencias que te han enviado'
+                                            : 'Escríbele al administrador principal: fallos, faltantes o sugerencias',
+                                        style: const TextStyle(
                                             color: GemPalette.textMuted,
                                             fontSize: 12.5,
                                             height: 1.35),
@@ -204,7 +309,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
                           const SizedBox(height: 10),
                           _buildTutorialCard(),
                           const SizedBox(height: 10),
-                          GemCard(
+                          if (_esPrincipal) GemCard(
                             onTap: () => Navigator.of(context).push(
                               MaterialPageRoute(
                                 builder: (_) => const _GlobalAuditScreen(),
@@ -253,14 +358,17 @@ class _SecurityScreenState extends State<SecurityScreen> {
                               ],
                             ),
                           ),
-                          const SizedBox(height: 14),
-                          Padding(
-                            padding: const EdgeInsets.only(left: 4),
-                            child: Text('Administradores',
-                                style: Theme.of(context).textTheme.titleMedium),
-                          ),
-                          const SizedBox(height: 6),
-                          for (final a in _accounts) _accountTile(a),
+                          if (_esPrincipal) ...[
+                            const SizedBox(height: 14),
+                            Padding(
+                              padding: const EdgeInsets.only(left: 4),
+                              child: Text('Administradores',
+                                  style:
+                                      Theme.of(context).textTheme.titleMedium),
+                            ),
+                            const SizedBox(height: 6),
+                            for (final a in _accounts) _accountTile(a),
+                          ],
                         ],
                       ),
                     ),

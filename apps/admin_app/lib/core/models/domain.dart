@@ -949,3 +949,96 @@ class AuditLogEntry {
     );
   }
 }
+
+// ── Soporte ────────────────────────────────────────────────────────────
+
+class SupportAttachment {
+  final String url;
+  final String kind; // 'image' | 'audio'
+  final String name;
+
+  SupportAttachment({
+    required this.url,
+    required this.kind,
+    required this.name,
+  });
+
+  factory SupportAttachment.fromJson(Map<String, dynamic> j) =>
+      SupportAttachment(
+        url: j['url'] as String? ?? '',
+        kind: j['kind'] as String? ?? 'image',
+        name: j['name'] as String? ?? '',
+      );
+}
+
+class SupportMessage {
+  final String id;
+  final String senderKind; // 'AUTHOR' | 'ROOT'
+  final String body;
+  final List<SupportAttachment> attachments;
+  final DateTime? createdAt;
+
+  SupportMessage({
+    required this.id,
+    required this.senderKind,
+    required this.body,
+    required this.attachments,
+    this.createdAt,
+  });
+
+  factory SupportMessage.fromJson(Map<String, dynamic> j) => SupportMessage(
+        id: j['id'] as String,
+        senderKind: j['senderKind'] as String? ?? 'AUTHOR',
+        body: j['body'] as String? ?? '',
+        attachments: ((j['attachments'] as List?) ?? const [])
+            .map((e) => SupportAttachment.fromJson(e as Map<String, dynamic>))
+            .toList(),
+        createdAt: DateTime.tryParse(j['createdAt'] as String? ?? ''),
+      );
+}
+
+class SupportConversation {
+  final String id;
+  final String subject;
+  final String authorKind; // 'GUEST' | 'ADMIN'
+  final String authorName;
+  final String status; // 'OPEN' | 'CLOSED' | 'BLOCKED'
+  final DateTime? lastMessageAt;
+  final int unread;
+
+  SupportConversation({
+    required this.id,
+    required this.subject,
+    required this.authorKind,
+    required this.authorName,
+    required this.status,
+    this.lastMessageAt,
+    this.unread = 0,
+  });
+
+  factory SupportConversation.fromJson(Map<String, dynamic> j) =>
+      SupportConversation(
+        id: j['id'] as String,
+        subject: j['subject'] as String? ?? '',
+        authorKind: j['authorKind'] as String? ?? 'ADMIN',
+        authorName: j['authorName'] as String? ?? '',
+        status: j['status'] as String? ?? 'OPEN',
+        lastMessageAt: DateTime.tryParse(j['lastMessageAt'] as String? ?? ''),
+        unread: (j['unread'] as num?)?.toInt() ?? 0,
+      );
+}
+
+class SupportThread {
+  final SupportConversation conversation;
+  final List<SupportMessage> messages;
+
+  SupportThread({required this.conversation, required this.messages});
+
+  factory SupportThread.fromJson(Map<String, dynamic> j) => SupportThread(
+        conversation: SupportConversation.fromJson(
+            j['conversation'] as Map<String, dynamic>),
+        messages: ((j['messages'] as List?) ?? const [])
+            .map((e) => SupportMessage.fromJson(e as Map<String, dynamic>))
+            .toList(),
+      );
+}

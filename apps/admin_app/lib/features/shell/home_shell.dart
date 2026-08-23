@@ -206,8 +206,11 @@ class _HomeShellState extends State<HomeShell> {
         label: 'Informes',
         child: const ReportsScreen(),
       ),
-      if (isRoot)
-        _NavTab(
+      // Visible para TODOS los administradores: aquí viven la protección de la
+      // app, el tutorial y el canal de soporte. El contenido exclusivo del
+      // administrador principal (invitaciones, cuentas y auditoría) se oculta
+      // dentro de la propia pantalla según el rol.
+      _NavTab(
           icon: Icons.shield_outlined,
           activeIcon: Icons.shield,
           label: 'Seguridad',

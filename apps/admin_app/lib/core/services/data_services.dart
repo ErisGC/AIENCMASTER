@@ -529,3 +529,96 @@ class InvitationService {
     await _api.deleteVoid('/admin/security/invitations/$id');
   }
 }
+
+/// Canal de soporte con el administrador principal.
+class SupportService {
+  SupportService(this._api);
+  final ApiClient _api;
+
+  /// Hilos propios del administrador autenticado.
+  Future<List<SupportConversation>> mine() async {
+    final res = await _api.dio.get('/admin/support/conversations');
+    _api.ensureOk(res);
+    final raw = res.data;
+    if (raw is List) {
+      return raw
+          .map((e) => SupportConversation.fromJson(e as Map<String, dynamic>))
+          .toList();
+    }
+    return const [];
+  }
+
+  /// Bandeja completa (sólo administrador principal).
+  Future<List<SupportConversation>> inbox() async {
+    final res = await _api.dio.get('/admin/support/inbox');
+    _api.ensureOk(res);
+    final raw = res.data;
+    if (raw is List) {
+      return raw
+          .map((e) => SupportConversation.fromJson(e as Map<String, dynamic>))
+          .toList();
+    }
+    return const [];
+  }
+
+  /// Número de hilos con mensajes sin leer (para el aviso).
+  Future<int> unread() async {
+    final res = await _api.dio.get('/admin/support/inbox/unread');
+    _api.ensureOk(res);
+    final data = res.data;
+    if (data is Map && data['unread'] is num) {
+      return (data['unread'] as num).toInt();
+    }
+    return 0;
+  }
+
+  Future<SupportThread> thread(String id, {required bool asRoot}) async {
+    final path = asRoot
+        ? '/admin/support/inbox/$id'
+        : '/admin/support/conversations/$id';
+    final res = await _api.dio.get(path);
+    _api.ensureOk(res);
+    return SupportThread.fromJson(res.data as Map<String, dynamic>);
+  }
+
+  Future<SupportConversation> start({
+    required String subject,
+    required String body,
+    List<MultipartFile> files = const [],
+  }) async {
+    final form = FormData.fromMap({
+      'subject': subject.trim(),
+      'body': body.trim(),
+      if (files.isNotEmpty) 'files': files,
+    });
+    final res = await _api.dio.post(
+      '/admin/support/conversations',
+      data: form,
+      options: Options(contentType: 'multipart/form-data'),
+    );
+    _api.ensureOk(res);
+    return SupportConversation.fromJson(res.data as Map<String, dynamic>);
+  }
+
+  Future<SupportMessage> reply(
+    String id, {
+    required String body,
+    required bool asRoot,
+    List<MultipartFile> files = const [],
+  }) async {
+    final form = FormData.fromMap({
+      'body': body.trim(),
+      if (files.isNotEmpty) 'files': files,
+    });
+    final path = asRoot
+        ? '/admin/support/inbox/$id/messages'
+        : '/admin/support/conversations/$id/messages';
+    final res = await _api.dio.post(
+      path,
+      data: form,
+      options: Options(contentType: 'multipart/form-data'),
+    );
+    _api.ensureOk(res);
+    return SupportMessage.fromJson(res.data as Map<String, dynamic>);
+  }
+}
