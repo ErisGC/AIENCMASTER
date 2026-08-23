@@ -10,6 +10,7 @@ import { useTheme } from '@/app/lib/useTheme';
 import { useIsClient } from '@/app/lib/useIsClient';
 import { ScrollReveal } from './ScrollReveal';
 import { SiteFooter } from './SiteFooter';
+import { SupportWidget } from './SupportWidget';
 
 type NavItem = {
   href: string;
@@ -225,6 +226,9 @@ export function PublicShell({ children }: { children: React.ReactNode }) {
       </div>
 
       <SiteFooter />
+
+      {/* Canal para que cualquier visitante reporte fallos o sugerencias. */}
+      <SupportWidget mode="guest" />
     </div>
   );
 }

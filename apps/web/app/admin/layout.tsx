@@ -12,6 +12,7 @@ import {
 } from '@/app/lib/admin-auth';
 import { useIsMobileDevice } from '@/app/lib/useIsMobileDevice';
 import { roleShortLabel } from '@/app/lib/i18n';
+import { SupportWidget } from '@/app/components/SupportWidget';
 import { ActiveChurchProvider } from './_components/ActiveChurchContext';
 import { ChurchSelector } from './_components/ChurchSelector';
 import styles from './layout.module.css';
@@ -240,6 +241,10 @@ export default function AdminLayout({
       </aside>
 
       <main className={styles.main}>{children}</main>
+
+      {/* Bandeja de soporte flotante: sólo la ve el administrador principal.
+          Se abre y se cierra cuando quiera, sin estorbar el trabajo. */}
+      {session?.account?.role === 'ROOT' && <SupportWidget mode="root" />}
     </div>
     </ActiveChurchProvider>
   );

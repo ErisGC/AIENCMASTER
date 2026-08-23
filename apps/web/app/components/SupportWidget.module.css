@@ -1,0 +1,361 @@
+.fab {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 900;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 50px;
+  padding: 0.75rem 1.15rem;
+  border: none;
+  border-radius: 999px;
+  background: var(--gem-sapphire);
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.92rem;
+  cursor: pointer;
+  box-shadow: 0 12px 30px rgba(8, 20, 40, 0.28);
+  transition: transform 180ms ease, filter 180ms ease;
+}
+
+.fab:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.06);
+}
+
+.badge {
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--gem-ruby, #b0274d);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.panel {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 901;
+  width: min(400px, calc(100vw - 32px));
+  max-height: min(640px, calc(100vh - 40px));
+  display: flex;
+  flex-direction: column;
+  border-radius: 20px;
+  border: 1px solid var(--border-soft);
+  background: var(--surface);
+  box-shadow: 0 24px 60px rgba(8, 20, 40, 0.34);
+  overflow: hidden;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.9rem 1rem;
+  background: var(--gem-sapphire);
+  color: #fff;
+}
+
+.headTitle {
+  margin: 0;
+  font-size: 0.98rem;
+  font-weight: 700;
+}
+
+.headSub {
+  margin: 0.1rem 0 0;
+  font-size: 0.76rem;
+  opacity: 0.85;
+}
+
+.iconBtn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.iconBtn:hover {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.95rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  background: var(--surface-2);
+}
+
+.intro {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--text-soft);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.field span {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.field input,
+.field textarea {
+  width: 100%;
+  min-width: 0;
+  padding: 0.55rem 0.7rem;
+  border-radius: 10px;
+  border: 1px solid var(--border-soft);
+  background: var(--surface);
+  color: var(--text-main);
+  font: inherit;
+  font-size: 0.88rem;
+}
+
+.field textarea {
+  resize: vertical;
+  line-height: 1.45;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.primary {
+  flex: 1;
+  min-height: 42px;
+  padding: 0.6rem 1rem;
+  border: none;
+  border-radius: 999px;
+  background: var(--gem-sapphire);
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.primary:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.ghost {
+  min-height: 42px;
+  padding: 0.6rem 0.85rem;
+  border-radius: 999px;
+  border: 1px solid var(--border-soft);
+  background: var(--surface);
+  color: var(--text-main);
+  font: inherit;
+  font-size: 0.84rem;
+  cursor: pointer;
+}
+
+.error {
+  margin: 0;
+  padding: 0.6rem 0.75rem;
+  border-radius: 10px;
+  background: rgba(176, 39, 77, 0.12);
+  color: #b0274d;
+  font-size: 0.83rem;
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.item {
+  width: 100%;
+  text-align: left;
+  padding: 0.7rem 0.85rem;
+  border-radius: 14px;
+  border: 1px solid var(--border-soft);
+  background: var(--surface);
+  cursor: pointer;
+  font: inherit;
+}
+
+.item:hover {
+  border-color: var(--gem-sapphire);
+}
+
+.itemTop {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  align-items: baseline;
+}
+
+.itemSubject {
+  font-weight: 700;
+  font-size: 0.88rem;
+  color: var(--text-main);
+  overflow-wrap: anywhere;
+}
+
+.itemMeta {
+  font-size: 0.74rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--gem-ruby, #b0274d);
+  margin-left: 6px;
+}
+
+/* ── Mensajes ── */
+
+.msg {
+  max-width: 85%;
+  padding: 0.6rem 0.8rem;
+  border-radius: 14px;
+  font-size: 0.87rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.mine {
+  align-self: flex-end;
+  background: var(--gem-sapphire);
+  color: #fff;
+  border-bottom-right-radius: 4px;
+}
+
+.theirs {
+  align-self: flex-start;
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  color: var(--text-main);
+  border-bottom-left-radius: 4px;
+}
+
+.msgTime {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.68rem;
+  opacity: 0.7;
+}
+
+.thumb {
+  display: block;
+  margin-top: 0.4rem;
+  max-width: 100%;
+  border-radius: 10px;
+}
+
+.audio {
+  margin-top: 0.4rem;
+  width: 100%;
+  height: 38px;
+}
+
+.composer {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.4rem;
+  padding: 0.7rem;
+  border-top: 1px solid var(--border-soft);
+  background: var(--surface);
+}
+
+.composer textarea {
+  flex: 1;
+  min-width: 0;
+  max-height: 110px;
+  padding: 0.55rem 0.7rem;
+  border-radius: 12px;
+  border: 1px solid var(--border-soft);
+  background: var(--surface-2);
+  color: var(--text-main);
+  font: inherit;
+  font-size: 0.88rem;
+  resize: none;
+}
+
+.send {
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: 50%;
+  background: var(--gem-sapphire);
+  color: #fff;
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+.send:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.attachRow {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  padding: 0 0.7rem 0.5rem;
+  background: var(--surface);
+  font-size: 0.76rem;
+  color: var(--text-muted);
+}
+
+.empty {
+  margin: 0;
+  padding: 1.2rem 0;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+@media (max-width: 520px) {
+  .panel {
+    right: 8px;
+    left: 8px;
+    bottom: 8px;
+    width: auto;
+    max-height: calc(100vh - 16px);
+  }
+  .fab {
+    right: 12px;
+    bottom: 12px;
+  }
+}
