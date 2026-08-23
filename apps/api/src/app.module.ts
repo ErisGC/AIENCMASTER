@@ -12,6 +12,7 @@ import { ChurchStudiesModule } from "./modules/church-studies/church-studies.mod
 import { ChurchesModule } from "./modules/churches/churches.module";
 import { ReportsModule } from "./modules/reports/reports.module";
 import { SiteModule } from "./modules/site/site.module";
+import { SupportModule } from "./modules/support/support.module";
 
 /**
  * En producción aceptamos un único `DATABASE_URL` (Neon, Railway, Supabase…).
@@ -82,6 +83,7 @@ function buildTypeOrmOptions(): TypeOrmModuleOptions {
     ChurchesModule,
     ReportsModule,
     SiteModule,
+    SupportModule,
   ],
 })
 export class AppModule {}

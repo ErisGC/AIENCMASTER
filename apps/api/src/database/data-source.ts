@@ -18,6 +18,8 @@ import { Church } from "../modules/churches/church.entity";
 import { Report } from "../modules/reports/report.entity";
 import { SiteBackground } from "../modules/site/site-background.entity";
 import { SiteSettings } from "../modules/site/site-settings.entity";
+import { SupportConversation } from "../modules/support/support-conversation.entity";
+import { SupportMessage } from "../modules/support/support-message.entity";
 
 function required(name: string) {
   const value = process.env[name]?.trim();
@@ -54,6 +56,8 @@ const ENTITIES = [
   Report,
   SiteBackground,
   SiteSettings,
+  SupportConversation,
+  SupportMessage,
 ];
 
 const databaseUrl = process.env.DATABASE_URL?.trim();
