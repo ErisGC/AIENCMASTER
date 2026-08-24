@@ -165,8 +165,11 @@ async function proxy(
 
   // Forzar Origin/Referer al WEB_ORIGIN para que el AdminOriginGuard
   // del backend acepte la petición.
+  // WEB_ORIGIN puede listar varios dominios; al backend se le reenvía el
+  // PRIMERO, que es el canónico. Así, entren por el dominio que entren, la
+  // petición llega al servidor con un origen que él reconoce.
   const webOrigin =
-    process.env.WEB_ORIGIN?.trim() ||
+    process.env.WEB_ORIGIN?.trim().split(",")[0]?.trim() ||
     `${incomingUrl.protocol}//${incomingUrl.host}`;
   outgoingHeaders.set("origin", webOrigin);
   outgoingHeaders.set("referer", webOrigin);

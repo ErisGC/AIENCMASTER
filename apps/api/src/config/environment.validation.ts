@@ -129,17 +129,29 @@ export function validateEnvironment(config: EnvironmentInput) {
     errors,
   );
 
-  const webOrigin =
+  // WEB_ORIGIN admite VARIOS orígenes separados por coma. Es lo que permite
+  // cambiar de dominio sin cortar el acceso: durante la mudanza se listan el
+  // nuevo y el viejo, y cuando el nuevo está estable se retira el anterior.
+  // El PRIMERO es el canónico (el que el proxy web reenvía al backend).
+  const rawWebOrigin =
     typeof config.WEB_ORIGIN === "string" && config.WEB_ORIGIN.trim().length > 0
       ? config.WEB_ORIGIN.trim()
       : "http://localhost:3000";
 
-  try {
-    // Persist only the normalized origin to keep CORS and origin checks aligned.
-    new URL(webOrigin);
-  } catch {
+  const webOrigins: string[] = [];
+  for (const piece of rawWebOrigin.split(",")) {
+    const candidate = piece.trim();
+    if (candidate.length === 0) continue;
+    try {
+      webOrigins.push(new URL(candidate).origin);
+    } catch {
+      errors.push(`WEB_ORIGIN contiene un origen inválido: ${candidate}`);
+    }
+  }
+  if (webOrigins.length === 0) {
     errors.push("WEB_ORIGIN must be a valid absolute URL");
   }
+  const webOrigin = webOrigins.join(",");
 
   let adminBootstrapSecret = "";
   if (adminBootstrapEnabled) {
@@ -170,7 +182,7 @@ export function validateEnvironment(config: EnvironmentInput) {
     DB_PASSWORD: dbPassword,
     DB_NAME: dbName,
     PORT: port,
-    WEB_ORIGIN: new URL(webOrigin).origin,
+    WEB_ORIGIN: webOrigin,
     ADMIN_SESSION_SECRET: adminSessionSecret,
     ADMIN_SESSION_TTL_SECONDS: adminSessionTtlSeconds,
     ADMIN_PENDING_SESSION_TTL_SECONDS: adminPendingSessionTtlSeconds,

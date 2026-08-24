@@ -70,11 +70,14 @@ export class AdminOriginGuard implements CanActivate {
    * con el esquema custom registrado en AndroidManifest.xml.
    */
   private getAllowedOrigins(): string[] {
-    const web =
-      process.env.WEB_ORIGIN?.trim() || "http://localhost:3000";
+    // WEB_ORIGIN puede traer varios dominios separados por coma (mudanza de
+    // dominio): se aceptan todos mientras dure la transición.
+    const web = process.env.WEB_ORIGIN?.trim() || "http://localhost:3000";
     const origins: string[] = [];
-    const webNorm = this.normalizeOrigin(web);
-    if (webNorm !== null) origins.push(webNorm);
+    for (const piece of web.split(",")) {
+      const norm = this.normalizeOrigin(piece.trim());
+      if (norm !== null) origins.push(norm);
+    }
 
     const mobile = process.env.MOBILE_APP_ORIGIN?.trim();
     if (mobile && mobile.length > 0) {

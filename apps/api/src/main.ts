@@ -35,7 +35,12 @@ async function bootstrap() {
   });
 
   app.enableCors({
-    origin: process.env.WEB_ORIGIN ?? "http://localhost:3000",
+    // Admite varios dominios (lista separada por comas) para poder migrar
+    // sin dejar fuera al dominio anterior.
+    origin: (process.env.WEB_ORIGIN ?? "http://localhost:3000")
+      .split(",")
+      .map((o) => o.trim())
+      .filter((o) => o.length > 0),
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
   });
