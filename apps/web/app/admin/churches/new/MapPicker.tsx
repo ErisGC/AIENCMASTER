@@ -2,17 +2,25 @@
 
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
+// El CSS del mapa se carga AQUÍ, no en el layout raíz: éste es el único sitio
+// que usa Leaflet (la ficha pública de iglesia muestra un mapa incrustado de
+// OpenStreetMap, sin la librería). Cargarlo globalmente lo enviaba a cada
+// visitante del portal, que nunca lo necesita.
+import 'leaflet/dist/leaflet.css';
+// Las imágenes del marcador vienen del propio paquete. Antes se pedían a un CDN
+// externo en cada uso: si estaba caído o bloqueado, el marcador desaparecía y
+// no había forma de ver el punto elegido.
+import iconoUrl from 'leaflet/dist/images/marker-icon.png';
+import iconoRetinaUrl from 'leaflet/dist/images/marker-icon-2x.png';
+import sombraUrl from 'leaflet/dist/images/marker-shadow.png';
 import styles from './page.module.css';
 
 type Point = { lat: number; lng: number };
 
 const markerIcon = new L.Icon({
-  iconUrl:
-    'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-  iconRetinaUrl:
-    'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-  shadowUrl:
-    'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+  iconUrl: iconoUrl.src,
+  iconRetinaUrl: iconoRetinaUrl.src,
+  shadowUrl: sombraUrl.src,
   iconSize: [25, 41],
   iconAnchor: [12, 41],
 });

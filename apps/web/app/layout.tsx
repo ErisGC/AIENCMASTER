@@ -2,7 +2,6 @@ import type { Metadata } from 'next';
 import { Fraunces, Inter } from 'next/font/google';
 import { PublicShell } from './components/PublicShell';
 import './globals.css';
-import 'leaflet/dist/leaflet.css';
 
 /*
  * Tipografía institucional cinematográfica:

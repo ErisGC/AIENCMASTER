@@ -13,7 +13,6 @@ dependencies:
   flutter_localizations:
     sdk: flutter
 
-  cupertino_icons: ^1.0.8
 
   # Hash del PIN local (SHA-256 salado e iterado). Puro Dart, sin deps
   # nativas (no arrastra el problema de win32/path con espacios).
@@ -42,10 +41,6 @@ dependencies:
   # con espacios — se reactivará cuando reubiquemos el SDK Flutter.
   shared_preferences: ^2.3.3
 
-  # Biometría → TODO. Para el MVP solo PIN local.
-  # local_auth pull-ea objective_c (build hook iOS) que falla en Windows con
-  # paths con espacios; lo reactivamos cuando se reubique el SDK o cuando
-  # local_auth deje de depender de objective_c.
 
   # Routing declarativo con redirect on-unauth.
   go_router: ^14.6.2
@@ -84,6 +79,10 @@ dependencies:
   # Información del dispositivo Android (modelo, marca) para componer el
   # deviceName legible que se muestra al ROOT al aprobar acceso.
   device_info_plus: ^11.2.0
+
+  # Biometría (huella) para desbloquear la app. Requiere que MainActivity
+  # extienda FlutterFragmentActivity: el diálogo de Android necesita un
+  # FragmentActivity y con FlutterActivity la huella falla.
   local_auth: ^3.0.2
 
 dev_dependencies:

@@ -9,7 +9,6 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@fastify/multipart": "^9.3.0",
     "date-fns": "^4.1.0",
     "leaflet": "^1.9.4",
     "next": "^16.1.6",
