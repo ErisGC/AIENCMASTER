@@ -46,7 +46,10 @@ async function adminAnnouncementsReq<T>(
 export type { Announcement, AnnouncementDetail };
 
 export function adminGetAnnouncements() {
-  return adminAnnouncementsReq<Announcement[]>('/announcements/admin/all');
+  // Ruta canónica del panel. Antes se usaba `/announcements/admin/all`, una
+  // duplicada que colgaba del controlador público, devolvía los anuncios sin
+  // sus adjuntos y no compartía la cadena de guardas del resto de `/admin`.
+  return adminAnnouncementsReq<Announcement[]>('/admin/announcements');
 }
 
 export function adminGetAnnouncementById(id: string) {

@@ -42,13 +42,38 @@ const ALLOWED_VIDEO_MIMES = new Set([
 
 const ALLOWED_PDF_MIMES = new Set(["application/pdf"]);
 
-/** Magic-byte signatures used to verify content matches the declared mime. */
-const MAGIC_BYTES: Array<{ mime: string; bytes: number[] }> = [
-  { mime: "image/jpeg", bytes: [0xff, 0xd8, 0xff] },
-  { mime: "image/png", bytes: [0x89, 0x50, 0x4e, 0x47] },
-  { mime: "image/gif", bytes: [0x47, 0x49, 0x46, 0x38] },
-  { mime: "image/webp", bytes: [0x52, 0x49, 0x46, 0x46] }, // RIFF...WEBP
-  { mime: "application/pdf", bytes: [0x25, 0x50, 0x44, 0x46] }, // %PDF
+/**
+ * Firmas de contenido para comprobar que el archivo es lo que dice ser.
+ *
+ * Cada firma puede tener varios tramos con su posición, porque no todos los
+ * formatos se identifican con los primeros bytes: WEBP es un contenedor RIFF y
+ * su marca propia está en la posición 8. Comprobar sólo "RIFF" dejaba pasar
+ * cualquier otro contenedor RIFF (un WAV o un AVI) declarado como imagen.
+ */
+const MAGIC_BYTES: Array<{
+  mime: string;
+  segments: Array<{ offset: number; bytes: number[] }>;
+}> = [
+  { mime: "image/jpeg", segments: [{ offset: 0, bytes: [0xff, 0xd8, 0xff] }] },
+  {
+    mime: "image/png",
+    segments: [{ offset: 0, bytes: [0x89, 0x50, 0x4e, 0x47] }],
+  },
+  {
+    mime: "image/gif",
+    segments: [{ offset: 0, bytes: [0x47, 0x49, 0x46, 0x38] }],
+  },
+  {
+    mime: "image/webp",
+    segments: [
+      { offset: 0, bytes: [0x52, 0x49, 0x46, 0x46] }, // "RIFF"
+      { offset: 8, bytes: [0x57, 0x45, 0x42, 0x50] }, // "WEBP"
+    ],
+  },
+  {
+    mime: "application/pdf",
+    segments: [{ offset: 0, bytes: [0x25, 0x50, 0x44, 0x46] }], // "%PDF"
+  },
 ];
 
 type Kind = "image" | "video" | "pdf";
@@ -70,7 +95,11 @@ function verifyMagicBytes(buffer: Buffer, mimetype: string): boolean {
   if (matches.length === 0) {
     return true; // unknown mapping — let cloudinary handle it
   }
-  return matches.some((m) => m.bytes.every((byte, i) => buffer[i] === byte));
+  return matches.some((m) =>
+    m.segments.every((seg) =>
+      seg.bytes.every((byte, i) => buffer[seg.offset + i] === byte),
+    ),
+  );
 }
 
 export interface ValidatableFile {

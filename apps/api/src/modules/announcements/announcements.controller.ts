@@ -1,13 +1,5 @@
-import {
-  Controller,
-  Get,
-  Param,
-  ParseUUIDPipe,
-  Query,
-  UseGuards,
-} from "@nestjs/common";
+import { Controller, Get, Param, ParseUUIDPipe, Query } from "@nestjs/common";
 
-import { AdminAuthGuard } from "../admin-security/guards/admin-auth.guard";
 import { AnnouncementsService } from "./announcements.service";
 
 // Hard clamps para evitar DoS por paginación abusiva.
@@ -23,11 +15,11 @@ export class AnnouncementsController {
     return this.service.findLatestFive();
   }
 
-  @Get("admin/all")
-  @UseGuards(AdminAuthGuard)
-  findAllForAdmin() {
-    return this.service.findAll();
-  }
+  // Aquí vivía `GET admin/all`, un listado administrativo colgado del
+  // controlador público. Duplicaba `GET /admin/announcements` pero devolvía
+  // los anuncios sin sus adjuntos, no compartía la cadena de guardas del resto
+  // del panel, y su método se llamaba `findAllForAdmin` mientras llamaba a
+  // `findAll`. Se retiró y el panel usa la ruta canónica.
 
   @Get(":id")
   getById(@Param("id", new ParseUUIDPipe({ version: "4" })) id: string) {

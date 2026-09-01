@@ -75,19 +75,30 @@ export async function guestStart(form: FormData) {
   return out;
 }
 
-export function guestConversations() {
+/**
+ * El identificador del visitante viaja en una cabecera, no en la dirección.
+ *
+ * Este valor da acceso al historial de conversación de quien escribe. En la
+ * dirección quedaba registrado en los accesos del servidor, del proxy y de
+ * cualquier intermediario, de modo que quien leyera esos registros podía
+ * suplantar a un visitante. En una cabecera no se registra.
+ */
+function tokenHeader(): Record<string, string> {
   const token = guestToken();
-  if (!token) return Promise.resolve<SupportConversation[]>([]);
-  return req<SupportConversation[]>(
-    `/support/guest/conversations?token=${encodeURIComponent(token)}`,
-  );
+  return token ? { 'X-Aienc-Support-Token': token } : {};
+}
+
+export function guestConversations() {
+  if (!guestToken()) return Promise.resolve<SupportConversation[]>([]);
+  return req<SupportConversation[]>('/support/guest/conversations', {
+    headers: tokenHeader(),
+  });
 }
 
 export function guestThread(id: string) {
-  const token = guestToken() ?? '';
-  return req<SupportThread>(
-    `/support/guest/conversations/${id}?token=${encodeURIComponent(token)}`,
-  );
+  return req<SupportThread>(`/support/guest/conversations/${id}`, {
+    headers: tokenHeader(),
+  });
 }
 
 export function guestReply(id: string, form: FormData) {

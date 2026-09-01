@@ -153,6 +153,27 @@ export function validateEnvironment(config: EnvironmentInput) {
   }
   const webOrigin = webOrigins.join(",");
 
+  // El valor normalizado se devuelve a process.env.
+  //
+  // Aquí se recorta cada dominio a su origen (sin barra final ni ruta), pero
+  // ese resultado sólo llegaba al almacén de configuración de Nest, que nadie
+  // consulta: el resto del código lee process.env directamente. Con
+  // `WEB_ORIGIN=https://aienc.org/` la validación pasaba —el origen es
+  // válido— y luego CORS comparaba contra el texto con barra, que nunca
+  // coincide con la cabecera del navegador: todas las peticiones quedaban
+  // bloqueadas sin un solo error en el arranque.
+  if (webOrigins.length > 0) {
+    process.env.WEB_ORIGIN = webOrigin;
+  }
+
+  // Cloudinary guarda TODAS las imágenes, audios y documentos. Sin
+  // credenciales el servidor arrancaba igual y sólo fallaba a mitad de una
+  // subida, en producción y de cara al usuario. Es tan obligatorio como el
+  // secreto de sesión, así que se exige al arrancar.
+  readString(config, "CLOUDINARY_CLOUD_NAME", errors);
+  readString(config, "CLOUDINARY_API_KEY", errors);
+  readString(config, "CLOUDINARY_API_SECRET", errors);
+
   let adminBootstrapSecret = "";
   if (adminBootstrapEnabled) {
     adminBootstrapSecret = readSecret(config, "ADMIN_BOOTSTRAP_SECRET", errors);

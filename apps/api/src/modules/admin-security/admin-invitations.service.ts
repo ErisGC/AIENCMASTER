@@ -315,7 +315,6 @@ export class AdminInvitationsService {
     }
 
     const tokenHash = hashToken(token);
-    const passwordHash = await bcrypt.hash(password, 12);
 
     /*
      * Toda la aceptación corre en una transacción SERIALIZABLE con lock
@@ -386,6 +385,13 @@ export class AdminInvitationsService {
           );
         }
       }
+
+      // El hasheo de la contraseña se hace AQUÍ, después de comprobar que la
+      // invitación existe y sirve. Hacerlo antes regalaba a cualquiera, sin
+      // autenticación, unos 100 ms de procesador por petición con un token
+      // inventado: una forma barata de saturar el servidor. Estos endpoints
+      // públicos no tienen límite de intentos.
+      const passwordHash = await bcrypt.hash(password, 12);
 
       const account = accountRepo.create({
         username: invitation.username,

@@ -166,8 +166,32 @@ export class PublicSupportController {
     });
   }
 
+  /**
+   * Identificador del visitante, de la cabecera y con respaldo en la
+   * dirección.
+   *
+   * Este valor da acceso al historial de quien escribe. En la dirección
+   * quedaba registrado en los accesos del servidor, del proxy y de cualquier
+   * intermediario, así que quien leyera esos registros podía suplantar a un
+   * visitante; por eso el portal lo manda ahora en una cabecera.
+   *
+   * Se sigue aceptando en la dirección para no dejar tirado a quien tenga el
+   * portal viejo cargado en el navegador mientras se despliega. Se puede
+   * retirar pasados unos días.
+   */
+  private guestTokenDe(
+    cabecera: string | undefined,
+    enDireccion: string | undefined,
+  ): string {
+    return (cabecera ?? enDireccion ?? "").trim();
+  }
+
   @Get("guest/conversations")
-  list(@Query("token") token: string) {
+  list(
+    @Headers("x-aienc-support-token") tokenCabecera: string | undefined,
+    @Query("token") tokenDireccion: string | undefined,
+  ) {
+    const token = this.guestTokenDe(tokenCabecera, tokenDireccion);
     if (!token) throw new BadRequestException("Falta el identificador.");
     return this.service.guestList(token);
   }
@@ -175,9 +199,12 @@ export class PublicSupportController {
   @Get("guest/conversations/:id")
   thread(
     @Param("id", new ParseUUIDPipe({ version: "4" })) id: string,
-    @Query("token") token: string,
+    @Headers("x-aienc-support-token") tokenCabecera: string | undefined,
+    @Query("token") tokenDireccion: string | undefined,
   ) {
-    return this.service.threadForAuthor(id, { guestToken: token });
+    return this.service.threadForAuthor(id, {
+      guestToken: this.guestTokenDe(tokenCabecera, tokenDireccion),
+    });
   }
 
   @Post("guest/conversations/:id/messages")
