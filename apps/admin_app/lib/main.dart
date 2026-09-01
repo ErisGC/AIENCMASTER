@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -35,6 +37,7 @@ class AdminApp extends StatefulWidget {
 class _AdminAppState extends State<AdminApp> with WidgetsBindingObserver {
   late final GoRouter _router;
   late final AppLinks _appLinks;
+  StreamSubscription<Uri>? _linkSub;
 
   /// Momento en que la app pasó a segundo plano. Se usa para exigir
   /// re-autenticación local si vuelve tras más de [_inactivityThreshold].
@@ -52,12 +55,15 @@ class _AdminAppState extends State<AdminApp> with WidgetsBindingObserver {
     _appLinks.getInitialLink().then((uri) {
       if (uri != null) _handleDeepLink(uri);
     });
-    // Deep link entrante mientras la app está corriendo.
-    _appLinks.uriLinkStream.listen(_handleDeepLink);
+    // Deep link entrante mientras la app está corriendo. Se guarda la
+    // suscripción para poder cancelarla: sin eso, un remontaje del widget raíz
+    // dejaría dos escuchas activas y cada enlace se procesaría por duplicado.
+    _linkSub = _appLinks.uriLinkStream.listen(_handleDeepLink);
   }
 
   @override
   void dispose() {
+    _linkSub?.cancel();
     Locator.authState.removeListener(_consumePendingLink);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();

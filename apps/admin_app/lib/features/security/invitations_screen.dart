@@ -51,6 +51,17 @@ class _InvitationsScreenState extends State<InvitationsScreen> {
     }
   }
 
+  /// Describe cuánto vale la invitación a partir de la fecha que da el
+  /// servidor, en vez de repetir un número escrito a mano que podría mentir.
+  String _vigencia(DateTime expiraEn) {
+    final restan = expiraEn.difference(DateTime.now());
+    if (restan.isNegative) return 'Ya caducó';
+    final horas = restan.inHours;
+    if (horas >= 48) return 'Es válido por ${(horas / 24).round()} días';
+    if (horas >= 1) return 'Es válido por $horas horas';
+    return 'Caduca en menos de una hora';
+  }
+
   Future<void> _showLinkDialog(CreatedInvitation inv) async {
     // Construimos el deep-link a la app para que el admin lo comparta. La web
     // también acepta el mismo token via /admin/invite/[token].
@@ -87,10 +98,12 @@ class _InvitationsScreenState extends State<InvitationsScreen> {
                     ),
                   ),
                 ),
-              const Text(
-                'Comparte este enlace con la persona invitada. Es válido por '
-                '72 horas y sólo se puede usar una vez. ',
-                style: TextStyle(height: 1.45),
+              Text(
+                // La caducidad la decide el servidor; escribirla a mano hacía
+                // que el texto mintiera si allí cambiaba.
+                'Comparte este enlace con la persona invitada. '
+                '${_vigencia(inv.expiresAt)} y sólo se puede usar una vez. ',
+                style: const TextStyle(height: 1.45),
               ),
               const SizedBox(height: 8),
               const Text(

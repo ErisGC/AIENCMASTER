@@ -286,12 +286,17 @@ class _NewReportScreenState extends State<NewReportScreen> {
                     onChanged: (v) => setState(() => _churchId = v),
                   )
                 else
-                  TextField(
-                    enabled: false,
-                    controller: TextEditingController(
-                        text: assignments.isNotEmpty
-                            ? (assignments.first.churchName ?? '—')
-                            : 'Sin iglesia asignada'),
+                  // Sólo muestra el nombre; antes era un campo deshabilitado
+                  // con un controlador creado dentro del build, que se
+                  // instanciaba en cada repintado y nunca se liberaba.
+                  InputDecorator(
+                    decoration: const InputDecoration(),
+                    child: Text(
+                      assignments.isNotEmpty
+                          ? (assignments.first.churchName ?? '—')
+                          : 'Sin iglesia asignada',
+                      style: const TextStyle(color: GemPalette.textMuted),
+                    ),
                   ),
                 const SizedBox(height: 14),
                 _label('Título'),

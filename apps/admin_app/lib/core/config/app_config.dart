@@ -21,7 +21,21 @@ class AppConfig {
     defaultValue: 'aiencadmin://app',
   );
 
-  /// Identificador local que enviamos como user-agent visible para que el
-  /// backend pueda diferenciar la app vs un navegador.
-  static const String userAgentTag = 'AIENCAdmin/0.1 (Android; Flutter)';
+  /// Identificador que enviamos como user-agent para que el backend pueda
+  /// distinguir la app de un navegador.
+  ///
+  /// La versión se rellena al arrancar con la real del paquete
+  /// ([establecerVersion]). El valor de aquí es sólo el respaldo por si esa
+  /// lectura fallara: cuando estaba escrito a mano se quedó en 0.1 mientras la
+  /// app iba por la 0.3, así que los registros del servidor mentían sobre qué
+  /// versión estaba usando cada administrador — justo el dato que se necesita
+  /// cuando alguien reporta un fallo.
+  static String userAgentTag = 'AIENCAdmin/desconocida (Android; Flutter)';
+
+  /// La llama el arranque con la versión leída del paquete.
+  static void establecerVersion(String version) {
+    final limpia = version.trim();
+    if (limpia.isEmpty) return;
+    userAgentTag = 'AIENCAdmin/$limpia (Android; Flutter)';
+  }
 }

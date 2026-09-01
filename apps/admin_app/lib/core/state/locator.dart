@@ -1,4 +1,7 @@
+import 'package:package_info_plus/package_info_plus.dart';
+
 import '../api/api_client.dart';
+import '../config/app_config.dart';
 import '../services/auth_service.dart';
 import '../services/data_services.dart';
 import '../services/device_identity_service.dart';
@@ -23,6 +26,19 @@ class Locator {
   static late final AuthState authState;
 
   static Future<void> init() async {
+    // La versión real se resuelve ANTES de crear el cliente HTTP, que la usa
+    // en su user-agent. Antes iba escrita a mano y se quedó en 0.1 mientras la
+    // app iba por la 0.3, de modo que los registros del servidor mentían sobre
+    // qué versión usaba cada administrador — justo el dato que hace falta
+    // cuando alguien reporta un fallo. Si la lectura falla, se sigue adelante
+    // con el valor de respaldo.
+    try {
+      final info = await PackageInfo.fromPlatform();
+      AppConfig.establecerVersion('${info.version}+${info.buildNumber}');
+    } catch (_) {
+      // Sin versión legible: no es motivo para impedir el arranque.
+    }
+
     await ApiClient.init();
     device = DeviceIdentityService();
     auth = AuthService(ApiClient.I, device);

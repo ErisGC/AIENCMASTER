@@ -81,8 +81,14 @@ class ApiClient {
       BaseOptions(
         baseUrl: AppConfig.apiBaseUrl,
         connectTimeout: const Duration(seconds: 12),
-        sendTimeout: const Duration(seconds: 20),
-        receiveTimeout: const Duration(seconds: 20),
+        // El envío cubre la subida COMPLETA, no la inactividad. Con 20 s, un
+        // estudio en audio de 25 MB exigía unos 10 Mbps de subida sostenidos:
+        // fuera de una red rápida moría por tiempo agotado y el usuario veía
+        // "sin conexión con el servidor", que además era engañoso. Cinco
+        // minutos dan margen a una subida móvil normal sin dejar la petición
+        // colgada para siempre.
+        sendTimeout: const Duration(minutes: 5),
+        receiveTimeout: const Duration(seconds: 30),
         headers: <String, dynamic>{
           HttpHeaders.acceptHeader: 'application/json',
           HttpHeaders.contentTypeHeader: 'application/json',
