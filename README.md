@@ -136,8 +136,9 @@ cd apps/admin_app && flutter pub get && flutter run
 - Web: <http://localhost:3000>
 - API: <http://localhost:3001>
 
-La primera vez se crea el esquema automáticamente (`DB_SYNCHRONIZE=true`).
-Después se va a `/admin/bootstrap` para crear la cuenta ROOT inicial.
+El esquema lo crean las migraciones, que corren solas al arrancar la API
+(`migrationsRun: true`): basta con una base de datos vacía. Después se va a
+`/admin/bootstrap` para crear la cuenta ROOT inicial.
 
 ---
 
@@ -261,8 +262,10 @@ Receta completa con env vars, secrets y workflow CI en
 - **`tokenVersion` en cada cuenta** se incrementa al cambiar el rol → todos
   los JWT viejos quedan inválidos inmediatamente sin necesidad de un store
   de revocación.
-- **Sin migraciones TypeORM** todavía — `synchronize:false` con esquema
-  manual la primera vez. Sistema de migraciones queda como TODO.
+- **Migraciones TypeORM** que se aplican solas al arrancar. La primera
+  (`EsquemaBase`) crea el esquema completo y no hace nada si ya existe, así
+  que el sistema se puede levantar desde una base vacía. En producción
+  `synchronize` está siempre en `false`.
 - **Cloudinary como CDN externo** — la API nunca almacena archivos. Eso
   permite que el backend se replique horizontalmente sin estado.
 - **Bootstrap idempotente al arrancar**: un `AdminAssignmentsMigratorService`
