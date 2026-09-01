@@ -113,6 +113,10 @@ export class ChurchesService {
   ) {
     const uploadedPublicIds: string[] = [];
 
+    // Los identificadores de Cloudinary se arman aparte, no sobre el DTO: el
+    // cuerpo de la petición no los declara y no debe poder influir en ellos.
+    const imagenes: Partial<Church> = {};
+
     try {
       if (files?.mainImage) {
         const upload = await this.cloudinary.uploadToFolder(
@@ -121,8 +125,8 @@ export class ChurchesService {
         );
 
         uploadedPublicIds.push(upload.public_id);
-        dto.mainImageUrl = upload.secure_url;
-        dto.mainImagePublicId = upload.public_id;
+        imagenes.mainImageUrl = upload.secure_url;
+        imagenes.mainImagePublicId = upload.public_id;
       }
 
       if (files?.coverImage) {
@@ -132,11 +136,11 @@ export class ChurchesService {
         );
 
         uploadedPublicIds.push(upload.public_id);
-        dto.coverImageUrl = upload.secure_url;
-        dto.coverImagePublicId = upload.public_id;
+        imagenes.coverImageUrl = upload.secure_url;
+        imagenes.coverImagePublicId = upload.public_id;
       }
 
-      const entity = this.repo.create(dto);
+      const entity = this.repo.create({ ...dto, ...imagenes });
       return this.repo.save(entity);
     } catch (err) {
       for (const publicId of uploadedPublicIds) {
@@ -159,6 +163,11 @@ export class ChurchesService {
     },
   ) {
     const entity = await this.findByIdForAdmin(id);
+
+    // Los campos de texto se aplican ANTES de tocar las imágenes: así lo que
+    // se acaba de subir a Cloudinary siempre gana, y ningún campo del cuerpo
+    // puede dejar la fila apuntando a un archivo que no es el suyo.
+    Object.assign(entity, dto);
 
     if (files?.mainImage) {
       if (entity.mainImagePublicId) {
@@ -196,7 +205,6 @@ export class ChurchesService {
       entity.coverImagePublicId = upload.public_id;
     }
 
-    Object.assign(entity, dto);
     return this.repo.save(entity);
   }
 

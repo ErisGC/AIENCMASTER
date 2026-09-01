@@ -48,25 +48,20 @@ export class CreateChurchDto {
   @MaxLength(2048)
   mapsUrl?: string | null;
 
-  @IsOptional()
-  @IsString()
-  @MaxLength(2048)
-  mainImageUrl?: string | null;
-
-  @IsOptional()
-  @IsString()
-  @MaxLength(255)
-  mainImagePublicId?: string | null;
-
-  @IsOptional()
-  @IsString()
-  @MaxLength(2048)
-  coverImageUrl?: string | null;
-
-  @IsOptional()
-  @IsString()
-  @MaxLength(255)
-  coverImagePublicId?: string | null;
+  // Las imágenes NO se declaran aquí a propósito: `mainImageUrl`,
+  // `mainImagePublicId`, `coverImageUrl` y `coverImagePublicId` los escribe el
+  // servidor al subir el archivo a Cloudinary, y nadie más debe poder tocarlos.
+  //
+  // Cuando estaban en el DTO, un administrador con permiso para editar la
+  // iglesia podía enviar un identificador de Cloudinary cualquiera; en la
+  // siguiente edición con imagen, el servidor lo tomaba por la imagen anterior
+  // y la borraba, de modo que se podían destruir archivos de otras iglesias o
+  // los fondos del portal. Además, mandarlos junto con un archivo pisaba en la
+  // base de datos la imagen recién subida.
+  //
+  // Como la validación rechaza los campos no declarados, enviarlos ahora da un
+  // error claro en vez de pasar de largo. Ningún cliente los envía: la web y la
+  // app sólo los leen para mostrar la imagen.
 
   @IsOptional()
   @Type(() => Number)
