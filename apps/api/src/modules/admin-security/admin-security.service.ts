@@ -25,6 +25,7 @@ import { AdminDeviceScope } from "./enums/admin-device-scope.enum";
 import { AdminDeviceStatus } from "./enums/admin-device-status.enum";
 import { AdminRole } from "./enums/admin-role.enum";
 import {
+  ALL_CHURCH_PERMISSIONS,
   ChurchPermission,
   GlobalPermission,
   PERMISSION_CATALOG,
@@ -524,18 +525,55 @@ export class AdminSecurityService {
       throw new BadRequestException("Username already exists");
     }
 
-    const account = await this.accountRepo.save(
-      this.accountRepo.create({
-        username: dto.username.trim().toLowerCase(),
-        passwordHash: await this.sessionService.hashPassword(dto.password),
-        displayName: dto.displayName.trim(),
-        role: AdminRole.ADMIN,
-        isActive: true,
-        tokenVersion: 1,
-        assignedChurchId: dto.assignedChurchId ?? null,
-      }),
-    );
+    if (dto.assignedChurchId) {
+      const church = await this.churchRepo.findOne({
+        where: { id: dto.assignedChurchId },
+      });
+      if (!church) throw new NotFoundException("Iglesia no encontrada");
+    }
 
+    const passwordHash = await this.sessionService.hashPassword(dto.password);
+
+    // La cuenta y su asignación de iglesia se guardan juntas.
+    //
+    // Antes sólo se escribía `assignedChurchId`, que es el campo antiguo; los
+    // permisos por iglesia se leen de `admin_church_assignments`, así que la
+    // cuenta recién creada no podía hacer nada hasta que el servidor se
+    // reiniciaba: en ese arranque, el migrador veía el campo suelto y le creaba
+    // la asignación con TODOS los permisos. Es decir, la cuenta pasaba de
+    // inservible a tenerlo todo sin que nadie lo decidiera.
+    const account = await this.dataSource.transaction(async (manager) => {
+      const saved = await manager.getRepository(AdminAccount).save(
+        manager.getRepository(AdminAccount).create({
+          username: dto.username.trim().toLowerCase(),
+          passwordHash,
+          displayName: dto.displayName.trim(),
+          role: AdminRole.ADMIN,
+          isActive: true,
+          tokenVersion: 1,
+          assignedChurchId: dto.assignedChurchId ?? null,
+        }),
+      );
+
+      if (dto.assignedChurchId) {
+        const assignmentRepo = manager.getRepository(AdminChurchAssignment);
+        await assignmentRepo.save(
+          assignmentRepo.create({
+            adminAccountId: saved.id,
+            churchId: dto.assignedChurchId,
+            // Mismo criterio que las invitaciones: entra con los permisos de
+            // su iglesia y el principal los recorta desde la pantalla de
+            // permisos. Se decide aquí, no en un arranque posterior.
+            permissions: [...ALL_CHURCH_PERMISSIONS],
+          }),
+        );
+      }
+
+      return saved;
+    });
+
+    // La auditoría va fuera de la transacción: si fallara dentro, dejaría la
+    // transacción abortada y el guardado se perdería en silencio.
     await this.auditService.log({
       actorAdminAccountId: actor.account.id,
       actorDeviceId: actor.device.id,
@@ -543,9 +581,12 @@ export class AdminSecurityService {
       targetType: "ADMIN_ACCOUNT",
       targetId: account.id,
       description: `Cuenta admin creada: ${account.username}`,
+      metadata: dto.assignedChurchId
+        ? { churchId: dto.assignedChurchId, permissions: ALL_CHURCH_PERMISSIONS }
+        : undefined,
     });
 
-    return this.serializeAccount(account);
+    return this.getAccountWithAssignments(account.id);
   }
 
   async updateAdminAccount(
@@ -575,11 +616,36 @@ export class AdminSecurityService {
       account.isActive = dto.isActive;
     }
 
+    // Cambiar la iglesia asignada debe crear también la asignación real, que
+    // es de donde salen los permisos. Sin esto, la cuenta quedaba sin permisos
+    // sobre la iglesia nueva hasta el siguiente reinicio del servidor.
+    let asignacionNueva: string | null = null;
     if (dto.assignedChurchId !== undefined && account.role !== AdminRole.ROOT) {
+      if (dto.assignedChurchId) {
+        const church = await this.churchRepo.findOne({
+          where: { id: dto.assignedChurchId },
+        });
+        if (!church) throw new NotFoundException("Iglesia no encontrada");
+
+        const yaAsignada = await this.assignmentRepo.findOne({
+          where: { adminAccountId: account.id, churchId: dto.assignedChurchId },
+        });
+        if (!yaAsignada) asignacionNueva = dto.assignedChurchId;
+      }
       account.assignedChurchId = dto.assignedChurchId ?? null;
     }
 
     await this.accountRepo.save(account);
+
+    if (asignacionNueva) {
+      await this.assignmentRepo.save(
+        this.assignmentRepo.create({
+          adminAccountId: account.id,
+          churchId: asignacionNueva,
+          permissions: [...ALL_CHURCH_PERMISSIONS],
+        }),
+      );
+    }
 
     const actionType =
       dto.isActive === false && wasActive
@@ -601,7 +667,9 @@ export class AdminSecurityService {
       },
     });
 
-    return this.serializeAccount(account);
+    // Con las asignaciones cargadas, para que el panel vea de inmediato la
+    // iglesia que se acaba de asignar.
+    return this.getAccountWithAssignments(account.id);
   }
 
   async resetAdminPassword(
