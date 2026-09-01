@@ -113,12 +113,12 @@ export class ChurchStudiesService {
     if (!study) throw new NotFoundException("Estudio no encontrado");
 
     if (study.audioPublicId) {
-      const rt =
-        study.audioResourceType === "image" ||
-        study.audioResourceType === "raw"
-          ? study.audioResourceType
-          : "video";
-      await this.cloudinary.delete(study.audioPublicId, rt);
+      await this.cloudinary.delete(
+        study.audioPublicId,
+        // El audio se archiva como `video`; si el valor guardado se perdiera,
+        // se conserva ese tipo por ser el que Cloudinary usa para audio.
+        CloudinaryService.resourceTypeFor(study.audioResourceType ?? "video"),
+      );
     }
 
     await this.repo.remove(study);

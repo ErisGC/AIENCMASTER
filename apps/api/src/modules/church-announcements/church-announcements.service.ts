@@ -157,7 +157,10 @@ export class ChurchAnnouncementsService {
 
     // Borrar archivos en Cloudinary primero
     for (const att of announcement.attachments ?? []) {
-      await this.cloudinary.delete(att.publicId);
+      await this.cloudinary.delete(
+        att.publicId,
+        CloudinaryService.resourceTypeFor(att.resourceType),
+      );
     }
 
     await this.repo.remove(announcement);

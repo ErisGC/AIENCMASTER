@@ -97,7 +97,12 @@ export class AnnouncementsService {
     const attachments = entity.attachments ?? [];
     for (const att of attachments) {
       try {
-        await this.cloudinary.delete(att.publicId);
+        // Con el tipo con el que se guardó: los videos se archivan como
+        // `video` y borrarlos como imagen no falla, simplemente no borra.
+        await this.cloudinary.delete(
+          att.publicId,
+          CloudinaryService.resourceTypeFor(att.resourceType),
+        );
       } catch {
         // Si falla Cloudinary, no detenemos el borrado de BD:
         // pero quedaría un huérfano externo. Si quieres "modo estricto",
@@ -114,8 +119,6 @@ export class AnnouncementsService {
 
   async createWithFiles(dto: CreateAnnouncementDto, files: IncomingFile[]) {
     // 0) Crear anuncio sin adjuntos (todavía no persistimos definitivo)
-    const uploadedPublicIds: string[] = [];
-
     const uploadedResults: Array<{
       file: IncomingFile;
       uploadResult: Awaited<ReturnType<CloudinaryService["upload"]>>;
@@ -126,7 +129,6 @@ export class AnnouncementsService {
       if (files?.length) {
         for (const file of files) {
           const uploadResult = await this.cloudinary.upload(file.buffer);
-          uploadedPublicIds.push(uploadResult.public_id);
           uploadedResults.push({ uploadResult, file });
         }
       }
@@ -162,9 +164,12 @@ export class AnnouncementsService {
       return saved;
     } catch (err) {
       // 3) Limpieza: si algo falla, borrar lo subido a Cloudinary
-      for (const publicId of uploadedPublicIds) {
+      for (const { uploadResult } of uploadedResults) {
         try {
-          await this.cloudinary.delete(publicId);
+          await this.cloudinary.delete(
+            uploadResult.public_id,
+            CloudinaryService.resourceTypeFor(uploadResult.resource_type),
+          );
         } catch {
           // Si falla la limpieza, no ocultamos el error original.
         }

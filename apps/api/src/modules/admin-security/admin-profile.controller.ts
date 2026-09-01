@@ -97,9 +97,11 @@ export class AdminProfileController {
       throw new BadRequestException("Cuenta no encontrada");
     }
 
-    if (account.profilePhotoPublicId) {
-      await this.cloudinary.delete(account.profilePhotoPublicId);
-    }
+    // Se sube la nueva ANTES de borrar la anterior. Al revés, un fallo de red
+    // o de cuota en la subida dejaba la cuenta apuntando a un archivo ya
+    // borrado: la foto quedaba rota de forma permanente hasta volver a
+    // subirla a mano.
+    const anterior = account.profilePhotoPublicId;
 
     const uploaded = await this.cloudinary.uploadToFolder(
       photo.buffer,
@@ -108,6 +110,10 @@ export class AdminProfileController {
     account.profilePhotoUrl = uploaded.secure_url;
     account.profilePhotoPublicId = uploaded.public_id;
     await this.accountRepo.save(account);
+
+    if (anterior) {
+      await this.cloudinary.delete(anterior);
+    }
 
     await this.auditService.log({
       actorAdminAccountId: actor.account.id,

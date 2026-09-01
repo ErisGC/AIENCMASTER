@@ -88,6 +88,21 @@ export class CloudinaryService implements OnModuleInit {
    * images use the default. Passing the wrong type silently no-ops on
    * Cloudinary's side, which is why we thread it through.
    */
+  /**
+   * Traduce el `resource_type` guardado al que acepta el borrado.
+   *
+   * Cloudinary clasifica los audios como `video`, y borrar con el tipo
+   * equivocado no falla: simplemente no borra nada. Por eso el tipo con el que
+   * se subió el archivo se guarda en la base de datos y se usa al eliminarlo.
+   * Cualquier valor desconocido cae a `image`, que es el tipo por defecto.
+   */
+  static resourceTypeFor(
+    raw: string | null | undefined,
+  ): "image" | "video" | "raw" {
+    if (raw === "video" || raw === "raw") return raw;
+    return "image";
+  }
+
   async delete(
     publicId: string,
     resourceType: "image" | "video" | "raw" = "image",
