@@ -13,7 +13,6 @@ import {
   adminAssignChurch,
   adminGetPermissionsCatalog,
   adminRemoveChurchAssignment,
-  adminUpdateAccountRole,
   adminUpdateChurchPermissions,
   adminUpdateGlobalPermissions,
   type ChurchPermission,
@@ -38,7 +37,6 @@ export function PermissionsPageClient({ accountId }: Props) {
   const [savingGlobal, setSavingGlobal] = useState(false);
   const [savingChurch, setSavingChurch] = useState<string | null>(null);
   const [actorAccountId, setActorAccountId] = useState<string | null>(null);
-  const [savingRole, setSavingRole] = useState(false);
 
   // Estado local de los permisos globales (editable antes de guardar)
   const [draftGlobal, setDraftGlobal] = useState<GlobalPermission[]>([]);
@@ -80,48 +78,6 @@ export function PermissionsPageClient({ accountId }: Props) {
   }, [refresh]);
 
   const isSelf = data?.account.id === actorAccountId;
-
-  async function handleRoleChange(newRole: 'ROOT' | 'ADMIN') {
-    if (savingRole || !data) return;
-    const current = data.account.role;
-    if (current === newRole) return;
-
-    // Doble confirmación. Promover a ROOT y degradar a ADMIN son acciones
-    // críticas que invalidan la sesión activa de la cuenta afectada.
-    const confirm1 =
-      newRole === 'ROOT'
-        ? window.confirm(
-            `Vas a promover a @${data.account.username} a administrador principal (ROOT). ` +
-              `Tendrá acceso total: todas las iglesias, todos los admins, y podrá invitar a más cuentas ROOT. ` +
-              `¿Continuar?`,
-          )
-        : window.confirm(
-            `Vas a degradar a @${data.account.username} a administrador (sin ROOT). ` +
-              `Su sesión actual quedará invalidada y tendrá que iniciar sesión de nuevo. ` +
-              `Si no le asignas iglesias, no podrá operar. ¿Continuar?`,
-          );
-    if (!confirm1) return;
-    const confirm2 = window.confirm(
-      newRole === 'ROOT'
-        ? `Confirmación final: escribe en tu mente "promover" y acepta.`
-        : `Confirmación final: la cuenta perderá privilegios ROOT inmediatamente.`,
-    );
-    if (!confirm2) return;
-
-    setSavingRole(true);
-    try {
-      await adminUpdateAccountRole(accountId, newRole);
-      await refresh();
-    } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : 'No se pudo cambiar el rol de la cuenta.',
-      );
-    } finally {
-      setSavingRole(false);
-    }
-  }
 
   const isRoot = data?.account.role === 'ROOT';
 
@@ -297,35 +253,26 @@ export function PermissionsPageClient({ accountId }: Props) {
               {isRoot ? 'Administrador principal' : 'Administrador'}
             </span>
           </div>
-          {isSelf ? (
-            <span className={styles.roleSelfHint}>
-              No puedes cambiar tu propio rol. Pide a otra cuenta ROOT que lo
-              haga.
-            </span>
-          ) : isRoot ? (
-            <button
-              type="button"
-              className={styles.roleDemoteBtn}
-              onClick={() => handleRoleChange('ADMIN')}
-              disabled={savingRole}
-            >
-              {savingRole ? 'Cambiando…' : 'Degradar a administrador'}
-            </button>
-          ) : (
-            <button
-              type="button"
-              className={styles.rolePromoteBtn}
-              onClick={() => handleRoleChange('ROOT')}
-              disabled={savingRole}
-            >
-              {savingRole ? 'Cambiando…' : 'Promover a principal (ROOT)'}
-            </button>
-          )}
+          {/*
+            Aquí había botones para promover y degradar. El sistema admite una
+            sola cuenta principal —lo garantiza un índice en la base de datos y
+            una comprobación al arrancar—, así que ninguna de las dos
+            operaciones podía completarse: tras dos confirmaciones en pantalla,
+            el servidor devolvía un error sin explicación. Se retiran los
+            botones y se dice lo que sí se puede hacer.
+          */}
+          <span className={styles.roleSelfHint}>
+            {isSelf
+              ? 'Esta es tu propia cuenta.'
+              : 'El rol de una cuenta no se cambia desde aquí.'}
+          </span>
         </div>
         <p className={styles.roleFootnote}>
-          Cualquier cambio de rol invalida la sesión activa de la cuenta
-          afectada: deberá iniciar sesión de nuevo. Queda registro en el
-          historial de seguridad.
+          El sistema admite una sola cuenta de administrador principal, y por
+          eso su rol no se puede intercambiar entre cuentas. Para pasar esa
+          cuenta a otra persona se usa la recuperación de acceso del
+          administrador principal. Lo que sí se ajusta desde esta pantalla son
+          los permisos y las iglesias asignadas.
         </p>
       </section>
 

@@ -918,54 +918,29 @@ export class AdminSecurityService {
       );
     }
 
-    // Protección "último ROOT": al degradar, contamos cuántos ROOTs activos
-    // distintos del afectado quedarían. Si la cuenta a degradar es la única
-    // ROOT activa, bloqueamos.
-    if (newRole === AdminRole.ADMIN && account.role === AdminRole.ROOT) {
-      const remainingRoots = await this.accountRepo.count({
-        where: { role: AdminRole.ROOT, isActive: true },
-      });
-      // remainingRoots incluye al afectado; necesitamos al menos uno DIFERENTE
-      if (remainingRoots <= 1) {
-        throw new BadRequestException(
-          "No se puede degradar al último administrador principal. Promueve a otra cuenta ROOT antes.",
-        );
-      }
-    }
-
-    const previousRole = account.role;
-    account.role = newRole;
-    if (newRole === AdminRole.ROOT) {
-      // Limpiamos campos legados que sólo tienen sentido para ADMIN.
-      account.globalPermissions = [];
-      account.assignedChurchId = null;
-    }
-    // Bump de tokenVersion → cualquier JWT vigente queda inválido.
-    account.tokenVersion = (account.tokenVersion ?? 1) + 1;
-    await this.accountRepo.save(account);
-
-    await this.auditService.log({
-      actorAdminAccountId: actor.account.id,
-      actorDeviceId: actor.device.id,
-      actionType:
-        newRole === AdminRole.ROOT
-          ? "ROLE_PROMOTED_TO_ROOT"
-          : "ROLE_DEMOTED_TO_ADMIN",
-      targetType: "ADMIN_ACCOUNT",
-      targetId: account.id,
-      description:
-        newRole === AdminRole.ROOT
-          ? `Cuenta @${account.username} promovida a ROOT por @${actor.account.username}`
-          : `Cuenta @${account.username} degradada de ROOT a ADMIN por @${actor.account.username}`,
-      metadata: {
-        username: account.username,
-        previousRole,
-        newRole,
-        tokenVersion: account.tokenVersion,
-      },
-    });
-
-    return this.getAccountWithAssignments(accountId);
+    // El sistema admite UNA sola cuenta principal, y eso lo garantiza un
+    // índice único en la base de datos más un chequeo al arrancar que impide
+    // levantar la API si alguna vez hubiera dos.
+    //
+    // Con esa regla, este endpoint no podía funcionar en ninguno de sus dos
+    // sentidos y nadie lo había notado porque las pruebas simulaban un estado
+    // —dos cuentas principales a la vez— que la base de datos prohíbe:
+    //
+    //  - Promover a principal chocaba contra el índice y devolvía un error de
+    //    servidor sin explicación, después de dos confirmaciones en pantalla.
+    //  - Degradar exigía "más de una cuenta principal", que es justo lo
+    //    imposible.
+    //
+    // Se responde con el motivo real en vez de un fallo opaco. Traspasar la
+    // cuenta principal a otra persona es una operación distinta —degradar y
+    // promover en la misma transacción— que no está implementada; hoy el
+    // camino es la recuperación de acceso del principal.
+    throw new BadRequestException(
+      "El sistema admite una sola cuenta de administrador principal, así que " +
+        "su rol no se puede cambiar desde aquí. Para pasar esa cuenta a otra " +
+        "persona hay que usar la recuperación de acceso del administrador " +
+        "principal.",
+    );
   }
 
   /** Elimina la asignación admin↔iglesia. */

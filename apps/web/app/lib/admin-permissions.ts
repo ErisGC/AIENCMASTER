@@ -147,22 +147,3 @@ export function adminRemoveChurchAssignment(
   );
 }
 
-/**
- * Cambia el rol de una cuenta existente. El backend valida que:
- *   - la cuenta target NO sea la propia (no autocambio de rol)
- *   - al degradar un ROOT, queda al menos otro ROOT activo
- * Tras el cambio, el JWT de la cuenta afectada queda invalidado (bump de
- * tokenVersion) — la persona afectada deberá iniciar sesión de nuevo.
- */
-export function adminUpdateAccountRole(
-  accountId: string,
-  role: 'ROOT' | 'ADMIN',
-) {
-  return permissionsRequest(
-    `/admin/security/accounts/${accountId}/role`,
-    {
-      method: 'PATCH',
-      body: JSON.stringify({ role }),
-    },
-  );
-}
