@@ -21,6 +21,15 @@ export type AdminSessionResponse = {
     displayName: string;
     role: AdminRole;
     isActive: boolean;
+    /** Permisos globales efectivos. Para ROOT llegan todos. */
+    globalPermissions: string[];
+    /** Iglesias sobre las que puede operar. Vacío para ROOT: opera en todas. */
+    churchAssignments: {
+      id: string;
+      churchId: string;
+      churchName: string | null;
+      permissions: string[];
+    }[];
     lastLoginAt: string | null;
   };
   device?: {

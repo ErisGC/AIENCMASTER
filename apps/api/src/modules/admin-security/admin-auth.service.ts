@@ -565,8 +565,12 @@ export class AdminAuthService {
       { username },
     );
 
+    // Con las asignaciones de iglesia: la respuesta del login incluye la
+    // cuenta serializada, y de ahí sale el alcance del admin en la web y en
+    // la app (selector de iglesia activa, permisos por iglesia).
     const account = await this.accountRepo.findOne({
       where: { username },
+      relations: { churchAssignments: { church: true } },
     });
 
     if (!account) {

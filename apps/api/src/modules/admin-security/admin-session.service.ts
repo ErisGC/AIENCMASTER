@@ -29,6 +29,7 @@ import { AdminAccessRequestStatus } from "./enums/admin-access-request-status.en
 import { AdminDeviceScope } from "./enums/admin-device-scope.enum";
 import { AdminDeviceStatus } from "./enums/admin-device-status.enum";
 import { AdminRole } from "./enums/admin-role.enum";
+import { GlobalPermission } from "./permissions/permission.enums";
 
 @Injectable()
 export class AdminSessionService {
@@ -398,6 +399,21 @@ export class AdminSessionService {
     await repository.save(device);
   }
 
+  /**
+   * Cuenta tal como la ven la web y la app en la respuesta de sesión.
+   *
+   * Incluye los permisos efectivos: sin ellos, un admin que no sea el
+   * principal no puede saber a qué iglesias pertenece y el selector de
+   * iglesia activa se queda vacío (con lo que no puede registrar informes
+   * ni publicar anuncios locales). El ROOT no tiene asignaciones porque
+   * opera sobre todas, y por eso sus permisos globales se devuelven
+   * completos en vez de leerse de la columna.
+   *
+   * Las relaciones se cargan sólo donde esta respuesta se usa para decidir
+   * el alcance del admin (estado de sesión y login). Si llegan sin cargar
+   * —flujos de arranque y recuperación del principal, donde no aplican— se
+   * devuelve la lista vacía en lugar de fallar.
+   */
   serializeAccount(account: AdminAccount) {
     return {
       id: account.id,
@@ -405,6 +421,17 @@ export class AdminSessionService {
       displayName: account.displayName,
       role: account.role,
       isActive: account.isActive,
+      globalPermissions:
+        account.role === AdminRole.ROOT
+          ? Object.values(GlobalPermission)
+          : (account.globalPermissions ?? []),
+      churchAssignments:
+        account.churchAssignments?.map((assignment) => ({
+          id: assignment.id,
+          churchId: assignment.churchId,
+          churchName: assignment.church?.name ?? null,
+          permissions: assignment.permissions ?? [],
+        })) ?? [],
       lastLoginAt: account.lastLoginAt?.toISOString() ?? null,
     };
   }
@@ -479,8 +506,11 @@ export class AdminSessionService {
       };
     }
 
+    // Con las asignaciones de iglesia: esta respuesta es la que usan la web y
+    // la app para saber sobre qué iglesias puede operar el admin.
     const account = await this.accountRepo.findOne({
       where: { id: payload.accountId },
+      relations: { churchAssignments: { church: true } },
     });
 
     if (!account || account.tokenVersion !== payload.tokenVersion) {

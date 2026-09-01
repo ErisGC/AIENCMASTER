@@ -52,14 +52,10 @@ export function ActiveChurchProvider({
   const isRoot = session?.account?.role === 'ROOT';
   const isLoaded = session !== null;
 
-  const assignments = useMemo<ChurchAssignmentLite[]>(() => {
-    const acct = session?.account as unknown as
-      | {
-          churchAssignments?: ChurchAssignmentLite[];
-        }
-      | undefined;
-    return acct?.churchAssignments ?? [];
-  }, [session]);
+  const assignments = useMemo<ChurchAssignmentLite[]>(
+    () => session?.account?.churchAssignments ?? [],
+    [session],
+  );
 
   const [activeChurchId, setActiveChurchIdState] = useState<string | null>(
     null,
