@@ -61,6 +61,13 @@ export function SupportWidget({ mode }: { mode: Mode }) {
   const chunksRef = useRef<Blob[]>([]);
   const endRef = useRef<HTMLDivElement | null>(null);
 
+  // Hilo que el usuario tiene abierto ahora mismo. Las cargas comparan contra
+  // esta referencia antes de pintar: si se cambia de hilo mientras una carga
+  // sigue en vuelo, la respuesta que llegue tarde pertenece al hilo anterior y
+  // se descarta. Sin esto se veía el hilo equivocado, y el administrador podía
+  // responder en una conversación creyendo estar en otra.
+  const currentIdRef = useRef<string | null>(null);
+
   const isRoot = mode === 'root';
 
   /* ── Carga ── */
@@ -86,9 +93,12 @@ export function SupportWidget({ mode }: { mode: Mode }) {
     async (id: string) => {
       try {
         const t = isRoot ? await inboxThread(id) : await guestThread(id);
+        // Llegó tarde y el usuario ya está en otro hilo: se descarta.
+        if (currentIdRef.current !== id) return;
         setCurrent(t.conversation);
         setMessages(t.messages);
       } catch (e) {
+        if (currentIdRef.current !== id) return;
         setError(e instanceof Error ? e.message : 'No se pudo abrir el hilo.');
       }
     },
@@ -103,19 +113,44 @@ export function SupportWidget({ mode }: { mode: Mode }) {
 
   // Mientras un hilo está abierto se refresca seguido, que es lo que da la
   // sensación de conversación en vivo.
+  // Depende del ID, no del objeto: cada respuesta del sondeo devuelve una
+  // conversación nueva, así que con el objeto como dependencia el temporizador
+  // se destruía y recreaba en cada vuelta.
+  const currentId = current?.id ?? null;
   useEffect(() => {
-    if (!open || view !== 'thread' || !current) return;
-    const t = setInterval(() => void loadThread(current.id), POLL_THREAD_MS);
+    if (!open || view !== 'thread' || !currentId) return;
+    const t = setInterval(() => void loadThread(currentId), POLL_THREAD_MS);
     return () => clearInterval(t);
-  }, [open, view, current, loadThread]);
+  }, [open, view, currentId, loadThread]);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ block: 'end' });
   }, [messages]);
 
+  // Cortar la grabación al desmontar. Si el usuario empieza una nota de voz y
+  // se va sin pulsar "detener", el micrófono se quedaba abierto: el navegador
+  // seguía mostrando el indicador de grabación indefinidamente.
+  useEffect(() => {
+    return () => {
+      const rec = recorderRef.current;
+      if (rec && rec.state !== 'inactive') {
+        rec.stream.getTracks().forEach((t) => t.stop());
+        rec.stop();
+      }
+    };
+  }, []);
+
+  // Lo mismo al cerrar el panel: cerrar equivale a dejar de grabar.
+  useEffect(() => {
+    if (open) return;
+    const rec = recorderRef.current;
+    if (rec && rec.state !== 'inactive') rec.stop();
+  }, [open]);
+
   /* ── Acciones ── */
 
   function openThread(c: SupportConversation) {
+    currentIdRef.current = c.id;
     setCurrent(c);
     setMessages([]);
     setView('thread');
@@ -205,6 +240,8 @@ export function SupportWidget({ mode }: { mode: Mode }) {
     if (!window.confirm(`¿Bloquear la conversación de ${current.authorName}?`)) return;
     try {
       await setConversationStatus(current.id, 'BLOCKED');
+      currentIdRef.current = null;
+      setCurrent(null);
       await loadList();
       setView('list');
     } catch (e) {
@@ -249,7 +286,7 @@ export function SupportWidget({ mode }: { mode: Mode }) {
         <div style={{ display: 'flex', gap: 6 }}>
           {view === 'thread' && (
             <button type="button" className={styles.iconBtn}
-              onClick={() => { setView('list'); setCurrent(null); void loadList(); }}
+              onClick={() => { currentIdRef.current = null; setView('list'); setCurrent(null); void loadList(); }}
               aria-label="Volver">←</button>
           )}
           <button type="button" className={styles.iconBtn}

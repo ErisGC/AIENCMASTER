@@ -135,40 +135,83 @@ export function SecurityPageClient() {
     };
   }, [actionTypeFilter, auditActorFilter]);
 
+  /**
+   * Envoltura común de las acciones del panel.
+   *
+   * Sin ella, si aprobar o revocar fallaba (sesión caída, límite de intentos,
+   * red), no se veía absolutamente nada: el administrador podía creer que
+   * aprobó un dispositivo que seguía pendiente. Además la promesa quedaba
+   * rechazada sin capturar.
+   */
+  async function ejecutarAccion(
+    accion: () => Promise<unknown>,
+    mensajeOk: string,
+    mensajeError: string,
+  ) {
+    setError(null);
+    try {
+      await accion();
+      await refreshDashboard();
+      setToast(mensajeOk);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : mensajeError);
+    }
+  }
+
   async function handleApprove(id: string) {
-    await adminApproveAccessRequest(id);
-    await refreshDashboard();
+    await ejecutarAccion(
+      () => adminApproveAccessRequest(id),
+      'Dispositivo aprobado.',
+      'No se pudo aprobar el dispositivo.',
+    );
   }
 
   async function handleReject(id: string) {
-    await adminRejectAccessRequest(id);
-    await refreshDashboard();
+    await ejecutarAccion(
+      () => adminRejectAccessRequest(id),
+      'Solicitud rechazada.',
+      'No se pudo rechazar la solicitud.',
+    );
   }
 
   async function handleRevoke(id: string) {
-    await adminRevokeDevice(id);
-    await refreshDashboard();
+    await ejecutarAccion(
+      () => adminRevokeDevice(id),
+      'Dispositivo revocado.',
+      'No se pudo revocar el dispositivo.',
+    );
   }
 
   async function handleCreateAccount(e: React.FormEvent) {
     e.preventDefault();
-    await adminCreateSecurityAccount({
-      username: createUsername,
-      displayName: createDisplayName,
-      password: createPassword,
-      role: 'ADMIN',
-    });
-    setCreateUsername('');
-    setCreateDisplayName('');
-    setCreatePassword('');
-    await refreshDashboard();
+    await ejecutarAccion(
+      async () => {
+        await adminCreateSecurityAccount({
+          username: createUsername,
+          displayName: createDisplayName,
+          password: createPassword,
+          role: 'ADMIN',
+        });
+        // Sólo se limpia el formulario si la creación salió bien: si falla,
+        // lo escrito se conserva para poder corregirlo.
+        setCreateUsername('');
+        setCreateDisplayName('');
+        setCreatePassword('');
+      },
+      'Cuenta creada correctamente.',
+      'No se pudo crear la cuenta.',
+    );
   }
 
   async function handleToggleAccount(account: SecurityAccount) {
-    await adminUpdateSecurityAccount(account.id, {
-      isActive: !account.isActive,
-    });
-    await refreshDashboard();
+    await ejecutarAccion(
+      () =>
+        adminUpdateSecurityAccount(account.id, {
+          isActive: !account.isActive,
+        }),
+      account.isActive ? 'Cuenta desactivada.' : 'Cuenta reactivada.',
+      'No se pudo cambiar el estado de la cuenta.',
+    );
   }
 
   function openRenameModal(account: SecurityAccount) {
