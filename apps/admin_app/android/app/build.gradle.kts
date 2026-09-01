@@ -55,6 +55,23 @@ android {
             signingConfig = if (keyPropsFile.exists()) {
                 signingConfigs.getByName("release")
             } else {
+                // Sin key.properties se firma con la llave de depuración para
+                // no estorbar durante el desarrollo, pero se avisa a gritos:
+                // un APK así NO se puede distribuir. Quien lo instale encima
+                // de la versión buena recibe un error de firma incompatible, y
+                // la cadena de actualizaciones se rompe para todos los
+                // usuarios; sólo se arregla desinstalando.
+                //
+                // Con -Pexigir-firma-release=true (lo usa la integración
+                // continua) directamente falla en vez de avisar.
+                val exigir = project.findProperty("exigir-firma-release") == "true"
+                val aviso = "No se encontró android/key.properties: el APK de " +
+                    "release se firmará con la llave de DEPURACIÓN y NO sirve " +
+                    "para distribuir."
+                if (exigir) {
+                    throw org.gradle.api.GradleException(aviso)
+                }
+                project.logger.warn("AVISO: $aviso")
                 signingConfigs.getByName("debug")
             }
             // R8 minify + recurso shrinking reducen el APK ~3× respecto al

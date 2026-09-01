@@ -29,9 +29,13 @@ on:
   workflow_dispatch:
     inputs:
       version_label:
-        description: 'Etiqueta del release (ej. v0.1.0). Sólo se usa cuando se ejecuta manualmente.'
-        required: false
-        default: 'manual'
+        # Sin valor por defecto A PROPÓSITO. Antes traía 'manual', así que todo
+        # lanzamiento manual reutilizaba la etiqueta fija `admin-app-manual`.
+        # Ese release pasaba a ser el "último", y la app no puede sacar un
+        # número de versión de la palabra "manual": el aviso de actualización
+        # dejaba de funcionar hasta el siguiente release con etiqueta correcta.
+        description: 'Versión a publicar, en formato vX.Y.Z (ej. v0.3.1). Debe coincidir con la del pubspec.'
+        required: true
 
 permissions:
   contents: write  # necesario para crear/actualizar el release
@@ -42,6 +46,57 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      # Todo lo que puede arruinar un lanzamiento se comprueba ANTES de
+      # compilar, para no publicar un APK inservible ni gastar ocho minutos
+      # de compilación en vano.
+      - name: Validar entradas y secretos
+        env:
+          KEYSTORE_B64: ${{ secrets.ADMIN_APP_KEYSTORE_B64 }}
+          KEY_PROPERTIES: ${{ secrets.ADMIN_APP_KEY_PROPERTIES }}
+          API_BASE_URL: ${{ secrets.AIENC_API_BASE_URL }}
+          MOBILE_ORIGIN: ${{ secrets.AIENC_MOBILE_ORIGIN }}
+          VERSION_LABEL: ${{ github.event.inputs.version_label }}
+        run: |
+          set -euo pipefail
+
+          faltan=()
+          if [ -z "$KEYSTORE_B64" ]; then faltan+=("ADMIN_APP_KEYSTORE_B64"); fi
+          if [ -z "$KEY_PROPERTIES" ]; then faltan+=("ADMIN_APP_KEY_PROPERTIES"); fi
+          # Sin estas dos el APK se firma igual pero no sabe con qué servidor
+          # hablar: `--dart-define` con valor vacío NO cae al valor por
+          # defecto del código, define la variable como cadena vacía.
+          if [ -z "$API_BASE_URL" ]; then faltan+=("AIENC_API_BASE_URL"); fi
+          if [ -z "$MOBILE_ORIGIN" ]; then faltan+=("AIENC_MOBILE_ORIGIN"); fi
+          if [ ${#faltan[@]} -gt 0 ]; then
+            echo "::error::Faltan secretos del repositorio: ${faltan[*]}"
+            exit 1
+          fi
+
+          # Versión que se va a publicar, según el disparador.
+          if [ "${{ github.ref_type }}" = "tag" ]; then
+            etiqueta="${{ github.ref_name }}"
+            version="${etiqueta#admin-app-}"
+          else
+            version="$VERSION_LABEL"
+          fi
+          version="${version#v}"
+
+          if ! printf '%s' "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::La versión '$version' no tiene el formato X.Y.Z. La app extrae el número del nombre del release para avisar de actualizaciones; sin ese formato el aviso deja de funcionar."
+            exit 1
+          fi
+
+          # Debe coincidir con el pubspec. Si no, la app descargaría una
+          # versión que al instalarse dice tener otro número, y volvería a
+          # ofrecer la misma actualización una y otra vez.
+          delPubspec=$(grep '^version:' apps/admin_app/pubspec.yaml | head -1 | sed 's/version:[[:space:]]*//' | cut -d'+' -f1 | tr -d '[:space:]')
+          if [ "$version" != "$delPubspec" ]; then
+            echo "::error::La versión a publicar ($version) no coincide con la del pubspec ($delPubspec). Sube la versión en apps/admin_app/pubspec.yaml antes de lanzar."
+            exit 1
+          fi
+
+          echo "✓ Se publicará la versión $version (coincide con el pubspec)."
 
       - name: Setup Java 17
         uses: actions/setup-java@v4
@@ -79,9 +134,13 @@ jobs:
           AIENC_API_BASE_URL: ${{ secrets.AIENC_API_BASE_URL }}
           AIENC_MOBILE_ORIGIN: ${{ secrets.AIENC_MOBILE_ORIGIN }}
         run: |
+          # -Pexigir-firma-release hace que Gradle falle si no encuentra
+          # key.properties, en vez de recurrir en silencio a la llave de
+          # depuración.
           flutter build apk --release \
             --dart-define=AIENC_API_BASE_URL="$AIENC_API_BASE_URL" \
             --dart-define=AIENC_MOBILE_ORIGIN="$AIENC_MOBILE_ORIGIN" \
+            -Pexigir-firma-release=true \
             --split-per-abi
 
       - name: List output APKs
@@ -105,8 +164,22 @@ jobs:
             echo "::error::APK universal no encontrado."
             exit 1
           fi
-          # Verificamos que el APK tiene esquema v2 de firma y CN esperado.
-          $ANDROID_SDK_ROOT/build-tools/$(ls $ANDROID_SDK_ROOT/build-tools | tail -n 1)/apksigner verify --print-certs "$APK" || true
+          APKSIGNER="$ANDROID_SDK_ROOT/build-tools/$(ls $ANDROID_SDK_ROOT/build-tools | tail -n 1)/apksigner"
+          certs=$("$APKSIGNER" verify --print-certs "$APK")
+          echo "$certs"
+
+          # Esta comprobación SÍ detiene el lanzamiento. Antes terminaba en
+          # `|| true`, así que no podía fallar: un APK firmado con la llave de
+          # depuración (a la que Gradle recurre en silencio si falta
+          # key.properties) se publicaba igual, y quien lo instalara encima de
+          # la versión buena recibía un error de firma incompatible. La cadena
+          # de actualizaciones se rompe para todos los usuarios y sólo se
+          # arregla desinstalando.
+          if printf '%s' "$certs" | grep -qi 'CN=Android Debug'; then
+            echo "::error::El APK está firmado con la llave de depuración. No se publica: rompería la actualización de todos los usuarios instalados."
+            exit 1
+          fi
+          echo "✓ APK firmado con la llave de publicación."
 
       - name: Cleanup secrets from disk
         if: always()
@@ -118,8 +191,8 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           # En push de tag usa ese tag; en run manual genera un release ad-hoc.
-          tag_name: ${{ github.ref_type == 'tag' && github.ref_name || format('admin-app-{0}', github.event.inputs.version_label || github.run_number) }}
-          name: ${{ github.ref_type == 'tag' && github.ref_name || format('Admin App {0}', github.event.inputs.version_label || github.run_number) }}
+          tag_name: ${{ github.ref_type == 'tag' && github.ref_name || format('admin-app-{0}', github.event.inputs.version_label) }}
+          name: ${{ github.ref_type == 'tag' && github.ref_name || format('Admin App {0}', github.event.inputs.version_label) }}
           draft: false
           prerelease: false
           generate_release_notes: true

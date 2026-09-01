@@ -129,14 +129,50 @@ GitHub → tu repo → **Settings → Secrets and variables → Actions → New 
 
 ### Disparar el release
 
+Primero sube la versión en `apps/admin_app/pubspec.yaml` (ej. `version: 0.3.1+19`),
+haz commit y push. Después, cualquiera de las dos vías:
+
 ```bash
-# Bumpea la versión en pubspec.yaml (ej. version: 0.2.0+2)
-# Commit, push, y luego:
-git tag admin-app-v0.2.0
-git push origin admin-app-v0.2.0
+# Por tag
+git tag admin-app-v0.3.1
+git push origin admin-app-v0.3.1
+```
+
+```bash
+# Manual (más fiable: el push del tag no siempre dispara el workflow)
+gh workflow run admin-app-release.yml --ref main -f version_label=v0.3.1
 ```
 
 GitHub Actions hace el resto: build, firma, publica. Tarda ~6-8 min.
+
+**Verifica siempre que el release quedó publicado antes de avisar a nadie:**
+
+```bash
+curl -sI https://github.com/<owner>/<repo>/releases/latest/download/aienc-admin.apk | grep -i location
+```
+
+### Qué comprueba el workflow antes de compilar
+
+Estas comprobaciones detienen el lanzamiento; ninguna es un aviso que se
+pueda ignorar:
+
+- **Los cuatro secrets existen.** `--dart-define` con un valor vacío no cae al
+  valor por defecto del código: define la variable como cadena vacía. Sin
+  `AIENC_API_BASE_URL` se publicaba un APK firmado que no sabía con qué
+  servidor hablar.
+- **La versión tiene formato `X.Y.Z`.** La app saca el número del nombre del
+  release para avisar de actualizaciones. Antes, un lanzamiento manual sin
+  etiqueta reutilizaba `admin-app-manual`; ese release pasaba a ser el último y
+  el aviso de actualización dejaba de funcionar hasta el siguiente release con
+  etiqueta correcta.
+- **La versión coincide con el `pubspec.yaml`.** Si no, la app descargaría una
+  versión que al instalarse dice tener otro número y volvería a ofrecer la
+  misma actualización indefinidamente.
+- **El APK no está firmado con la llave de depuración.** Gradle recurre a ella
+  en silencio si falta `key.properties`; un APK así rompe la actualización de
+  todos los usuarios instalados y sólo se arregla desinstalando. En la
+  integración continua se compila con `-Pexigir-firma-release=true`, que hace
+  fallar la compilación en vez de avisar.
 
 ## Paso 6 — Cablear la URL del APK en Vercel
 
