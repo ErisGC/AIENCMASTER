@@ -71,10 +71,10 @@ export class PublicChurchStudiesController {
 
   @Get(":id")
   findOne(
-    @Param("churchId", new ParseUUIDPipe({ version: "4" })) _churchId: string,
+    @Param("churchId", new ParseUUIDPipe({ version: "4" })) churchId: string,
     @Param("id", new ParseUUIDPipe({ version: "4" })) id: string,
   ) {
-    return this.service.findOnePublic(id);
+    return this.service.findOnePublic(churchId, id);
   }
 }
 

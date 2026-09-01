@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -119,7 +120,11 @@ export class AdminSiteController {
     }
 
     if (!desktop) {
-      throw new Error("Falta la imagen principal (campo 'desktop')");
+      // Falta un dato de quien llama, no un fallo del servidor: con `Error` a
+      // secas esto se respondía como error interno y ensuciaba el registro.
+      throw new BadRequestException(
+        "Falta la imagen principal (campo 'desktop').",
+      );
     }
 
     const created = await this.service.create({

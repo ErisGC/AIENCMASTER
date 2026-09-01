@@ -38,13 +38,27 @@ export class SiteService {
       where: { id: SETTINGS_ID },
     });
     if (!settings) {
-      settings = this.settingsRepo.create({
-        id: SETTINGS_ID,
-        backgroundIntervalSeconds: 8,
-        backgroundFadeSeconds: 1,
-        backgroundEnabled: true,
+      // Inserción tolerante a la carrera: la fila es única (id fijo) y esto lo
+      // invoca también el portal público, así que dos peticiones a la vez con
+      // la tabla vacía intentaban crearla las dos y una fallaba con error de
+      // servidor por clave duplicada. Con ON CONFLICT DO NOTHING gana la
+      // primera y la segunda simplemente relee.
+      await this.settingsRepo
+        .createQueryBuilder()
+        .insert()
+        .into(SiteSettings)
+        .values({
+          id: SETTINGS_ID,
+          backgroundIntervalSeconds: 8,
+          backgroundFadeSeconds: 1,
+          backgroundEnabled: true,
+        })
+        .orIgnore()
+        .execute();
+
+      settings = await this.settingsRepo.findOneOrFail({
+        where: { id: SETTINGS_ID },
       });
-      await this.settingsRepo.save(settings);
     }
     return settings;
   }

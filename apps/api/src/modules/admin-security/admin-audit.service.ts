@@ -48,6 +48,20 @@ export class AdminAuditService {
         `Audit log write failed for ${input.actionType}`,
         error instanceof Error ? error.stack : String(error),
       );
+
+      // Dentro de una transacción el fallo SÍ se propaga.
+      //
+      // Si el registro falla estando en una transacción, Postgres la deja
+      // abortada: cualquier orden posterior se rechaza y el COMMIT se
+      // convierte en ROLLBACK sin devolver error. Tragarse el fallo hacía que
+      // el llamante siguiera como si todo hubiera ido bien — en el arranque
+      // del administrador principal llegaba a emitir cookies de sesión válidas
+      // para una cuenta que la base de datos nunca guardó.
+      //
+      // Fuera de transacción se mantiene el comportamiento de siempre: un
+      // fallo al registrar no tumba la operación del usuario.
+      if (repository !== this.auditRepo) throw error;
+
       return null;
     }
   }

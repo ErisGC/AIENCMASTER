@@ -37,9 +37,13 @@ export class ChurchStudiesService {
     return studies.map((s) => this.toPublic(s));
   }
 
-  async findOnePublic(id: string) {
+  /**
+   * El `churchId` de la ruta forma parte del filtro: sin él,
+   * `/churches/A/studies/<id-de-B>` devolvía el estudio de otra iglesia.
+   */
+  async findOnePublic(churchId: string, id: string) {
     const study = await this.repo.findOne({
-      where: { id },
+      where: { id, churchId },
       relations: { church: true },
     });
     if (!study || !study.church?.isActive) {

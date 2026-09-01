@@ -44,9 +44,16 @@ export class ChurchAnnouncementsService {
     });
   }
 
-  async findOnePublic(id: string) {
+  /**
+   * El `churchId` viene de la ruta y se usa en el filtro.
+   *
+   * Antes se buscaba sólo por identificador de anuncio, así que
+   * `/churches/A/announcements/<id-de-B>` respondía con el anuncio de la
+   * iglesia B: la dirección decía una cosa y el contenido era de otra.
+   */
+  async findOnePublic(churchId: string, id: string) {
     const announcement = await this.repo.findOne({
-      where: { id },
+      where: { id, churchId },
       relations: ["attachments", "church"],
     });
     if (!announcement) throw new NotFoundException("Anuncio no encontrado");
