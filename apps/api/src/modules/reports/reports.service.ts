@@ -389,16 +389,27 @@ export class ReportsService {
       await this.assertSubmitScope(actor, dto.churchId);
     }
 
-    if (dto.data && (dto.reportType ?? report.reportType)) {
-      this.validateData(dto.reportType ?? report.reportType, dto.data);
+    // Se revalidan los datos si cambian ELLOS o el TIPO. Antes sólo se
+    // revalidaban al enviar `data`, así que cambiar el tipo sin reenviarlos
+    // dejaba unos datos que no correspondían al tipo nuevo: un informe "otro"
+    // convertido en "ofrendas" se quedaba sin total y las métricas lo sumaban
+    // como cero en silencio.
+    const tipoFinal = dto.reportType ?? report.reportType;
+    if (dto.data || (dto.reportType && dto.reportType !== report.reportType)) {
+      this.validateData(tipoFinal, dto.data ?? report.data);
     }
 
-    if (dto.periodStart && dto.periodEnd) {
-      if (new Date(dto.periodEnd) < new Date(dto.periodStart)) {
-        throw new BadRequestException(
-          "periodEnd no puede ser anterior a periodStart",
-        );
-      }
+    // El período se compara contra lo que quedará guardado, no sólo contra lo
+    // que venga en esta edición: enviando un único extremo se podía dejar la
+    // fecha final antes de la inicial, algo que el alta sí impide.
+    const inicioFinal = dto.periodStart
+      ? new Date(dto.periodStart)
+      : report.periodStart;
+    const finFinal = dto.periodEnd ? new Date(dto.periodEnd) : report.periodEnd;
+    if (finFinal < inicioFinal) {
+      throw new BadRequestException(
+        "periodEnd no puede ser anterior a periodStart",
+      );
     }
 
     Object.assign(report, {

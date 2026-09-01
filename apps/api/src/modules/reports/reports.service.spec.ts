@@ -5,7 +5,9 @@ import { AdminAccount } from "../admin-security/admin-account.entity";
 import { PermissionsService } from "../admin-security/permissions/permissions.service";
 import { Church } from "../churches/church.entity";
 import { Report } from "./report.entity";
+import { ReportType } from "./enums/report-type.enum";
 import { ReportsService } from "./reports.service";
+import type { UpdateReportDto } from "./dto/update-report.dto";
 
 /**
  * Regresión de seguridad: `GET /admin/reports/:id` devuelve la entidad Report
@@ -92,5 +94,62 @@ describe("ReportsService — findOne no expone la cuenta del autor", () => {
     // Lo que sí debe seguir estando para que la UI muestre el autor:
     expect(report.createdByAdminAccountId).toBe("author-1");
     expect(report.createdByDisplayName).toBe("Autor de prueba");
+  });
+
+  /**
+   * Regresión: al editar, las validaciones sólo miraban lo que venía en la
+   * petición y no lo que quedaría guardado.
+   */
+  describe("update — validaciones contra el estado final", () => {
+    const baseGuardado = {
+      id: REPORT_ID,
+      churchId: CHURCH_A,
+      reportType: ReportType.OFFERINGS,
+      title: "Ofrendas de junio",
+      notes: "",
+      periodStart: new Date("2026-06-01T00:00:00Z"),
+      periodEnd: new Date("2026-06-30T00:00:00Z"),
+      data: { totalCop: 500000 },
+      createdByAdminAccountId: "author-1",
+      createdByDisplayName: "Autor",
+    };
+
+    beforeEach(() => {
+      permissions.isRoot.mockReturnValue(true);
+      reportRepo.findOne.mockResolvedValue({ ...baseGuardado });
+      (reportRepo as unknown as { save: jest.Mock }).save = jest.fn((x) => x);
+    });
+
+    it("rechaza dejar la fecha final antes de la inicial enviando un solo extremo", async () => {
+      // Sólo se manda periodEnd; el inicio guardado es el 1 de junio.
+      await expect(
+        service.update(
+          REPORT_ID,
+          { periodEnd: "2026-05-01T00:00:00Z" } as UpdateReportDto,
+          root,
+        ),
+      ).rejects.toThrow(/periodEnd no puede ser anterior/);
+    });
+
+    it("acepta mover sólo la fecha final si sigue siendo posterior", async () => {
+      await expect(
+        service.update(
+          REPORT_ID,
+          { periodEnd: "2026-07-15T00:00:00Z" } as UpdateReportDto,
+          root,
+        ),
+      ).resolves.toBeDefined();
+    });
+
+    it("revalida los datos al cambiar el tipo aunque no se reenvíen", async () => {
+      // De OFFERINGS a ATTENDANCE: los datos guardados no traen `count`.
+      await expect(
+        service.update(
+          REPORT_ID,
+          { reportType: ReportType.ATTENDANCE } as UpdateReportDto,
+          root,
+        ),
+      ).rejects.toBeDefined();
+    });
   });
 });

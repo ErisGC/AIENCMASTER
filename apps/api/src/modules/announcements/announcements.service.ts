@@ -1,6 +1,13 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository, FindOptionsWhere, ILike, Between } from "typeorm";
+import {
+  Repository,
+  FindOptionsWhere,
+  ILike,
+  Between,
+  LessThanOrEqual,
+  MoreThanOrEqual,
+} from "typeorm";
 
 import { Announcement } from "./announcement.entity";
 import { AnnouncementAttachment } from "./attachment.entity";
@@ -207,10 +214,14 @@ export class AnnouncementsService {
       where.title = ILike(`%${title}%`);
     }
 
+    // Faltaba la rama de sólo "hasta": pedir "hasta el 30 de junio" sin fecha
+    // de inicio no filtraba nada y devolvía todo, sin aviso.
     if (fromDate && toDate) {
       where.createdAt = Between(new Date(fromDate), new Date(toDate));
     } else if (fromDate) {
-      where.createdAt = Between(new Date(fromDate), new Date());
+      where.createdAt = MoreThanOrEqual(new Date(fromDate));
+    } else if (toDate) {
+      where.createdAt = LessThanOrEqual(new Date(toDate));
     }
 
     return this.repo.find({

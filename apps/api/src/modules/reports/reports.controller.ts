@@ -24,6 +24,7 @@ import { AdminOriginGuard } from "../admin-security/guards/admin-origin.guard";
 import { ReportsService } from "./reports.service";
 import { CreateReportDto } from "./dto/create-report.dto";
 import { UpdateReportDto } from "./dto/update-report.dto";
+import { QueryMetricsDto } from "./dto/query-metrics.dto";
 import { QueryReportsDto } from "./dto/query-reports.dto";
 
 @Controller("admin/reports")
@@ -49,15 +50,13 @@ export class ReportsController {
    */
   @Get("metrics/timeline")
   metricsTimeline(
-    @Query("churchId") churchId: string | undefined,
-    @Query("fromDate") fromDate: string | undefined,
-    @Query("toDate") toDate: string | undefined,
+    @Query() query: QueryMetricsDto,
     @AdminAuth() actor: AuthenticatedAdminContext,
   ) {
     return this.service.metricsTimeline(actor.account, {
-      churchId,
-      fromDate,
-      toDate,
+      churchId: query.churchId,
+      fromDate: query.fromDate,
+      toDate: query.toDate,
     });
   }
 
