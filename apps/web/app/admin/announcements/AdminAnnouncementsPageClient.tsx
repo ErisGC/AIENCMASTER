@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 
 import { formatDateTimeWithSeconds } from '@/app/lib/formatDate';
@@ -19,9 +19,18 @@ export function AdminAnnouncementsPageClient() {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
+  // El temporizador anterior se cancela antes de armar el nuevo: dos avisos
+  // seguidos hacían que el primero borrara el segundo casi al instante.
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const showToast = useCallback((message: string, type: 'success' | 'error') => {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
     setToast({ message, type });
-    setTimeout(() => setToast(null), 4000);
+    toastTimer.current = setTimeout(() => setToast(null), 4000);
+  }, []);
+  useEffect(() => {
+    return () => {
+      if (toastTimer.current) clearTimeout(toastTimer.current);
+    };
   }, []);
 
   const loadAnnouncements = useCallback(async () => {

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 import {
@@ -16,6 +16,36 @@ export default function AdminPendingPage() {
   const router = useRouter();
   const [session, setSession] = useState<AdminSessionResponse | null>(null);
   const [rootRecoveryAvailable, setRootRecoveryAvailable] = useState(false);
+
+  // Vive fuera del efecto para que el botón "Reintentar ahora" pueda
+  // invocarla. Antes ese botón llamaba a router.refresh(), que en una página
+  // de cliente como esta no vuelve a ejecutar el efecto: no hacía nada y la
+  // comprobación real seguía siendo la del temporizador de cinco segundos.
+  const comprobarSesion = useCallback(async () => {
+    try {
+      const current = await adminGetSession();
+      setSession(current);
+
+      if (current.status === 'ACTIVE') {
+        router.push('/admin');
+        router.refresh();
+        return;
+      }
+
+      if (current.status === 'UNAUTHENTICATED') {
+        router.push('/admin/login');
+        router.refresh();
+        return;
+      }
+
+      if (current.status === 'BOOTSTRAP_REQUIRED') {
+        router.push('/admin/bootstrap');
+        router.refresh();
+      }
+    } catch {
+      setSession(null);
+    }
+  }, [router]);
 
   useEffect(() => {
     let mounted = true;
@@ -66,7 +96,13 @@ export default function AdminPendingPage() {
   }, [router]);
 
   async function handleLogout() {
-    await adminLogout();
+    // Con captura: si falla la red, igual se sale de esta pantalla en vez de
+    // dejar una promesa rechazada sin manejar y al usuario atrapado aquí.
+    try {
+      await adminLogout();
+    } catch {
+      /* la sesión local se limpia de todos modos al ir al acceso */
+    }
     router.push('/admin/login');
     router.refresh();
   }
@@ -110,7 +146,11 @@ export default function AdminPendingPage() {
         </div>
 
         <div className={styles.actions}>
-          <button type="button" className={styles.primaryBtn} onClick={() => router.refresh()}>
+          <button
+            type="button"
+            className={styles.primaryBtn}
+            onClick={() => void comprobarSesion()}
+          >
             Reintentar ahora
           </button>
           <button type="button" className={styles.secondaryBtn} onClick={handleLogout}>

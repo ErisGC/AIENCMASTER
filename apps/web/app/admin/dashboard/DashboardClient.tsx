@@ -32,14 +32,24 @@ function formatCop(value: number): string {
  * Devuelve los últimos 6 meses por defecto (fromDate inclusivo).
  */
 function defaultFromDate(): string {
-  const d = new Date();
-  d.setMonth(d.getMonth() - 5);
-  d.setDate(1);
+  // Se fija el día 1 ANTES de restar meses. Al revés, un 31 de julio menos
+  // cinco meses daba "31 de febrero", que desborda a marzo, y el rango salía
+  // de cinco meses en vez de seis.
+  const hoy = new Date();
+  const d = new Date(Date.UTC(hoy.getFullYear(), hoy.getMonth(), 1));
+  d.setUTCMonth(d.getUTCMonth() - 5);
   return d.toISOString().slice(0, 10);
 }
 
 function defaultToDate(): string {
-  return new Date().toISOString().slice(0, 10);
+  // En UTC, igual que el inicio del rango: usar la fecha local aquí y UTC allá
+  // producía rangos distintos según la hora del día.
+  const hoy = new Date();
+  return new Date(
+    Date.UTC(hoy.getFullYear(), hoy.getMonth(), hoy.getDate()),
+  )
+    .toISOString()
+    .slice(0, 10);
 }
 
 export function DashboardClient() {

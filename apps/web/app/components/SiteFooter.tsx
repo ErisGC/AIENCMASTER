@@ -9,7 +9,8 @@ import styles from './SiteFooter.module.css';
  * /info). No captura datos ni agrega funciones.
  */
 export function SiteFooter() {
-  const year = 2026;
+  // Se calcula, no se escribe: el año fijo dejaba el pie desactualizado.
+  const year = new Date().getFullYear();
 
   return (
     <footer className={styles.footer}>

@@ -17,17 +17,34 @@ export function formatCalendarDate(date: string | Date): string {
   return `${day}/${month}/${year}`;
 }
 
+const dateTimeFormatter = new Intl.DateTimeFormat('es-CO', {
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+  hour12: false,
+  timeZone: 'America/Bogota',
+});
+
+/**
+ * Fecha y hora en la zona horaria de Colombia.
+ *
+ * Se fija la zona a propósito. Con los getters locales, el servidor (que corre
+ * en UTC) generaba un texto al renderizar y el navegador otro al hidratar:
+ * además del aviso de React, la hora mostrada cambiaba sola al cargar la
+ * página. Su gemela `formatDateTimeWithSeconds` ya fijaba la zona; esta no.
+ */
 export function formatDateTime(date: string | Date): string {
   const d = new Date(date);
+  if (Number.isNaN(d.getTime())) return '';
 
-  const day = d.getDate().toString().padStart(2, '0');
-  const month = (d.getMonth() + 1).toString().padStart(2, '0');
-  const year = d.getFullYear();
+  // El separador se arma a mano para conservar el formato "dd/mm/aaaa · hh:mm".
+  const partes = dateTimeFormatter.formatToParts(d);
+  const parte = (tipo: Intl.DateTimeFormatPartTypes) =>
+    partes.find((p) => p.type === tipo)?.value ?? '';
 
-  const hours = d.getHours().toString().padStart(2, '0');
-  const minutes = d.getMinutes().toString().padStart(2, '0');
-
-  return `${day}/${month}/${year} · ${hours}:${minutes}`;
+  return `${parte('day')}/${parte('month')}/${parte('year')} · ${parte('hour')}:${parte('minute')}`;
 }
 
 const dateTimeWithSecondsFormatter = new Intl.DateTimeFormat('es-CO', {

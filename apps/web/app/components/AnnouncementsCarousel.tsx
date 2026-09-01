@@ -79,7 +79,11 @@ export function AnnouncementsCarousel({ announcements }: Props) {
 
           <h3 className={styles.cardTitle}>{current.title}</h3>
 
-          <p className={styles.excerpt}>{current.description.slice(0, 180)}...</p>
+          <p className={styles.excerpt}>
+            {current.description.length > 180
+              ? `${current.description.slice(0, 180)}…`
+              : current.description}
+          </p>
 
           <div className={styles.cardFooter}>
             <span className={styles.readMore}>Abrir anuncio</span>
