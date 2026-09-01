@@ -6,6 +6,7 @@ import '../../core/api/api_client.dart';
 import '../../core/models/domain.dart';
 import '../../core/state/locator.dart';
 import '../../core/theme/gem_palette.dart';
+import '../../core/utils/montos.dart';
 import '../../core/widgets/gem_widgets.dart';
 
 class NewReportScreen extends StatefulWidget {
@@ -92,13 +93,62 @@ class _NewReportScreenState extends State<NewReportScreen> {
     if (res != null) onPick(res);
   }
 
+  /// Revisa los campos numéricos propios de cada tipo de informe.
+  ///
+  /// Devuelve el mensaje a mostrar, o null si todo está en orden.
+  String? _validarCampos() {
+    switch (_type) {
+      case ReportType.OFFERINGS:
+      case ReportType.EXPENSES:
+        final etiqueta = _type == ReportType.OFFERINGS
+            ? 'total de ofrendas'
+            : 'total del gasto';
+        if (_totalCop.text.trim().isEmpty) {
+          return 'Indica el $etiqueta.';
+        }
+        final monto = parseMonto(_totalCop.text);
+        if (monto == null) {
+          return 'No entiendo el $etiqueta. Escríbelo sólo con números, '
+              'por ejemplo 50000 o 50.000.';
+        }
+        if (monto < 0) {
+          return 'El $etiqueta no puede ser negativo.';
+        }
+        return null;
+      case ReportType.ATTENDANCE:
+        if (_count.text.trim().isEmpty) {
+          return 'Indica el número de asistentes.';
+        }
+        final cantidad = parseCantidad(_count.text);
+        if (cantidad == null || cantidad < 0) {
+          return 'El número de asistentes debe ser un número entero.';
+        }
+        if (_scope == AttendanceScope.session && _sessionDate == null) {
+          return 'Indica la fecha de la reunión.';
+        }
+        return null;
+      case ReportType.EVENT:
+        if (_eventName.text.trim().isEmpty) {
+          return 'Indica el nombre del evento.';
+        }
+        if (_eventAttendees.text.trim().isNotEmpty &&
+            parseCantidad(_eventAttendees.text) == null) {
+          return 'El número de asistentes al evento debe ser un número entero.';
+        }
+        return null;
+      case ReportType.REQUEST:
+      case ReportType.OTHER:
+        return null;
+    }
+  }
+
   Map<String, dynamic> _buildData() {
     switch (_type) {
       case ReportType.OFFERINGS:
-        return {'totalCop': double.tryParse(_totalCop.text) ?? 0};
+        return {'totalCop': parseMonto(_totalCop.text) ?? 0};
       case ReportType.EXPENSES:
         return {
-          'totalCop': double.tryParse(_totalCop.text) ?? 0,
+          'totalCop': parseMonto(_totalCop.text) ?? 0,
           'category': _expCat.name,
           if (_expDesc.text.trim().isNotEmpty)
             'description': _expDesc.text.trim(),
@@ -106,15 +156,15 @@ class _NewReportScreenState extends State<NewReportScreen> {
       case ReportType.ATTENDANCE:
         return {
           'scope': _scope.name,
-          'count': int.tryParse(_count.text) ?? 0,
+          'count': parseCantidad(_count.text) ?? 0,
           if (_scope == AttendanceScope.session && _sessionDate != null)
             'sessionDate': _sessionDate!.toIso8601String(),
         };
       case ReportType.EVENT:
         return {
           'name': _eventName.text.trim(),
-          if (_eventAttendees.text.isNotEmpty)
-            'attendees': int.tryParse(_eventAttendees.text),
+          if (_eventAttendees.text.trim().isNotEmpty)
+            'attendees': parseCantidad(_eventAttendees.text),
           if (_eventSummary.text.trim().isNotEmpty)
             'summary': _eventSummary.text.trim(),
         };
@@ -141,6 +191,20 @@ class _NewReportScreenState extends State<NewReportScreen> {
     }
     if (_periodStart == null || _periodEnd == null) {
       setState(() => _error = 'Indica el período del informe.');
+      return;
+    }
+    if (_periodEnd!.isBefore(_periodStart!)) {
+      setState(() => _error =
+          'La fecha final del período no puede ser anterior a la inicial.');
+      return;
+    }
+
+    // Los montos y cantidades se validan aquí para no guardar un cero en
+    // silencio cuando el texto no se puede leer (el teclado en español ofrece
+    // coma, y "50.000" o "50000,50" no los entiende double.tryParse).
+    final erroresDeCampo = _validarCampos();
+    if (erroresDeCampo != null) {
+      setState(() => _error = erroresDeCampo);
       return;
     }
 
