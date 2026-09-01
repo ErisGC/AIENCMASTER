@@ -9,18 +9,12 @@ class ChurchService {
   final ApiClient _api;
 
   Future<List<Church>> list() async {
-    final res = await _api.dio.get('/admin/churches');
-    final raw = res.data;
-    if (raw is List) {
-      return raw
-          .map((e) => Church.fromJson(e as Map<String, dynamic>))
-          .toList();
-    }
-    return const [];
+    return _api.getList('/admin/churches', Church.fromJson);
   }
 
   Future<Church> get(String id) async {
     final res = await _api.dio.get('/admin/churches/$id');
+    _api.ensureOk(res);
     return Church.fromJson(res.data as Map<String, dynamic>);
   }
 
@@ -48,7 +42,9 @@ class ChurchService {
     if (name != null) fields['name'] = name.trim();
     if (city != null) fields['city'] = city.trim();
     if (address != null) fields['address'] = address.trim();
-    if (avgAttendance != null) fields['avgAttendance'] = avgAttendance.toString();
+    if (avgAttendance != null) {
+      fields['avgAttendance'] = avgAttendance.toString();
+    }
     if (isActive != null) fields['isActive'] = isActive ? 'true' : 'false';
 
     if (clearLocation) {
@@ -58,7 +54,8 @@ class ChurchService {
     } else if (mapsLat != null && mapsLng != null) {
       fields['mapsLat'] = mapsLat.toString();
       fields['mapsLng'] = mapsLng.toString();
-      fields['mapsUrl'] = mapsUrl ?? 'https://www.google.com/maps?q=$mapsLat,$mapsLng';
+      fields['mapsUrl'] =
+          mapsUrl ?? 'https://www.google.com/maps?q=$mapsLat,$mapsLng';
     }
 
     if (mainImage != null) fields['mainImage'] = mainImage;
@@ -87,26 +84,14 @@ class AnnouncementService {
   final ApiClient _api;
 
   Future<List<Announcement>> listGlobal() async {
-    final res = await _api.dio.get('/admin/announcements');
-    final raw = res.data;
-    if (raw is List) {
-      return raw
-          .map((e) => Announcement.fromJson(e as Map<String, dynamic>))
-          .toList();
-    }
-    return const [];
+    return _api.getList('/admin/announcements', Announcement.fromJson);
   }
 
   Future<List<Announcement>> listForChurch(String churchId) async {
-    final res =
-        await _api.dio.get('/admin/churches/$churchId/announcements');
-    final raw = res.data;
-    if (raw is List) {
-      return raw
-          .map((e) => Announcement.fromJson(e as Map<String, dynamic>))
-          .toList();
-    }
-    return const [];
+    return _api.getList(
+      '/admin/churches/$churchId/announcements',
+      Announcement.fromJson,
+    );
   }
 
   /// Crear anuncio global (sólo ROOT con MANAGE_GLOBAL_ANNOUNCEMENTS).
@@ -206,14 +191,10 @@ class DirectorService {
   final ApiClient _api;
 
   Future<List<ChurchDirector>> list(String churchId) async {
-    final res = await _api.dio.get('/admin/churches/$churchId/directors');
-    final raw = res.data;
-    if (raw is List) {
-      return raw
-          .map((e) => ChurchDirector.fromJson(e as Map<String, dynamic>))
-          .toList();
-    }
-    return const [];
+    return _api.getList(
+      '/admin/churches/$churchId/directors',
+      ChurchDirector.fromJson,
+    );
   }
 
   Future<ChurchDirector> create(
@@ -276,14 +257,10 @@ class StudyService {
   final ApiClient _api;
 
   Future<List<ChurchStudy>> list(String churchId) async {
-    final res = await _api.dio.get('/admin/churches/$churchId/studies');
-    final raw = res.data;
-    if (raw is List) {
-      return raw
-          .map((e) => ChurchStudy.fromJson(e as Map<String, dynamic>))
-          .toList();
-    }
-    return const [];
+    return _api.getList(
+      '/admin/churches/$churchId/studies',
+      ChurchStudy.fromJson,
+    );
   }
 
   Future<ChurchStudy> create(
@@ -334,6 +311,7 @@ class ReportService {
       query['toDate'] = toDate.toIso8601String().substring(0, 10);
     }
     final res = await _api.dio.get('/admin/reports', queryParameters: query);
+    _api.ensureOk(res);
     return ReportListResponse.fromJson(res.data as Map<String, dynamic>);
   }
 
@@ -355,8 +333,10 @@ class ReportService {
       'periodEnd': periodEnd.toIso8601String(),
       'data': data,
     };
-    final res =
-        await _api.postJson<Map<String, dynamic>>('/admin/reports', body: body);
+    final res = await _api.postJson<Map<String, dynamic>>(
+      '/admin/reports',
+      body: body,
+    );
     return Report.fromJson(res);
   }
 
@@ -373,8 +353,10 @@ class ReportService {
     if (toDate != null) {
       q['toDate'] = toDate.toIso8601String().substring(0, 10);
     }
-    final res = await _api.dio
-        .get('/admin/reports/metrics/timeline', queryParameters: q);
+    final res = await _api.dio.get(
+      '/admin/reports/metrics/timeline',
+      queryParameters: q,
+    );
     return MetricsTimeline.fromJson(res.data as Map<String, dynamic>);
   }
 }
@@ -386,35 +368,23 @@ class SecurityService {
 
   Future<PermissionsCatalog> catalog() async {
     final res = await _api.dio.get('/admin/security/permissions/catalog');
+    _api.ensureOk(res);
     return PermissionsCatalog.fromJson(res.data as Map<String, dynamic>);
   }
 
   Future<List<AdminAccount>> listAccounts() async {
-    final res = await _api.dio.get('/admin/security/accounts');
-    final raw = res.data;
-    if (raw is List) {
-      return raw
-          .map((e) => AdminAccount.fromJson(e as Map<String, dynamic>))
-          .toList();
-    }
-    return const [];
+    return _api.getList('/admin/security/accounts', AdminAccount.fromJson);
   }
 
   Future<AccountHistoryResponse> accountHistory(String id) async {
     final res = await _api.dio.get('/admin/security/accounts/$id/history');
+    _api.ensureOk(res);
     return AccountHistoryResponse.fromJson(res.data as Map<String, dynamic>);
   }
 
   /// Registro de auditoría GLOBAL (todas las acciones del sistema).
   Future<List<AuditLogEntry>> auditLogs() async {
-    final res = await _api.dio.get('/admin/security/audit-logs');
-    final raw = res.data;
-    if (raw is List) {
-      return raw
-          .map((e) => AuditLogEntry.fromJson(e as Map<String, dynamic>))
-          .toList();
-    }
-    return const [];
+    return _api.getList('/admin/security/audit-logs', AuditLogEntry.fromJson);
   }
 
   /// Actualiza los permisos globales de una cuenta no-ROOT.
@@ -424,9 +394,7 @@ class SecurityService {
   ) async {
     await _api.patchJson<Map<String, dynamic>>(
       '/admin/security/accounts/$accountId/permissions',
-      body: {
-        'globalPermissions': permissions.map((e) => e.name).toList(),
-      },
+      body: {'globalPermissions': permissions.map((e) => e.name).toList()},
     );
   }
 
@@ -453,9 +421,7 @@ class SecurityService {
   }) async {
     await _api.patchJson<Map<String, dynamic>>(
       '/admin/security/accounts/$accountId/churches/$churchId/permissions',
-      body: {
-        'permissions': permissions.map((e) => e.name).toList(),
-      },
+      body: {'permissions': permissions.map((e) => e.name).toList()},
     );
   }
 
@@ -476,14 +442,10 @@ class InvitationService {
   final ApiClient _api;
 
   Future<List<AdminInvitation>> list() async {
-    final res = await _api.dio.get('/admin/security/invitations');
-    final raw = res.data;
-    if (raw is List) {
-      return raw
-          .map((e) => AdminInvitation.fromJson(e as Map<String, dynamic>))
-          .toList();
-    }
-    return const [];
+    return _api.getList(
+      '/admin/security/invitations',
+      AdminInvitation.fromJson,
+    );
   }
 
   /// Crea una invitación para una nueva cuenta administrativa.
@@ -511,11 +473,11 @@ class InvitationService {
         );
       }
       body['assignedChurchId'] = assignedChurchId;
-      body['churchPermissions'] =
-          churchPermissions.map((e) => e.name).toList();
+      body['churchPermissions'] = churchPermissions.map((e) => e.name).toList();
       if (globalPermissions.isNotEmpty) {
-        body['globalPermissions'] =
-            globalPermissions.map((e) => e.name).toList();
+        body['globalPermissions'] = globalPermissions
+            .map((e) => e.name)
+            .toList();
       }
     }
     final res = await _api.postJson<Map<String, dynamic>>(
@@ -537,28 +499,15 @@ class SupportService {
 
   /// Hilos propios del administrador autenticado.
   Future<List<SupportConversation>> mine() async {
-    final res = await _api.dio.get('/admin/support/conversations');
-    _api.ensureOk(res);
-    final raw = res.data;
-    if (raw is List) {
-      return raw
-          .map((e) => SupportConversation.fromJson(e as Map<String, dynamic>))
-          .toList();
-    }
-    return const [];
+    return _api.getList(
+      '/admin/support/conversations',
+      SupportConversation.fromJson,
+    );
   }
 
   /// Bandeja completa (sólo administrador principal).
   Future<List<SupportConversation>> inbox() async {
-    final res = await _api.dio.get('/admin/support/inbox');
-    _api.ensureOk(res);
-    final raw = res.data;
-    if (raw is List) {
-      return raw
-          .map((e) => SupportConversation.fromJson(e as Map<String, dynamic>))
-          .toList();
-    }
-    return const [];
+    return _api.getList('/admin/support/inbox', SupportConversation.fromJson);
   }
 
   /// Número de hilos con mensajes sin leer (para el aviso).

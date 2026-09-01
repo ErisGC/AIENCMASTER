@@ -75,25 +75,24 @@ class ApiClient {
         return utf8.decode(bytes, allowMalformed: true);
       };
 
-    final jar = PersistCookieJar(
-      ignoreExpires: false,
-      storage: storage,
-    );
+    final jar = PersistCookieJar(ignoreExpires: false, storage: storage);
 
-    final dio = Dio(BaseOptions(
-      baseUrl: AppConfig.apiBaseUrl,
-      connectTimeout: const Duration(seconds: 12),
-      sendTimeout: const Duration(seconds: 20),
-      receiveTimeout: const Duration(seconds: 20),
-      headers: <String, dynamic>{
-        HttpHeaders.acceptHeader: 'application/json',
-        HttpHeaders.contentTypeHeader: 'application/json',
-        // Origin que el AdminOriginGuard espera para mutaciones.
-        'Origin': AppConfig.mobileOrigin,
-        HttpHeaders.userAgentHeader: AppConfig.userAgentTag,
-      },
-      validateStatus: (s) => s != null && s >= 200 && s < 600,
-    ));
+    final dio = Dio(
+      BaseOptions(
+        baseUrl: AppConfig.apiBaseUrl,
+        connectTimeout: const Duration(seconds: 12),
+        sendTimeout: const Duration(seconds: 20),
+        receiveTimeout: const Duration(seconds: 20),
+        headers: <String, dynamic>{
+          HttpHeaders.acceptHeader: 'application/json',
+          HttpHeaders.contentTypeHeader: 'application/json',
+          // Origin que el AdminOriginGuard espera para mutaciones.
+          'Origin': AppConfig.mobileOrigin,
+          HttpHeaders.userAgentHeader: AppConfig.userAgentTag,
+        },
+        validateStatus: (s) => s != null && s >= 200 && s < 600,
+      ),
+    );
 
     dio.interceptors.add(CookieManager(jar));
     dio.interceptors.add(_ErrorMappingInterceptor());
@@ -176,10 +175,32 @@ class ApiClient {
 
   /// Helper GET tipado.
   Future<T> getJson<T>(String path, {Map<String, dynamic>? query}) async {
-    final res =
-        await _dio.get(path, queryParameters: query);
+    final res = await _dio.get(path, queryParameters: query);
     ensureOk(res);
     return res.data as T;
+  }
+
+  /// Helper GET para listas, validando el estado.
+  ///
+  /// Existe porque `getJson` devuelve un tipo único y los servicios de listas
+  /// llamaban a `dio.get` directamente, sin validar. Como el cliente no lanza
+  /// ante 4xx, el cuerpo del error (que es un objeto, no una lista) no
+  /// coincidía con lo esperado y el servicio devolvía la lista vacía: una
+  /// sesión caída o un error del servidor se veían en pantalla como "no hay
+  /// iglesias" o "no hay informes", sin ningún aviso.
+  Future<List<T>> getList<T>(
+    String path,
+    T Function(Map<String, dynamic>) fromJson, {
+    Map<String, dynamic>? query,
+  }) async {
+    final res = await _dio.get(path, queryParameters: query);
+    ensureOk(res);
+    final data = res.data;
+    if (data is! List) return const [];
+    return data
+        .whereType<Map<String, dynamic>>()
+        .map(fromJson)
+        .toList(growable: false);
   }
 
   /// Helper POST tipado.
@@ -277,21 +298,22 @@ class _ErrorMappingInterceptor extends Interceptor {
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) {
     if (err.response != null) {
-      handler.reject(DioException(
-        requestOptions: err.requestOptions,
-        response: err.response,
-        type: err.type,
-        error: ApiException.fromResponse(err.response!),
-      ));
+      handler.reject(
+        DioException(
+          requestOptions: err.requestOptions,
+          response: err.response,
+          type: err.type,
+          error: ApiException.fromResponse(err.response!),
+        ),
+      );
       return;
     }
-    handler.reject(DioException(
-      requestOptions: err.requestOptions,
-      error: ApiException(
-        0,
-        'Sin conexión con el servidor. Revisa tu red.',
+    handler.reject(
+      DioException(
+        requestOptions: err.requestOptions,
+        error: ApiException(0, 'Sin conexión con el servidor. Revisa tu red.'),
+        type: err.type,
       ),
-      type: err.type,
-    ));
+    );
   }
 }
