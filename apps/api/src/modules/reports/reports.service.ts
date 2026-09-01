@@ -354,9 +354,15 @@ export class ReportsService {
   }
 
   async findOne(id: string, actor: AdminAccount): Promise<Report> {
+    // NO se carga la relación `createdByAdminAccount`: el controlador devuelve
+    // esta entidad tal cual y AdminAccount lleva `passwordHash`, `tokenVersion`
+    // y los permisos globales del autor. Nadie consume el objeto (la web usa
+    // `createdByAdminAccountId` y el snapshot `createdByDisplayName`), así que
+    // cargarlo solo servía para filtrar el hash de contraseña de un admin a
+    // cualquier otro que pudiera leer el informe.
     const report = await this.reportRepo.findOne({
       where: { id },
-      relations: ["church", "createdByAdminAccount"],
+      relations: ["church"],
     });
     if (!report) {
       throw new NotFoundException("Informe no encontrado");
