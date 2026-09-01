@@ -223,16 +223,41 @@ class _ThreadScreenState extends State<_ThreadScreen> {
       final t = await Locator.support
           .thread(widget.conversation.id, asRoot: widget.asRoot);
       if (!mounted) return;
+
+      // Sólo se repinta si de verdad cambió algo. El refresco cada cinco
+      // segundos reconstruía la lista aunque no hubiera nada nuevo.
+      final hayNovedad = _hayMensajesNuevos(t.messages);
+      if (!hayNovedad && _error == null) return;
+
       setState(() {
         _messages = t.messages;
         _error = null;
       });
-      _scrollToEnd();
+
+      // Y sólo se baja al final si el usuario ya estaba al final. Antes se
+      // bajaba siempre, así que era imposible leer el historial de una
+      // conversación larga: el hilo saltaba solo cada cinco segundos.
+      if (hayNovedad && _estabaAlFinal) _scrollToEnd();
     } catch (e) {
       if (!quiet && mounted) setState(() => _error = userMessageFor(e));
     } finally {
       if (mounted && _loading) setState(() => _loading = false);
     }
+  }
+
+  /// Compara contra lo que ya está en pantalla: cantidad y último mensaje.
+  bool _hayMensajesNuevos(List<SupportMessage> entrantes) {
+    if (entrantes.length != _messages.length) return true;
+    if (entrantes.isEmpty) return false;
+    return entrantes.last.id != _messages.last.id;
+  }
+
+  /// Cerca del final (con holgura para no exigir precisión al dedo). Si aún no
+  /// hay scroll —conversación corta o primera carga—, cuenta como "al final".
+  bool get _estabaAlFinal {
+    if (!_scroll.hasClients) return true;
+    final pos = _scroll.position;
+    return pos.pixels >= pos.maxScrollExtent - 120;
   }
 
   void _scrollToEnd() {
@@ -249,7 +274,9 @@ class _ThreadScreenState extends State<_ThreadScreen> {
       maxWidth: 1800,
       imageQuality: 85,
     );
-    if (picked != null) setState(() => _files.add(File(picked.path)));
+    if (picked != null && mounted) {
+      setState(() => _files.add(File(picked.path)));
+    }
   }
 
   Future<void> _send() async {
@@ -273,8 +300,11 @@ class _ThreadScreenState extends State<_ThreadScreen> {
       _bodyCtrl.clear();
       setState(_files.clear);
       await _load();
+      // Tras enviar siempre se baja al final: es el mensaje propio recién
+      // escrito y el usuario espera verlo.
+      _scrollToEnd();
     } catch (e) {
-      setState(() => _error = userMessageFor(e));
+      if (mounted) setState(() => _error = userMessageFor(e));
     } finally {
       if (mounted) setState(() => _sending = false);
     }
@@ -489,7 +519,7 @@ class _NewConversationScreenState extends State<_NewConversationScreen> {
       );
       if (mounted) Navigator.of(context).pop(true);
     } catch (e) {
-      setState(() => _error = userMessageFor(e));
+      if (mounted) setState(() => _error = userMessageFor(e));
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -541,7 +571,9 @@ class _NewConversationScreenState extends State<_NewConversationScreen> {
                         source: ImageSource.gallery,
                         maxWidth: 1800,
                         imageQuality: 85);
-                    if (p != null) setState(() => _files.add(File(p.path)));
+                    if (p != null && mounted) {
+                      setState(() => _files.add(File(p.path)));
+                    }
                   },
                 ),
                 if (_error != null) ...[
