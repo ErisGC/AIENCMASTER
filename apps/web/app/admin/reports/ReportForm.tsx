@@ -635,11 +635,20 @@ export function ReportForm({
   );
 }
 
+/**
+ * Convierte la fecha guardada al valor de un `<input type="date">`.
+ *
+ * Los períodos se guardan como la medianoche UTC del día calendario elegido
+ * (`new Date('2026-01-15').toISOString()` produce `2026-01-15T00:00:00Z`), así
+ * que hay que leerlos en UTC. Con los getters locales, en Colombia (UTC−5) ese
+ * instante cae el día 14 a las 19:00 y el formulario mostraba la víspera: al
+ * guardar sin tocar nada, el período retrocedía un día en cada edición.
+ */
 function toDateInput(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '';
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
+  const yyyy = d.getUTCFullYear();
+  const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const dd = String(d.getUTCDate()).padStart(2, '0');
   return `${yyyy}-${mm}-${dd}`;
 }

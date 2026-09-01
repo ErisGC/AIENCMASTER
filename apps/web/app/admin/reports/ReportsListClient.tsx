@@ -20,7 +20,7 @@ import {
   adminGetSession,
   type AdminSessionResponse,
 } from '@/app/lib/admin-auth';
-import { formatDateTime } from '@/app/lib/formatDate';
+import { formatCalendarDate, formatDateTime } from '@/app/lib/formatDate';
 
 import styles from './page.module.css';
 
@@ -285,8 +285,8 @@ export function ReportsListClient() {
                     )}
                     <dt>Período</dt>
                     <dd>
-                      {formatDateTime(report.periodStart)} —{' '}
-                      {formatDateTime(report.periodEnd)}
+                      {formatCalendarDate(report.periodStart)} —{' '}
+                      {formatCalendarDate(report.periodEnd)}
                     </dd>
                     <dt>Creado por</dt>
                     <dd>{report.createdByDisplayName}</dd>
