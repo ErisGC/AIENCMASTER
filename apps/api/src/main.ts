@@ -30,6 +30,18 @@ async function bootstrap() {
   await app.register(multipart, {
     limits: {
       fileSize: 50 * 1024 * 1024, // 50 MB
+      // Tope duro de piezas por petición. Sin él, una sola petición podía
+      // traer archivos sin límite: cada controlador los va acumulando en
+      // memoria y sólo cuenta cuántos hay AL TERMINAR, así que el proceso se
+      // quedaba sin memoria antes de llegar a la validación.
+      //
+      // Se deja por encima del máximo de la aplicación (20 adjuntos por
+      // anuncio) para que quien se pase por poco siga recibiendo el mensaje
+      // claro del validador en vez de un corte en seco; esto sólo ataja el
+      // abuso de verdad.
+      files: 25,
+      fields: 50,
+      fieldSize: 1 * 1024 * 1024, // 1 MB por campo de texto
     },
     attachFieldsToBody: false,
   });

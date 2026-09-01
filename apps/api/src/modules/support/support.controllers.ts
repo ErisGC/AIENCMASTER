@@ -18,6 +18,7 @@ import {
   MAX_IMAGE_BYTES,
   ValidatableFile,
 } from "../../common/validation/file-validation";
+import { AdminRateLimitService } from "../admin-security/admin-rate-limit.service";
 import { AdminAuth } from "../admin-security/decorators/admin-auth.decorator";
 import type {
   AdminRequest,
@@ -80,11 +81,25 @@ function validateSupportFile(f: ValidatableFile) {
   );
 }
 
+/**
+ * Tope de adjuntos por mensaje. Debe coincidir con el que aplica el servicio;
+ * aquí se comprueba DURANTE la lectura para no llegar a acumular en memoria
+ * más de lo permitido. El endpoint de visitantes no exige autenticación, así
+ * que validar sólo al final dejaba una vía para tumbar el proceso enviando
+ * muchos archivos en una única petición.
+ */
+const MAX_SUPPORT_FILES = 5;
+
 async function parseMultipart(req: AdminRequest) {
   const fields: Record<string, string> = {};
   const files: ValidatableFile[] = [];
   for await (const part of req.parts() as AsyncIterable<MultipartPart>) {
     if (part.type === "file") {
+      if (files.length >= MAX_SUPPORT_FILES) {
+        throw new BadRequestException(
+          `Máximo ${MAX_SUPPORT_FILES} archivos por mensaje.`,
+        );
+      }
       const file: ValidatableFile = {
         filename: part.filename,
         mimetype: part.mimetype,
@@ -103,11 +118,44 @@ async function parseMultipart(req: AdminRequest) {
 
 @Controller("support")
 export class PublicSupportController {
-  constructor(private readonly service: SupportService) {}
+  constructor(
+    private readonly service: SupportService,
+    private readonly rateLimit: AdminRateLimitService,
+  ) {}
+
+  /**
+   * Freno por dirección IP para los envíos de visitantes.
+   *
+   * El tope de mensajes por hora del servicio se cuenta contra el token que
+   * guarda el navegador, y ese token lo elige quien llama: bastaba con no
+   * enviarlo para estrenar identidad y saltarse el límite (y también el
+   * bloqueo de una conversación). Como estos endpoints no piden
+   * autenticación, hace falta un freno que el cliente no controle.
+   *
+   * La IP es fiable porque el arranque confía en exactamente un proxy
+   * (Railway) y no reenviamos las cabeceras de IP que manda el cliente.
+   */
+  private enforceIpLimit(req: AdminRequest) {
+    this.rateLimit.consume({
+      scope: "support-guest",
+      windowSeconds: 60 * 60,
+      blockSeconds: 15 * 60,
+      message:
+        "Has enviado demasiados mensajes seguidos. Intenta de nuevo más tarde.",
+      dimensions: [
+        {
+          label: "ip",
+          value: req.ip,
+          maxAttempts: 30,
+        },
+      ],
+    });
+  }
 
   /** Abre un hilo. Devuelve el token que el navegador debe guardar. */
   @Post("guest/start")
   async start(@Req() req: AdminRequest) {
+    this.enforceIpLimit(req);
     const { fields, files } = await parseMultipart(req);
     return this.service.guestStart({
       name: fields.name ?? "",
@@ -137,6 +185,7 @@ export class PublicSupportController {
     @Param("id", new ParseUUIDPipe({ version: "4" })) id: string,
     @Req() req: AdminRequest,
   ) {
+    this.enforceIpLimit(req);
     const { fields, files } = await parseMultipart(req);
     return this.service.replyAsAuthor(id, fields.body ?? "", files, {
       guestToken: fields.token ?? null,

@@ -72,6 +72,7 @@ import { PermissionsService } from "./permissions/permissions.service";
   exports: [
     AdminAuditService,
     AdminOriginGuard,
+    AdminRateLimitService,
     AdminSessionService,
     AdminAuthGuard,
     RootRoleGuard,
