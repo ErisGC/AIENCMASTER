@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/ErisGC/AIENCMASTER/actions"><img alt="tests" src="https://img.shields.io/badge/tests-48_passing-brightgreen?style=flat-square"></a>
+  <a href="https://github.com/ErisGC/AIENCMASTER/actions"><img alt="tests" src="https://img.shields.io/badge/tests-102_passing-brightgreen?style=flat-square"></a>
   <img alt="api" src="https://img.shields.io/badge/api-NestJS_11-E0234E?style=flat-square&logo=nestjs&logoColor=white">
   <img alt="web" src="https://img.shields.io/badge/web-Next.js_16-000000?style=flat-square&logo=next.js&logoColor=white">
   <img alt="app" src="https://img.shields.io/badge/app-Flutter_3.41-02569B?style=flat-square&logo=flutter&logoColor=white">
@@ -63,10 +63,10 @@ Templates predefinidos: Pastor, Tesorero, Secretario, Custom.
 - APK firmado **automáticamente en CI** (`.github/workflows/admin-app-release.yml`)
   al pushear un tag `admin-app-v*`
 - Identidad de dispositivo estable (`shared_preferences`) — el bug típico de
-  "no me deja entrar desde el mismo teléfono" está corregido y cubierto
-  por tests E2E
-- Mapa OpenStreetMap (sin API keys), image picker, file picker para
-  adjuntos, biometría como TODO documentado
+  "no me deja entrar desde el mismo teléfono" está corregido
+- Mapa OpenStreetMap (sin API keys), selector de imágenes y de archivos
+  para adjuntos, y desbloqueo por huella o PIN (el PIN además cifra en
+  reposo las cookies de sesión)
 
 ### 📊 Auditoría diferenciada
 
@@ -75,18 +75,29 @@ Eventos críticos tienen su propio `actionType` (no se mezclan con metadata):
 `ROLE_DEMOTED_TO_ADMIN`. Cualquier alerta SIEM puede dispararse sin parsear
 campos custom.
 
-### 🧪 48 tests passing en backend
+### 🧪 102 pruebas en el backend
 
 ```bash
 cd apps/api && npm test
-# Test Suites: 10 passed, 10 total
-# Tests:       48 passed, 48 total
+# Test Suites: 19 passed, 19 total
+# Tests:       102 passed, 102 total
 ```
 
 Cobertura: cadena ROOT→ROOT, cambio de rol (incl. protección "último
-ROOT"), `AdminOriginGuard` (incluyendo bug de seguridad encontrado y
-corregido durante QA), retry-login con mismo deviceId, rate limiting,
-acceso pending→approved→active.
+ROOT"), `AdminOriginGuard`, reintento de acceso con el mismo dispositivo,
+límite de intentos, y el recorrido pendiente→aprobado→activo.
+
+Buena parte son regresiones de fallos reales, escritas junto con su
+corrección para que no vuelvan: el hash de contraseña que se filtraba al
+leer un informe, la sesión que no entregaba las iglesias del
+administrador, el borrado de archivos ajenos en Cloudinary, el abuso
+anónimo del canal de soporte, la auditoría que podía anular un guardado
+dentro de una transacción, y las firmas de contenido de los archivos
+subidos.
+
+En `apps/api/test/` hay un README con lo que haría falta para escribir
+pruebas de extremo a extremo de verdad (resumen: una base de datos de
+prueba).
 
 ---
 
@@ -146,13 +157,13 @@ El esquema lo crean las migraciones, que corren solas al arrancar la API
 
 ```bash
 cd apps/api
-npm test          # Jest, 48 tests, ~12s
+npm test          # Jest, 102 pruebas
 ```
 
 ```bash
 cd apps/admin_app
-flutter analyze   # 0 issues
-flutter test      # smoke tests
+flutter analyze   # 2 sugerencias de estilo conocidas, ningún error
+flutter test      # 20 pruebas
 ```
 
 ```bash
@@ -170,10 +181,14 @@ npm run build     # build prod
 pwsh apps/admin_app/scripts/setup-release-keystore.ps1  # Windows
 bash apps/admin_app/scripts/setup-release-keystore.sh   # macOS/Linux
 
-# Cada release nuevo
-git tag admin-app-v0.2.0
-git push origin admin-app-v0.2.0
-# GitHub Actions firma + publica los APK en /releases
+# Cada release nuevo: primero sube la versión en apps/admin_app/pubspec.yaml
+# (el workflow exige que coincida), commit y push. Después:
+gh workflow run admin-app-release.yml --ref main -f version_label=v0.3.1
+# o bien, por tag:
+#   git tag admin-app-v0.3.1 && git push origin admin-app-v0.3.1
+
+# Verifica siempre que quedó publicado antes de avisar a nadie:
+curl -sI https://github.com/ErisGC/AIENCMASTER/releases/latest/download/aienc-admin.apk | grep -i location
 ```
 
 Detalles completos en

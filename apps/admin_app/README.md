@@ -24,22 +24,22 @@ invitación ya cargada.
   - Informes: listado con filtros por tipo, alta de informe con todos
     los tipos (ofrendas, asistencia, gasto + categoría, evento,
     solicitud, otro)
-  - Seguridad (solo ROOT): listado de admins, historial de cuenta,
-    logout
+  - Iglesias: edición completa (datos, ubicación en el mapa, imágenes,
+    activar o desactivar), representantes, anuncios locales y estudios
+    en audio
+  - Seguridad: protección de la app, tutorial y canal de soporte para
+    todos; para el administrador principal, además, invitaciones,
+    cuentas, permisos, historial por cuenta y auditoría global
 - Deep link `aiencadmin://invite?token=…` y `aiencadmin://open`
   configurado en `AndroidManifest.xml` con manejo en runtime vía
   `app_links`
-- TODO: biometría (huella/cara). Está como stub
-  (`LocalAuthService.biometricsAvailable() → false`). Se reactivará
-  cuando se mueva el SDK Flutter a una ruta sin espacios o cuando
-  `local_auth` deje de depender de `objective_c`
-- TODO: cifrado at-rest del PIN. Mismo motivo. Actualmente el PIN
-  se almacena como hash FNV-1a en `shared_preferences`, y las cookies
-  HttpOnly de sesión las maneja `cookie_jar` dentro del sandbox del
-  app (inaccesibles a otras apps)
-- TODO: edición de iglesias y anuncios desde la app (por ahora solo
-  lectura — la edición pesada se hace desde la web)
-- TODO: gestión de permisos y panel de invitaciones desde la app
+- Biometría (huella) implementada con `local_auth`. Requiere que
+  `MainActivity` extienda `FlutterFragmentActivity`: el diálogo de
+  Android necesita un `FragmentActivity`
+- PIN local con SHA-256 salado e iterado 20 000 veces, y cookie jar
+  cifrado en reposo con AES-256-GCM usando una llave derivada del PIN.
+  Quedan PIN heredados con el hash antiguo (FNV-1a sin sal), que se
+  migran solo al desbloquear
 
 ## Stack
 
@@ -49,7 +49,7 @@ invitación ya cargada.
 - `fl_chart` 0.69
 - `app_links` 6.3 (deep links)
 - `shared_preferences` 2.3 (PIN + último usuario)
-- `intl` 0.19 (formato es-CO)
+- `intl` 0.20 (formato es-CO)
 
 ## Build
 
