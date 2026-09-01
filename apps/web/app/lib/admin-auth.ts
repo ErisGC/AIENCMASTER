@@ -1,4 +1,5 @@
 import { API_BASE_URL } from './api';
+import { manejarSesionExpirada } from './admin-session-expired';
 
 export type AdminRole = 'ROOT' | 'ADMIN';
 export type AdminDeviceStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'REVOKED';
@@ -192,6 +193,9 @@ async function adminRequest<T>(path: string, init?: RequestInit): Promise<T> {
   }
 
   if (!res.ok) {
+    // Sesión caducada a mitad de la navegación: se lleva al acceso en vez de
+    // dejar el aviso pegado en pantalla hasta la siguiente navegación.
+    if (res.status === 401) manejarSesionExpirada(path);
     const text = await res.text().catch(() => '');
     // Log detallado sólo en consola para debugging.
     // Usamos console.error sólo para 5xx (errores reales de servidor);

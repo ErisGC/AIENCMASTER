@@ -1,5 +1,6 @@
 import { API_BASE_URL } from './api';
 import type { Announcement, AnnouncementDetail } from './announcements';
+import { manejarSesionExpirada } from './admin-session-expired';
 
 async function adminAnnouncementsReq<T>(
   path: string,
@@ -12,6 +13,9 @@ async function adminAnnouncementsReq<T>(
   });
 
   if (!res.ok) {
+    // Sesión caducada a mitad de la navegación: se lleva al acceso en vez de
+    // dejar el aviso pegado en pantalla hasta la siguiente navegación.
+    if (res.status === 401) manejarSesionExpirada(path);
     const text = await res.text().catch(() => '');
     if (typeof window !== 'undefined') {
       const log = res.status >= 500 ? console.error : console.debug;

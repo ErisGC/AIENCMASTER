@@ -1,4 +1,5 @@
 import { API_BASE_URL } from './api';
+import { manejarSesionExpirada } from './admin-session-expired';
 
 export interface PublicBackground {
   id: string;
@@ -50,6 +51,9 @@ async function siteRequest<T>(path: string, init?: RequestInit): Promise<T> {
   });
 
   if (!res.ok) {
+    // Sesión caducada a mitad de la navegación: se lleva al acceso en vez de
+    // dejar el aviso pegado en pantalla hasta la siguiente navegación.
+    if (res.status === 401) manejarSesionExpirada(path);
     const text = await res.text().catch(() => '');
     if (typeof window !== 'undefined') {
       const log = res.status >= 500 ? console.error : console.debug;
