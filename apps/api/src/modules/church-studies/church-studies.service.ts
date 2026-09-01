@@ -97,7 +97,20 @@ export class ChurchStudiesService {
       audioFormat: uploaded.format ?? null,
       audioBytes: typeof uploaded.bytes === "number" ? uploaded.bytes : null,
     });
-    return this.repo.save(study);
+
+    try {
+      return await this.repo.save(study);
+    } catch (err) {
+      // Si el guardado falla, el audio ya subido se queda en Cloudinary sin
+      // que nada lo referencie: un archivo de hasta 25 MB imposible de
+      // localizar después. El resto de módulos ya hacía esta limpieza; los
+      // estudios se habían quedado sin ella.
+      await this.cloudinary.delete(
+        uploaded.public_id,
+        CloudinaryService.resourceTypeFor(uploaded.resource_type ?? "video"),
+      );
+      throw err;
+    }
   }
 
   async update(churchId: string, id: string, dto: UpdateChurchStudyDto) {

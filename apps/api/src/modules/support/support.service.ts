@@ -142,6 +142,12 @@ export class SupportService {
 
     await this.assertGuestNotFlooding(tokenHash);
 
+    // Los adjuntos se suben ANTES de crear la conversación. Al revés, si la
+    // subida fallaba quedaba un hilo sin un solo mensaje: aparecía vacío en la
+    // bandeja del administrador principal y no había forma de borrarlo,
+    // porque no existe un endpoint para eliminar conversaciones.
+    const attachments = await this.upload(input.files);
+
     const now = new Date();
     const conv = await this.convRepo.save(
       this.convRepo.create({
@@ -154,7 +160,6 @@ export class SupportService {
       }),
     );
 
-    const attachments = await this.upload(input.files);
     await this.msgRepo.save(
       this.msgRepo.create({
         conversationId: conv.id,
@@ -314,6 +319,11 @@ export class SupportService {
       throw new BadRequestException("Describe el asunto en pocas palabras.");
     }
     const body = this.assertBody(input.body, input.files);
+
+    // Igual que en el canal de visitantes: los adjuntos primero, para que un
+    // fallo de subida no deje un hilo sin mensajes en la bandeja.
+    const attachments = await this.upload(input.files);
+
     const now = new Date();
     const conv = await this.convRepo.save(
       this.convRepo.create({
@@ -325,7 +335,7 @@ export class SupportService {
         lastMessageAt: now,
       }),
     );
-    const attachments = await this.upload(input.files);
+
     await this.msgRepo.save(
       this.msgRepo.create({
         conversationId: conv.id,
