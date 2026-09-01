@@ -53,6 +53,42 @@ export class DirectorsService {
     );
   }
 
+  /**
+   * Comprueba la cuenta que se vincula a un representante.
+   *
+   * Sólo se puede vincular una cuenta que tenga asignación real a esa iglesia;
+   * el principal puede vincular cualquiera. Se resuelve contra las
+   * asignaciones, no contra el campo antiguo `assignedChurchId`.
+   *
+   * Vive aparte porque el alta sí lo comprobaba y la edición no: un admin
+   * podía saltarse la regla editando el representante en vez de crearlo, y
+   * además un identificador inexistente reventaba contra la clave foránea con
+   * un error de servidor en vez de un mensaje claro. Como la foto pública del
+   * representante hereda la de la cuenta vinculada, eso dejaba ver la foto de
+   * un administrador de otra iglesia.
+   */
+  private async assertLinkedAccountBelongsToChurch(
+    linkedAdminAccountId: string | null | undefined,
+    churchId: string,
+    actor: AdminAccount,
+  ) {
+    if (!linkedAdminAccountId) return;
+
+    const linked = await this.accountRepo.findOne({
+      where: { id: linkedAdminAccountId },
+    });
+    if (!linked) throw new NotFoundException("Cuenta admin no encontrada");
+
+    if (actor.role === AdminRole.ROOT) return;
+
+    const linkedChurchIds = await this.permissions.getAssignedChurchIds(linked);
+    if (!linkedChurchIds.includes(churchId)) {
+      throw new ForbiddenException(
+        "Esa cuenta admin no pertenece a esta iglesia",
+      );
+    }
+  }
+
   /* ── Public ── */
 
   /**
@@ -112,24 +148,11 @@ export class DirectorsService {
     const church = await this.churchRepo.findOne({ where: { id: churchId } });
     if (!church) throw new NotFoundException("Iglesia no encontrada");
 
-    if (dto.linkedAdminAccountId) {
-      const linked = await this.accountRepo.findOne({
-        where: { id: dto.linkedAdminAccountId },
-      });
-      if (!linked) throw new NotFoundException("Cuenta admin no encontrada");
-      // Sólo se puede vincular una cuenta que tenga una asignación real a esta
-      // iglesia (o ROOT, que puede vincular cualquiera). Se valida contra
-      // AdminChurchAssignment, no contra el campo legacy assignedChurchId.
-      if (actor.role !== AdminRole.ROOT) {
-        const linkedChurchIds =
-          await this.permissions.getAssignedChurchIds(linked);
-        if (!linkedChurchIds.includes(churchId)) {
-          throw new ForbiddenException(
-            "Esa cuenta admin no pertenece a esta iglesia",
-          );
-        }
-      }
-    }
+    await this.assertLinkedAccountBelongsToChurch(
+      dto.linkedAdminAccountId,
+      churchId,
+      actor,
+    );
 
     let photoUrl: string | null = null;
     let photoPublicId: string | null = null;
@@ -175,21 +198,29 @@ export class DirectorsService {
       director.email = dto.email?.trim().toLowerCase() || null;
     if (dto.sortOrder !== undefined) director.sortOrder = dto.sortOrder;
     if (dto.linkedAdminAccountId !== undefined) {
+      await this.assertLinkedAccountBelongsToChurch(
+        dto.linkedAdminAccountId,
+        director.churchId,
+        actor,
+      );
       director.linkedAdminAccountId = dto.linkedAdminAccountId ?? null;
     }
 
     if (photo) {
       validateChurchImage(photo);
-      // Borrar la foto anterior si existía
-      if (director.photoPublicId) {
-        await this.cloudinary.delete(director.photoPublicId);
-      }
+      // Se sube primero y se borra la anterior después: si la subida falla, el
+      // representante conserva la foto que ya tenía. Al revés, un fallo de red
+      // dejaba el registro apuntando a un archivo ya borrado.
+      const anterior = director.photoPublicId;
       const uploaded = await this.cloudinary.uploadToFolder(
         photo.buffer,
         DIRECTORS_FOLDER,
       );
       director.photoUrl = uploaded.secure_url;
       director.photoPublicId = uploaded.public_id;
+      if (anterior) {
+        await this.cloudinary.delete(anterior);
+      }
     }
 
     return this.directorRepo.save(director);

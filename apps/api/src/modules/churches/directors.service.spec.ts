@@ -155,4 +155,57 @@ describe("DirectorsService (autorización)", () => {
     ).rejects.toBeInstanceOf(ForbiddenException);
     expect(directorRepo.save).not.toHaveBeenCalled();
   });
+
+  // La misma regla al EDITAR: sin esto, un admin se la saltaba editando el
+  // representante en vez de crearlo.
+  it("impide vincular una cuenta ajena también al EDITAR (IDOR)", async () => {
+    directorRepo.findOne.mockResolvedValue({ id: "d1", churchId: CHURCH_A });
+    permissions.assertChurchPermission.mockResolvedValue(undefined);
+    accountRepo.findOne.mockResolvedValue({ id: "linked", role: "ADMIN" });
+    permissions.getAssignedChurchIds.mockResolvedValue([]);
+
+    await expect(
+      service.update(
+        "d1",
+        { linkedAdminAccountId: "linked" } as UpdateDirectorDto,
+        null,
+        treasurer,
+      ),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(directorRepo.save).not.toHaveBeenCalled();
+  });
+
+  it("rechaza con mensaje claro una cuenta inexistente al editar", async () => {
+    directorRepo.findOne.mockResolvedValue({ id: "d1", churchId: CHURCH_A });
+    permissions.assertChurchPermission.mockResolvedValue(undefined);
+    accountRepo.findOne.mockResolvedValue(null);
+
+    await expect(
+      service.update(
+        "d1",
+        { linkedAdminAccountId: "no-existe" } as UpdateDirectorDto,
+        null,
+        treasurer,
+      ),
+    ).rejects.toThrow(/Cuenta admin no encontrada/);
+    expect(directorRepo.save).not.toHaveBeenCalled();
+  });
+
+  it("el principal sí puede vincular cualquier cuenta al editar", async () => {
+    directorRepo.findOne.mockResolvedValue({ id: "d1", churchId: CHURCH_A });
+    permissions.assertChurchPermission.mockResolvedValue(undefined);
+    accountRepo.findOne.mockResolvedValue({ id: "linked", role: "ADMIN" });
+    directorRepo.save.mockResolvedValue({ id: "d1" });
+
+    const root = { id: "root", role: "ROOT" } as unknown as AdminAccount;
+    await expect(
+      service.update(
+        "d1",
+        { linkedAdminAccountId: "linked" } as UpdateDirectorDto,
+        null,
+        root,
+      ),
+    ).resolves.toBeDefined();
+    expect(permissions.getAssignedChurchIds).not.toHaveBeenCalled();
+  });
 });
