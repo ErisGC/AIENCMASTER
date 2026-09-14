@@ -10,6 +10,7 @@ import { AnnouncementsModule } from "./modules/announcements/announcements.modul
 import { ChurchAnnouncementsModule } from "./modules/church-announcements/church-announcements.module";
 import { ChurchStudiesModule } from "./modules/church-studies/church-studies.module";
 import { ChurchesModule } from "./modules/churches/churches.module";
+import { EventsModule } from "./modules/events/events.module";
 import { ReportsModule } from "./modules/reports/reports.module";
 import { SiteModule } from "./modules/site/site.module";
 import { SupportModule } from "./modules/support/support.module";
@@ -81,6 +82,7 @@ function buildTypeOrmOptions(): TypeOrmModuleOptions {
     ChurchAnnouncementsModule,
     ChurchStudiesModule,
     ChurchesModule,
+    EventsModule,
     ReportsModule,
     SiteModule,
     SupportModule,

@@ -98,6 +98,25 @@ export class PermissionsService {
     }
   }
 
+  /**
+   * Iglesias en las que el admin tiene un permiso concreto, en UNA consulta.
+   * Para listados largos evita preguntar iglesia por iglesia. ROOT devuelve
+   * `null`: las tiene todas.
+   */
+  async churchIdsWithPermission(
+    account: Pick<AdminAccount, "id" | "role">,
+    permission: ChurchPermission,
+  ): Promise<string[] | null> {
+    if (this.isRoot(account)) return null;
+    const rows = await this.assignmentRepo.find({
+      where: { adminAccountId: account.id },
+      select: ["churchId", "permissions"],
+    });
+    return rows
+      .filter((r) => (r.permissions ?? []).includes(permission))
+      .map((r) => r.churchId);
+  }
+
   /** Lista de IDs de iglesias asignadas al admin (vacía para ROOT). */
   async getAssignedChurchIds(
     account: Pick<AdminAccount, "id" | "role">,

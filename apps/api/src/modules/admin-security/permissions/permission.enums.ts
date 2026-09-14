@@ -21,6 +21,7 @@ export enum GlobalPermission {
   MANAGE_CHURCHES = "MANAGE_CHURCHES",
   MANAGE_ADMINS = "MANAGE_ADMINS",
   VIEW_ALL_REPORTS = "VIEW_ALL_REPORTS",
+  MANAGE_GLOBAL_EVENTS = "MANAGE_GLOBAL_EVENTS",
 }
 
 export enum ChurchPermission {
@@ -28,6 +29,7 @@ export enum ChurchPermission {
   SUBMIT_REPORTS = "SUBMIT_REPORTS",
   EDIT_CHURCH_INFO = "EDIT_CHURCH_INFO",
   MANAGE_DIRECTORS = "MANAGE_DIRECTORS",
+  MANAGE_EVENTS = "MANAGE_EVENTS",
 }
 
 /**
@@ -73,6 +75,13 @@ export const PERMISSION_CATALOG: PermissionDescriptor[] = [
     group: "global",
   },
   {
+    key: GlobalPermission.MANAGE_GLOBAL_EVENTS,
+    label: "Gestionar eventos globales",
+    description:
+      "Programar, editar y eliminar eventos que competen a varias iglesias (cultos unidos, asambleas, intensivos) en el cronograma general.",
+    group: "global",
+  },
+  {
     key: ChurchPermission.MANAGE_CHURCH_ANNOUNCEMENTS,
     label: "Gestionar anuncios de la iglesia",
     description:
@@ -98,6 +107,13 @@ export const PERMISSION_CATALOG: PermissionDescriptor[] = [
     label: "Gestionar directores",
     description:
       "Agregar, editar o eliminar a los directores encargados que aparecen en la iglesia.",
+    group: "church",
+  },
+  {
+    key: ChurchPermission.MANAGE_EVENTS,
+    label: "Gestionar eventos de la iglesia",
+    description:
+      "Programar, editar y eliminar los cultos y actividades de esta iglesia en el cronograma. El sistema avisa si se cruzan con eventos globales.",
     group: "church",
   },
 ];
@@ -135,6 +151,7 @@ export const PERMISSION_TEMPLATES: PermissionTemplate[] = [
       ChurchPermission.SUBMIT_REPORTS,
       ChurchPermission.EDIT_CHURCH_INFO,
       ChurchPermission.MANAGE_DIRECTORS,
+      ChurchPermission.MANAGE_EVENTS,
     ],
   },
   {
@@ -149,11 +166,12 @@ export const PERMISSION_TEMPLATES: PermissionTemplate[] = [
     key: "SECRETARY",
     name: "Secretario",
     description:
-      "Anuncios de la iglesia y registro de asistencia / informes generales.",
+      "Anuncios y eventos de la iglesia, y registro de asistencia / informes generales.",
     globalPermissions: [],
     churchPermissions: [
       ChurchPermission.MANAGE_CHURCH_ANNOUNCEMENTS,
       ChurchPermission.SUBMIT_REPORTS,
+      ChurchPermission.MANAGE_EVENTS,
     ],
   },
   {

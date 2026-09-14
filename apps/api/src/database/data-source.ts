@@ -20,6 +20,7 @@ import { SiteBackground } from "../modules/site/site-background.entity";
 import { SiteSettings } from "../modules/site/site-settings.entity";
 import { SupportConversation } from "../modules/support/support-conversation.entity";
 import { SupportMessage } from "../modules/support/support-message.entity";
+import { Event } from "../modules/events/event.entity";
 
 function required(name: string) {
   const value = process.env[name]?.trim();
@@ -58,6 +59,7 @@ const ENTITIES = [
   SiteSettings,
   SupportConversation,
   SupportMessage,
+  Event,
 ];
 
 const databaseUrl = process.env.DATABASE_URL?.trim();
