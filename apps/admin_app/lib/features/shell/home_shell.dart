@@ -11,10 +11,11 @@ import '../../core/widgets/coach_card.dart';
 import '../dashboard/dashboard_screen.dart';
 import '../announcements/announcements_screen.dart';
 import '../churches/churches_screen.dart';
+import '../events/events_screen.dart';
 import '../reports/reports_screen.dart';
 import '../security/security_screen.dart';
 
-/// Shell con barra inferior. Las cinco secciones se mantienen montadas
+/// Shell con barra inferior. Las seis secciones se mantienen montadas
 /// vía IndexedStack para preservar scroll y estado de cada feature.
 ///
 /// Al abrir por primera vez dispara dos ayudas, en orden:
@@ -57,6 +58,13 @@ class _HomeShellState extends State<HomeShell> {
   BuildContext? _scCtx;
 
   int _idx = 0;
+
+  /// Posición de la pestaña Informes en la barra (su botón de "nuevo informe"
+  /// vive en el Scaffold, no dentro de la pantalla).
+  static const _idxInformes = 4;
+
+  /// Eventos próximos con cruce de horario: insignia en la pestaña Eventos.
+  int _eventAlerts = 0;
 
   @override
   void initState() {
@@ -195,6 +203,17 @@ class _HomeShellState extends State<HomeShell> {
         child: const AnnouncementsScreen(),
       ),
       _NavTab(
+        icon: Icons.event_outlined,
+        activeIcon: Icons.event,
+        label: 'Eventos',
+        badge: _eventAlerts,
+        child: EventsScreen(
+          onAlertsCount: (n) {
+            if (mounted && n != _eventAlerts) setState(() => _eventAlerts = n);
+          },
+        ),
+      ),
+      _NavTab(
         icon: Icons.church_outlined,
         activeIcon: Icons.church,
         label: 'Iglesias',
@@ -211,16 +230,16 @@ class _HomeShellState extends State<HomeShell> {
       // administrador principal (invitaciones, cuentas y auditoría) se oculta
       // dentro de la propia pantalla según el rol.
       _NavTab(
-          icon: Icons.shield_outlined,
-          activeIcon: Icons.shield,
-          label: 'Seguridad',
-          child: SecurityScreen(
-            tutorialStep: _tutorialStep,
-            tutorialTotal: _tutorialTotal,
-            onRestartTutorial: () => _startTutorial(from: 0),
-            onContinueTutorial: () => _startTutorial(from: _tutorialStep),
-          ),
+        icon: Icons.shield_outlined,
+        activeIcon: Icons.shield,
+        label: 'Seguridad',
+        child: SecurityScreen(
+          tutorialStep: _tutorialStep,
+          tutorialTotal: _tutorialTotal,
+          onRestartTutorial: () => _startTutorial(from: 0),
+          onContinueTutorial: () => _startTutorial(from: _tutorialStep),
         ),
+      ),
     ];
 
     return Scaffold(
@@ -239,9 +258,7 @@ class _HomeShellState extends State<HomeShell> {
         child: Container(
           decoration: const BoxDecoration(
             color: GemPalette.surfaceElevated,
-            border: Border(
-              top: BorderSide(color: GemPalette.borderSoft),
-            ),
+            border: Border(top: BorderSide(color: GemPalette.borderSoft)),
           ),
           child: SafeArea(
             top: false,
@@ -250,8 +267,7 @@ class _HomeShellState extends State<HomeShell> {
                 backgroundColor: Colors.transparent,
                 indicatorColor: GemPalette.sapphire.withValues(alpha: 0.25),
                 labelTextStyle: WidgetStateProperty.all(
-                  const TextStyle(
-                      fontSize: 11.5, fontWeight: FontWeight.w600),
+                  const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600),
                 ),
               ),
               child: NavigationBar(
@@ -260,8 +276,18 @@ class _HomeShellState extends State<HomeShell> {
                 destinations: [
                   for (final t in tabs)
                     NavigationDestination(
-                      icon: Icon(t.icon),
-                      selectedIcon: Icon(t.activeIcon),
+                      icon: Badge.count(
+                        count: t.badge,
+                        isLabelVisible: t.badge > 0,
+                        backgroundColor: GemPalette.ruby,
+                        child: Icon(t.icon),
+                      ),
+                      selectedIcon: Badge.count(
+                        count: t.badge,
+                        isLabelVisible: t.badge > 0,
+                        backgroundColor: GemPalette.ruby,
+                        child: Icon(t.activeIcon),
+                      ),
                       label: t.label,
                     ),
                 ],
@@ -270,7 +296,7 @@ class _HomeShellState extends State<HomeShell> {
           ),
         ),
       ),
-      floatingActionButton: _idx == 3
+      floatingActionButton: _idx == _idxInformes
           ? FloatingActionButton.extended(
               backgroundColor: GemPalette.emerald,
               foregroundColor: Colors.white,
@@ -332,6 +358,8 @@ class _HomeShellState extends State<HomeShell> {
           'Desde esta barra te mueves por toda la app:\n\n'
           '•  Métricas: el resumen que acabas de ver.\n'
           '•  Anuncios: publica, edita y elimina anuncios.\n'
+          '•  Eventos: el cronograma de cultos, reuniones y actividades; '
+          'avisa si dos se cruzan.\n'
           '•  Iglesias: gestiona los datos, el logo y el mapa de cada iglesia.\n'
           '•  Informes: registra ofrendas, egresos y asistencia.\n'
           '•  Seguridad: revisa el historial de auditoría, configura tu PIN o '
@@ -344,6 +372,8 @@ class _HomeShellState extends State<HomeShell> {
           '•  Métricas: el resumen de $c.\n'
           '•  Anuncios: consulta los anuncios; podrás gestionarlos si tienes el '
           'permiso.\n'
+          '•  Eventos: el cronograma de $c y de toda la Asociación; programa '
+          'los de $c si tienes el permiso.\n'
           '•  Iglesias: consulta y edita la información de $c según tus '
           'permisos.\n'
           '•  Informes: registra ofrendas, egresos y asistencia de $c.\n\n'
@@ -385,10 +415,14 @@ class _NavTab {
   final IconData activeIcon;
   final String label;
   final Widget child;
+
+  /// Número que se muestra sobre el ícono (0 = sin insignia).
+  final int badge;
   _NavTab({
     required this.icon,
     required this.activeIcon,
     required this.label,
     required this.child,
+    this.badge = 0,
   });
 }

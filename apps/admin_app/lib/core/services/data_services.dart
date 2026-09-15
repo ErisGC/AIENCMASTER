@@ -249,6 +249,20 @@ class DirectorService {
   Future<void> delete(String id) async {
     await _api.deleteVoid('/admin/directors/$id');
   }
+
+  /// Directores tal como aparecen en la página pública de la iglesia (nombre
+  /// y cargo). Sirve para elegir encargados de un evento de cualquier
+  /// iglesia: el listado administrativo exige el permiso de gestionar
+  /// directores de esa iglesia, que un encargado de eventos no siempre tiene.
+  Future<List<EventDirectorRef>> listPublic(String churchId) async {
+    final data = await _api.getJson<Map<String, dynamic>>(
+      '/churches/$churchId',
+    );
+    return ((data['directors'] as List?) ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .map((d) => EventDirectorRef.fromJson({...d, 'churchId': churchId}))
+        .toList(growable: false);
+  }
 }
 
 /// Estudios / mensajes en audio de una iglesia.
@@ -569,5 +583,216 @@ class SupportService {
     );
     _api.ensureOk(res);
     return SupportMessage.fromJson(res.data as Map<String, dynamic>);
+  }
+}
+
+// ── Eventos / cronograma ────────────────────────────────────────────────
+
+/// El servidor rechazó el evento (409) porque se cruza con otros y no se
+/// reconoció el cruce. Trae la lista para mostrarla y ofrecer
+/// "guardar de todos modos".
+class EventConflictException implements Exception {
+  final List<ConflictsForDate> conflicts;
+  EventConflictException(this.conflicts);
+
+  @override
+  String toString() => 'El evento se cruza con otros ya programados.';
+}
+
+/// Resultado de crear: una fecha o toda una serie.
+class CreatedEvents {
+  final List<ChurchEvent> events;
+  final String? seriesId;
+  CreatedEvents({required this.events, required this.seriesId});
+}
+
+class EventService {
+  EventService(this._api);
+  final ApiClient _api;
+
+  static String _dia(DateTime d) =>
+      '${d.year.toString().padLeft(4, '0')}-'
+      '${d.month.toString().padLeft(2, '0')}-'
+      '${d.day.toString().padLeft(2, '0')}';
+
+  /// Eventos visibles para quien consulta, en la ventana [from, to] (días).
+  Future<List<ChurchEvent>> list({
+    DateTime? from,
+    DateTime? to,
+    String? churchId,
+    EventScope? scope,
+  }) async {
+    final desde = from == null ? null : _dia(from);
+    final hasta = to == null ? null : _dia(to);
+    return _api.getList(
+      '/admin/events',
+      ChurchEvent.fromJson,
+      query: {
+        'from': ?desde,
+        'to': ?hasta,
+        'churchId': ?churchId,
+        'scope': ?scope?.name,
+      },
+    );
+  }
+
+  Future<EventAlerts> alerts() async {
+    final data = await _api.getJson<Map<String, dynamic>>(
+      '/admin/events/alerts',
+    );
+    return EventAlerts.fromJson(data);
+  }
+
+  Map<String, dynamic> _cuerpo({
+    required EventScope scope,
+    required String? churchId,
+    required DateTime startsAt,
+    required DateTime endsAt,
+    Map<String, dynamic>? repeat,
+  }) => {
+    'scope': scope.name,
+    'churchId': churchId,
+    'startsAt': startsAt.toUtc().toIso8601String(),
+    'endsAt': endsAt.toUtc().toIso8601String(),
+    'repeat': ?repeat,
+  };
+
+  /// Regla de repetición para enviar al servidor, o null si no se repite.
+  static Map<String, dynamic>? repeatRule(String? frequency, DateTime? until) {
+    if (frequency == null || until == null) return null;
+    // Mediodía local del último día: el servidor lo lleva al final de ese
+    // día en Colombia, así que la fecha "hasta" queda incluida.
+    final u = DateTime(until.year, until.month, until.day, 12);
+    return {'frequency': frequency, 'until': u.toUtc().toIso8601String()};
+  }
+
+  /// Revisa cruces sin guardar nada. Lista vacía = sin cruces.
+  Future<List<ConflictsForDate>> check({
+    required EventScope scope,
+    required String? churchId,
+    required DateTime startsAt,
+    required DateTime endsAt,
+    String? excludeId,
+    Map<String, dynamic>? repeat,
+  }) async {
+    final data = await _api.postJson<dynamic>(
+      '/admin/events/check',
+      body: {
+        ..._cuerpo(
+          scope: scope,
+          churchId: churchId,
+          startsAt: startsAt,
+          endsAt: endsAt,
+          repeat: repeat,
+        ),
+        'excludeId': ?excludeId,
+      },
+    );
+    return ConflictsForDate.listFrom(data);
+  }
+
+  Future<CreatedEvents> create({
+    required String title,
+    String? description,
+    required EventType type,
+    required EventScope scope,
+    required String? churchId,
+    required DateTime startsAt,
+    required DateTime endsAt,
+    String? location,
+    required List<String> directorIds,
+    Map<String, dynamic>? repeat,
+    required bool acknowledgeConflicts,
+  }) async {
+    try {
+      final data = await _api.postJson<Map<String, dynamic>>(
+        '/admin/events',
+        body: {
+          'title': title,
+          'description': description,
+          'type': type.name,
+          ..._cuerpo(
+            scope: scope,
+            churchId: churchId,
+            startsAt: startsAt,
+            endsAt: endsAt,
+            repeat: repeat,
+          ),
+          'location': location,
+          'directorIds': directorIds,
+          'acknowledgeConflicts': acknowledgeConflicts,
+        },
+      );
+      return CreatedEvents(
+        events: ((data['events'] as List?) ?? const [])
+            .whereType<Map<String, dynamic>>()
+            .map(ChurchEvent.fromJson)
+            .toList(),
+        seriesId: data['seriesId'] as String?,
+      );
+    } on ApiException catch (e) {
+      throw _conCruces(e);
+    }
+  }
+
+  Future<ChurchEvent> update(
+    String id, {
+    required String title,
+    String? description,
+    required EventType type,
+    required EventScope scope,
+    required String? churchId,
+    required DateTime startsAt,
+    required DateTime endsAt,
+    String? location,
+    required List<String> directorIds,
+    required bool acknowledgeConflicts,
+  }) async {
+    try {
+      final data = await _api.patchJson<Map<String, dynamic>>(
+        '/admin/events/$id',
+        body: {
+          'title': title,
+          'description': description,
+          'type': type.name,
+          ..._cuerpo(
+            scope: scope,
+            churchId: churchId,
+            startsAt: startsAt,
+            endsAt: endsAt,
+          ),
+          'location': location,
+          'directorIds': directorIds,
+          'acknowledgeConflicts': acknowledgeConflicts,
+        },
+      );
+      return ChurchEvent.fromJson(data['event'] as Map<String, dynamic>);
+    } on ApiException catch (e) {
+      throw _conCruces(e);
+    }
+  }
+
+  /// Elimina una fecha o, con [wholeSeries], toda la serie. Devuelve cuántas.
+  Future<int> delete(String id, {bool wholeSeries = false}) async {
+    final path = wholeSeries
+        ? '/admin/events/$id?series=true'
+        : '/admin/events/$id';
+    final data = await _api.deleteJson<dynamic>(path);
+    if (data is Map && data['count'] is num) {
+      return (data['count'] as num).toInt();
+    }
+    return 1;
+  }
+
+  /// Un 409 con `conflicts` es un cruce reconocible; cualquier otro error
+  /// sigue su camino tal cual.
+  static Object _conCruces(ApiException e) {
+    final raw = e.raw;
+    if (e.statusCode == 409 && raw is Map && raw['conflicts'] is List) {
+      return EventConflictException(
+        ConflictsForDate.listFrom(raw['conflicts']),
+      );
+    }
+    return e;
   }
 }

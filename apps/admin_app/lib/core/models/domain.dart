@@ -8,6 +8,7 @@ enum GlobalPermission {
   MANAGE_CHURCHES,
   MANAGE_ADMINS,
   VIEW_ALL_REPORTS,
+  MANAGE_GLOBAL_EVENTS,
 }
 
 enum ChurchPermission {
@@ -15,6 +16,7 @@ enum ChurchPermission {
   SUBMIT_REPORTS,
   EDIT_CHURCH_INFO,
   MANAGE_DIRECTORS,
+  MANAGE_EVENTS,
 }
 
 GlobalPermission? globalPermissionFromString(String value) {
@@ -93,7 +95,9 @@ class PermissionsCatalog {
   factory PermissionsCatalog.fromJson(Map<String, dynamic> j) =>
       PermissionsCatalog(
         catalog: ((j['catalog'] as List?) ?? const [])
-            .map((e) => PermissionDescriptor.fromJson(e as Map<String, dynamic>))
+            .map(
+              (e) => PermissionDescriptor.fromJson(e as Map<String, dynamic>),
+            )
             .toList(),
         templates: ((j['templates'] as List?) ?? const [])
             .map((e) => PermissionTemplate.fromJson(e as Map<String, dynamic>))
@@ -282,9 +286,7 @@ String actionTypeLabel(String code) {
 
     default:
       // Fallback amable: transforma SNAKE_CASE → "Snake case"
-      final cleaned = code
-          .replaceAll('_', ' ')
-          .toLowerCase();
+      final cleaned = code.replaceAll('_', ' ').toLowerCase();
       if (cleaned.isEmpty) return code;
       return cleaned[0].toUpperCase() + cleaned.substring(1);
   }
@@ -348,16 +350,15 @@ class ChurchAssignment {
     required this.permissions,
   });
 
-  factory ChurchAssignment.fromJson(Map<String, dynamic> j) =>
-      ChurchAssignment(
-        id: j['id'] as String,
-        churchId: j['churchId'] as String,
-        churchName: j['churchName'] as String?,
-        permissions: ((j['permissions'] as List?) ?? const [])
-            .map((e) => churchPermissionFromString(e as String))
-            .whereType<ChurchPermission>()
-            .toList(),
-      );
+  factory ChurchAssignment.fromJson(Map<String, dynamic> j) => ChurchAssignment(
+    id: j['id'] as String,
+    churchId: j['churchId'] as String,
+    churchName: j['churchName'] as String?,
+    permissions: ((j['permissions'] as List?) ?? const [])
+        .map((e) => churchPermissionFromString(e as String))
+        .whereType<ChurchPermission>()
+        .toList(),
+  );
 }
 
 class AdminAccount {
@@ -380,19 +381,19 @@ class AdminAccount {
   });
 
   factory AdminAccount.fromJson(Map<String, dynamic> j) => AdminAccount(
-        id: j['id'] as String,
-        username: j['username'] as String,
-        displayName: j['displayName'] as String? ?? j['username'] as String,
-        role: j['role'] as String? ?? 'ADMIN',
-        isActive: j['isActive'] as bool? ?? true,
-        globalPermissions: ((j['globalPermissions'] as List?) ?? const [])
-            .map((e) => globalPermissionFromString(e as String))
-            .whereType<GlobalPermission>()
-            .toList(),
-        churchAssignments: ((j['churchAssignments'] as List?) ?? const [])
-            .map((e) => ChurchAssignment.fromJson(e as Map<String, dynamic>))
-            .toList(),
-      );
+    id: j['id'] as String,
+    username: j['username'] as String,
+    displayName: j['displayName'] as String? ?? j['username'] as String,
+    role: j['role'] as String? ?? 'ADMIN',
+    isActive: j['isActive'] as bool? ?? true,
+    globalPermissions: ((j['globalPermissions'] as List?) ?? const [])
+        .map((e) => globalPermissionFromString(e as String))
+        .whereType<GlobalPermission>()
+        .toList(),
+    churchAssignments: ((j['churchAssignments'] as List?) ?? const [])
+        .map((e) => ChurchAssignment.fromJson(e as Map<String, dynamic>))
+        .toList(),
+  );
 
   bool get isRoot => role == 'ROOT';
 
@@ -409,17 +410,18 @@ class AdminAccount {
 }
 
 class SessionResponse {
-  final String status; // 'ACTIVE' | 'BOOTSTRAP_REQUIRED' | 'UNAUTHENTICATED' | 'PENDING'
+  final String
+  status; // 'ACTIVE' | 'BOOTSTRAP_REQUIRED' | 'UNAUTHENTICATED' | 'PENDING'
   final AdminAccount? account;
 
   SessionResponse({required this.status, required this.account});
 
   factory SessionResponse.fromJson(Map<String, dynamic> j) => SessionResponse(
-        status: j['status'] as String? ?? 'UNAUTHENTICATED',
-        account: j['account'] == null
-            ? null
-            : AdminAccount.fromJson(j['account'] as Map<String, dynamic>),
-      );
+    status: j['status'] as String? ?? 'UNAUTHENTICATED',
+    account: j['account'] == null
+        ? null
+        : AdminAccount.fromJson(j['account'] as Map<String, dynamic>),
+  );
 }
 
 // ── Invitación ─────────────────────────────────────────────────────────
@@ -429,7 +431,8 @@ class InvitationPreview {
   final String status; // 'PENDING' | 'ACCEPTED' | 'REVOKED' | 'EXPIRED'
   final String? username;
   final String? displayName;
-  final String? targetRole; // 'ROOT' | 'ADMIN' | null si la invitación no es válida
+  final String?
+  targetRole; // 'ROOT' | 'ADMIN' | null si la invitación no es válida
   final String? churchName;
   final DateTime? expiresAt;
 
@@ -485,21 +488,21 @@ class AdminInvitation {
   });
 
   factory AdminInvitation.fromJson(Map<String, dynamic> j) => AdminInvitation(
-        id: j['id'] as String,
-        username: j['username'] as String? ?? '',
-        displayName: j['displayName'] as String? ?? '',
-        targetRole: j['targetRole'] as String? ?? 'ADMIN',
-        assignedChurchId: j['assignedChurchId'] as String?,
-        assignedChurchName: j['assignedChurchName'] as String?,
-        status: j['status'] as String? ?? 'UNKNOWN',
-        expiresAt: DateTime.tryParse(j['expiresAt'] as String? ?? '') ??
-            DateTime.now(),
-        acceptedAt: j['acceptedAt'] != null
-            ? DateTime.tryParse(j['acceptedAt'] as String)
-            : null,
-        createdAt: DateTime.tryParse(j['createdAt'] as String? ?? '') ??
-            DateTime.now(),
-      );
+    id: j['id'] as String,
+    username: j['username'] as String? ?? '',
+    displayName: j['displayName'] as String? ?? '',
+    targetRole: j['targetRole'] as String? ?? 'ADMIN',
+    assignedChurchId: j['assignedChurchId'] as String?,
+    assignedChurchName: j['assignedChurchName'] as String?,
+    status: j['status'] as String? ?? 'UNKNOWN',
+    expiresAt:
+        DateTime.tryParse(j['expiresAt'] as String? ?? '') ?? DateTime.now(),
+    acceptedAt: j['acceptedAt'] != null
+        ? DateTime.tryParse(j['acceptedAt'] as String)
+        : null,
+    createdAt:
+        DateTime.tryParse(j['createdAt'] as String? ?? '') ?? DateTime.now(),
+  );
 }
 
 class CreatedInvitation {
@@ -529,7 +532,8 @@ class CreatedInvitation {
         displayName: j['displayName'] as String? ?? '',
         targetRole: j['targetRole'] as String? ?? 'ADMIN',
         assignedChurchId: j['assignedChurchId'] as String?,
-        expiresAt: DateTime.tryParse(j['expiresAt'] as String? ?? '') ??
+        expiresAt:
+            DateTime.tryParse(j['expiresAt'] as String? ?? '') ??
             DateTime.now(),
       );
 }
@@ -564,18 +568,18 @@ class Church {
   });
 
   factory Church.fromJson(Map<String, dynamic> j) => Church(
-        id: j['id'] as String,
-        name: j['name'] as String? ?? '',
-        city: j['city'] as String? ?? '',
-        address: j['address'] as String?,
-        avgAttendance: (j['avgAttendance'] as num?)?.toInt(),
-        isActive: j['isActive'] as bool? ?? true,
-        mainImageUrl: j['mainImageUrl'] as String?,
-        coverImageUrl: j['coverImageUrl'] as String?,
-        mapsLat: (j['mapsLat'] as num?)?.toDouble(),
-        mapsLng: (j['mapsLng'] as num?)?.toDouble(),
-        mapsUrl: j['mapsUrl'] as String?,
-      );
+    id: j['id'] as String,
+    name: j['name'] as String? ?? '',
+    city: j['city'] as String? ?? '',
+    address: j['address'] as String?,
+    avgAttendance: (j['avgAttendance'] as num?)?.toInt(),
+    isActive: j['isActive'] as bool? ?? true,
+    mainImageUrl: j['mainImageUrl'] as String?,
+    coverImageUrl: j['coverImageUrl'] as String?,
+    mapsLat: (j['mapsLat'] as num?)?.toDouble(),
+    mapsLng: (j['mapsLng'] as num?)?.toDouble(),
+    mapsUrl: j['mapsUrl'] as String?,
+  );
 }
 
 // ── Representantes / directores ─────────────────────────────────────────
@@ -602,16 +606,16 @@ class ChurchDirector {
   });
 
   factory ChurchDirector.fromJson(Map<String, dynamic> j) => ChurchDirector(
-        id: j['id'] as String,
-        churchId: j['churchId'] as String? ?? '',
-        displayName: j['displayName'] as String? ?? '',
-        role: j['role'] as String? ?? '',
-        phone: j['phone'] as String?,
-        email: j['email'] as String?,
-        photoUrl: (j['linkedAdminPhotoUrl'] as String?) ??
-            (j['photoUrl'] as String?),
-        linkedAdminUsername: j['linkedAdminUsername'] as String?,
-      );
+    id: j['id'] as String,
+    churchId: j['churchId'] as String? ?? '',
+    displayName: j['displayName'] as String? ?? '',
+    role: j['role'] as String? ?? '',
+    phone: j['phone'] as String?,
+    email: j['email'] as String?,
+    photoUrl:
+        (j['linkedAdminPhotoUrl'] as String?) ?? (j['photoUrl'] as String?),
+    linkedAdminUsername: j['linkedAdminUsername'] as String?,
+  );
 }
 
 // ── Estudios / mensajes en audio ────────────────────────────────────────
@@ -638,15 +642,15 @@ class ChurchStudy {
   });
 
   factory ChurchStudy.fromJson(Map<String, dynamic> j) => ChurchStudy(
-        id: j['id'] as String,
-        churchId: j['churchId'] as String? ?? '',
-        teacherName: j['teacherName'] as String? ?? '',
-        topic: j['topic'] as String? ?? '',
-        outline: j['outline'] as String?,
-        audioUrl: j['audioUrl'] as String? ?? '',
-        audioFormat: j['audioFormat'] as String?,
-        createdAt: DateTime.tryParse(j['createdAt'] as String? ?? ''),
-      );
+    id: j['id'] as String,
+    churchId: j['churchId'] as String? ?? '',
+    teacherName: j['teacherName'] as String? ?? '',
+    topic: j['topic'] as String? ?? '',
+    outline: j['outline'] as String?,
+    audioUrl: j['audioUrl'] as String? ?? '',
+    audioFormat: j['audioFormat'] as String?,
+    createdAt: DateTime.tryParse(j['createdAt'] as String? ?? ''),
+  );
 }
 
 // ── Anuncios ───────────────────────────────────────────────────────────
@@ -693,30 +697,33 @@ class Announcement {
   });
 
   factory Announcement.fromJson(Map<String, dynamic> j) => Announcement(
-        id: j['id'] as String,
-        title: j['title'] as String? ?? '',
-        description: j['description'] as String? ?? '',
-        author: j['author'] as String? ?? '',
-        createdAt: DateTime.tryParse(j['createdAt'] as String? ?? '') ??
-            DateTime.now(),
-        attachments: ((j['attachments'] as List?) ?? const [])
-            .map((e) =>
-                AnnouncementAttachment.fromJson(e as Map<String, dynamic>))
-            .toList(),
-        churchId: j['churchId'] as String?,
-      );
+    id: j['id'] as String,
+    title: j['title'] as String? ?? '',
+    description: j['description'] as String? ?? '',
+    author: j['author'] as String? ?? '',
+    createdAt:
+        DateTime.tryParse(j['createdAt'] as String? ?? '') ?? DateTime.now(),
+    attachments: ((j['attachments'] as List?) ?? const [])
+        .map((e) => AnnouncementAttachment.fromJson(e as Map<String, dynamic>))
+        .toList(),
+    churchId: j['churchId'] as String?,
+  );
 }
 
 // ── Reportes ───────────────────────────────────────────────────────────
 
 enum ReportType { OFFERINGS, ATTENDANCE, EXPENSES, EVENT, REQUEST, OTHER }
+
 enum ExpenseCategory { PURCHASE, REPAIR, DAMAGE, THEFT, UTILITIES, OTHER }
+
 enum RequestStatus { PENDING, APPROVED, REJECTED, RESOLVED }
+
 enum AttendanceScope { session, month }
 
-ReportType reportTypeFromString(String v) =>
-    ReportType.values.firstWhere((e) => e.name == v,
-        orElse: () => ReportType.OTHER);
+ReportType reportTypeFromString(String v) => ReportType.values.firstWhere(
+  (e) => e.name == v,
+  orElse: () => ReportType.OTHER,
+);
 
 const Map<ReportType, String> reportTypeLabels = {
   ReportType.OFFERINGS: 'Ofrendas',
@@ -771,21 +778,21 @@ class Report {
   });
 
   factory Report.fromJson(Map<String, dynamic> j) => Report(
-        id: j['id'] as String,
-        churchId: j['churchId'] as String? ?? '',
-        reportType: reportTypeFromString(j['reportType'] as String? ?? 'OTHER'),
-        title: j['title'] as String? ?? '',
-        notes: j['notes'] as String? ?? '',
-        periodStart: DateTime.tryParse(j['periodStart'] as String? ?? '') ??
-            DateTime.now(),
-        periodEnd: DateTime.tryParse(j['periodEnd'] as String? ?? '') ??
-            DateTime.now(),
-        data: (j['data'] as Map?)?.cast<String, dynamic>() ?? const {},
-        createdByDisplayName: j['createdByDisplayName'] as String? ?? '',
-        createdAt: DateTime.tryParse(j['createdAt'] as String? ?? '') ??
-            DateTime.now(),
-        churchName: (j['church'] as Map?)?['name'] as String?,
-      );
+    id: j['id'] as String,
+    churchId: j['churchId'] as String? ?? '',
+    reportType: reportTypeFromString(j['reportType'] as String? ?? 'OTHER'),
+    title: j['title'] as String? ?? '',
+    notes: j['notes'] as String? ?? '',
+    periodStart:
+        DateTime.tryParse(j['periodStart'] as String? ?? '') ?? DateTime.now(),
+    periodEnd:
+        DateTime.tryParse(j['periodEnd'] as String? ?? '') ?? DateTime.now(),
+    data: (j['data'] as Map?)?.cast<String, dynamic>() ?? const {},
+    createdByDisplayName: j['createdByDisplayName'] as String? ?? '',
+    createdAt:
+        DateTime.tryParse(j['createdAt'] as String? ?? '') ?? DateTime.now(),
+    churchName: (j['church'] as Map?)?['name'] as String?,
+  );
 }
 
 class ReportListResponse {
@@ -810,9 +817,9 @@ class TimelinePoint {
   TimelinePoint({required this.month, required this.total});
 
   factory TimelinePoint.fromJson(Map<String, dynamic> j) => TimelinePoint(
-        month: j['month'] as String,
-        total: (j['total'] as num?)?.toDouble() ?? 0,
-      );
+    month: j['month'] as String,
+    total: (j['total'] as num?)?.toDouble() ?? 0,
+  );
 }
 
 class MetricsByChurch {
@@ -828,11 +835,11 @@ class MetricsByChurch {
   });
 
   factory MetricsByChurch.fromJson(Map<String, dynamic> j) => MetricsByChurch(
-        churchId: j['churchId'] as String,
-        offerings: (j['offerings'] as num?)?.toDouble() ?? 0,
-        expenses: (j['expenses'] as num?)?.toDouble() ?? 0,
-        attendance: (j['attendance'] as num?)?.toInt() ?? 0,
-      );
+    churchId: j['churchId'] as String,
+    offerings: (j['offerings'] as num?)?.toDouble() ?? 0,
+    expenses: (j['expenses'] as num?)?.toDouble() ?? 0,
+    attendance: (j['attendance'] as num?)?.toInt() ?? 0,
+  );
 }
 
 class MetricsTimeline {
@@ -849,19 +856,19 @@ class MetricsTimeline {
   });
 
   factory MetricsTimeline.fromJson(Map<String, dynamic> j) => MetricsTimeline(
-        offerings: ((j['offerings'] as List?) ?? const [])
-            .map((e) => TimelinePoint.fromJson(e as Map<String, dynamic>))
-            .toList(),
-        expenses: ((j['expenses'] as List?) ?? const [])
-            .map((e) => TimelinePoint.fromJson(e as Map<String, dynamic>))
-            .toList(),
-        attendance: ((j['attendance'] as List?) ?? const [])
-            .map((e) => TimelinePoint.fromJson(e as Map<String, dynamic>))
-            .toList(),
-        byChurch: ((j['byChurch'] as List?) ?? const [])
-            .map((e) => MetricsByChurch.fromJson(e as Map<String, dynamic>))
-            .toList(),
-      );
+    offerings: ((j['offerings'] as List?) ?? const [])
+        .map((e) => TimelinePoint.fromJson(e as Map<String, dynamic>))
+        .toList(),
+    expenses: ((j['expenses'] as List?) ?? const [])
+        .map((e) => TimelinePoint.fromJson(e as Map<String, dynamic>))
+        .toList(),
+    attendance: ((j['attendance'] as List?) ?? const [])
+        .map((e) => TimelinePoint.fromJson(e as Map<String, dynamic>))
+        .toList(),
+    byChurch: ((j['byChurch'] as List?) ?? const [])
+        .map((e) => MetricsByChurch.fromJson(e as Map<String, dynamic>))
+        .toList(),
+  );
 }
 
 // ── Historial ──────────────────────────────────────────────────────────
@@ -888,16 +895,16 @@ class HistoryAction {
   });
 
   factory HistoryAction.fromJson(Map<String, dynamic> j) => HistoryAction(
-        id: j['id'] as String,
-        actionType: j['actionType'] as String? ?? '',
-        description: j['description'] as String? ?? '',
-        targetType: j['targetType'] as String?,
-        targetId: j['targetId'] as String?,
-        ip: j['ip'] as String?,
-        createdAt: DateTime.tryParse(j['createdAt'] as String? ?? '') ??
-            DateTime.now(),
-        metadata: (j['metadata'] as Map?)?.cast<String, dynamic>(),
-      );
+    id: j['id'] as String,
+    actionType: j['actionType'] as String? ?? '',
+    description: j['description'] as String? ?? '',
+    targetType: j['targetType'] as String?,
+    targetId: j['targetId'] as String?,
+    ip: j['ip'] as String?,
+    createdAt:
+        DateTime.tryParse(j['createdAt'] as String? ?? '') ?? DateTime.now(),
+    metadata: (j['metadata'] as Map?)?.cast<String, dynamic>(),
+  );
 }
 
 class AccountHistoryResponse {
@@ -941,8 +948,8 @@ class AuditLogEntry {
       id: j['id'] as String? ?? '',
       actionType: j['actionType'] as String? ?? '',
       description: j['description'] as String? ?? '',
-      createdAt: DateTime.tryParse(j['createdAt'] as String? ?? '') ??
-          DateTime.now(),
+      createdAt:
+          DateTime.tryParse(j['createdAt'] as String? ?? '') ?? DateTime.now(),
       actorName: actor?['displayName'] as String?,
       actorUsername: actor?['username'] as String?,
       actorRole: actor?['role'] as String?,
@@ -987,14 +994,14 @@ class SupportMessage {
   });
 
   factory SupportMessage.fromJson(Map<String, dynamic> j) => SupportMessage(
-        id: j['id'] as String,
-        senderKind: j['senderKind'] as String? ?? 'AUTHOR',
-        body: j['body'] as String? ?? '',
-        attachments: ((j['attachments'] as List?) ?? const [])
-            .map((e) => SupportAttachment.fromJson(e as Map<String, dynamic>))
-            .toList(),
-        createdAt: DateTime.tryParse(j['createdAt'] as String? ?? ''),
-      );
+    id: j['id'] as String,
+    senderKind: j['senderKind'] as String? ?? 'AUTHOR',
+    body: j['body'] as String? ?? '',
+    attachments: ((j['attachments'] as List?) ?? const [])
+        .map((e) => SupportAttachment.fromJson(e as Map<String, dynamic>))
+        .toList(),
+    createdAt: DateTime.tryParse(j['createdAt'] as String? ?? ''),
+  );
 }
 
 class SupportConversation {
@@ -1035,10 +1042,261 @@ class SupportThread {
   SupportThread({required this.conversation, required this.messages});
 
   factory SupportThread.fromJson(Map<String, dynamic> j) => SupportThread(
-        conversation: SupportConversation.fromJson(
-            j['conversation'] as Map<String, dynamic>),
-        messages: ((j['messages'] as List?) ?? const [])
-            .map((e) => SupportMessage.fromJson(e as Map<String, dynamic>))
-            .toList(),
-      );
+    conversation: SupportConversation.fromJson(
+      j['conversation'] as Map<String, dynamic>,
+    ),
+    messages: ((j['messages'] as List?) ?? const [])
+        .map((e) => SupportMessage.fromJson(e as Map<String, dynamic>))
+        .toList(),
+  );
+}
+
+// ── Eventos / cronograma ────────────────────────────────────────────────
+// Espejo de apps/api/src/modules/events y apps/web/app/lib/events.ts.
+
+enum EventType {
+  CULTO,
+  CULTO_UNIDO,
+  CULTO_JOVENES,
+  CULTO_DAMAS,
+  CULTO_CABALLEROS,
+  REUNION,
+  ASAMBLEA,
+  ESTUDIO,
+  INTENSIVO,
+  OTRO,
+}
+
+enum EventScope { LOCAL, GLOBAL }
+
+String eventTypeLabel(EventType t) => switch (t) {
+  EventType.CULTO => 'Culto',
+  EventType.CULTO_UNIDO => 'Culto unido',
+  EventType.CULTO_JOVENES => 'Culto de jóvenes',
+  EventType.CULTO_DAMAS => 'Culto de damas',
+  EventType.CULTO_CABALLEROS => 'Culto de caballeros',
+  EventType.REUNION => 'Reunión',
+  EventType.ASAMBLEA => 'Asamblea',
+  EventType.ESTUDIO => 'Reunión de estudio',
+  EventType.INTENSIVO => 'Intensivo',
+  EventType.OTRO => 'Otro',
+};
+
+/// Tipos que, por su naturaleza, suelen ser de toda la Asociación.
+const Set<EventType> tiposNormalmenteGlobales = {
+  EventType.CULTO_UNIDO,
+  EventType.ASAMBLEA,
+  EventType.ESTUDIO,
+  EventType.INTENSIVO,
+};
+
+String eventScopeLabel(EventScope s) => switch (s) {
+  EventScope.LOCAL => 'De la iglesia',
+  EventScope.GLOBAL => 'De toda la Asociación',
+};
+
+EventType eventTypeFromString(String? v) {
+  for (final t in EventType.values) {
+    if (t.name == v) return t;
+  }
+  return EventType.OTRO;
+}
+
+EventScope eventScopeFromString(String? v) =>
+    v == 'GLOBAL' ? EventScope.GLOBAL : EventScope.LOCAL;
+
+DateTime _fechaLocal(dynamic v) =>
+    DateTime.tryParse(v as String? ?? '')?.toLocal() ?? DateTime.now();
+
+/// Encargado de un evento (referencia corta a un director de iglesia).
+class EventDirectorRef {
+  final String id;
+  final String churchId;
+  final String displayName;
+  final String role;
+
+  EventDirectorRef({
+    required this.id,
+    required this.churchId,
+    required this.displayName,
+    required this.role,
+  });
+
+  factory EventDirectorRef.fromJson(Map<String, dynamic> j) => EventDirectorRef(
+    id: j['id'] as String,
+    churchId: j['churchId'] as String? ?? '',
+    displayName: j['displayName'] as String? ?? '',
+    role: j['role'] as String? ?? '',
+  );
+}
+
+class ChurchEvent {
+  final String id;
+  final String title;
+  final String? description;
+  final EventType type;
+  final EventScope scope;
+  final String? churchId;
+  final String? churchName;
+
+  /// Siempre en hora local del dispositivo.
+  final DateTime startsAt;
+  final DateTime endsAt;
+  final String? location;
+  final List<EventDirectorRef> directors;
+
+  final String? seriesId;
+  final String? seriesRule; // 'WEEKLY' | 'MONTHLY_BY_WEEKDAY'
+  final String?
+  seriesLabel; // "todos los jueves", "el primer sábado de cada mes"
+  final String createdByDisplayName;
+
+  /// Si quien consulta puede editarlo o eliminarlo (lo decide el servidor).
+  final bool editable;
+
+  ChurchEvent({
+    required this.id,
+    required this.title,
+    required this.description,
+    required this.type,
+    required this.scope,
+    required this.churchId,
+    required this.churchName,
+    required this.startsAt,
+    required this.endsAt,
+    required this.location,
+    required this.directors,
+    required this.seriesId,
+    required this.seriesRule,
+    required this.seriesLabel,
+    required this.createdByDisplayName,
+    required this.editable,
+  });
+
+  bool get isGlobal => scope == EventScope.GLOBAL;
+
+  factory ChurchEvent.fromJson(Map<String, dynamic> j) => ChurchEvent(
+    id: j['id'] as String,
+    title: j['title'] as String? ?? '',
+    description: j['description'] as String?,
+    type: eventTypeFromString(j['type'] as String?),
+    scope: eventScopeFromString(j['scope'] as String?),
+    churchId: j['churchId'] as String?,
+    churchName: j['churchName'] as String?,
+    startsAt: _fechaLocal(j['startsAt']),
+    endsAt: _fechaLocal(j['endsAt']),
+    location: j['location'] as String?,
+    directors: ((j['directors'] as List?) ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .map(EventDirectorRef.fromJson)
+        .toList(),
+    seriesId: j['seriesId'] as String?,
+    seriesRule: j['seriesRule'] as String?,
+    seriesLabel: j['seriesLabel'] as String?,
+    createdByDisplayName: j['createdByDisplayName'] as String? ?? '',
+    editable: j['editable'] as bool? ?? false,
+  );
+}
+
+/// Otro evento con el que se cruza (o queda muy cerca) el que se revisa.
+class EventConflict {
+  final String eventId;
+  final String title;
+  final EventScope scope;
+  final String? churchName;
+  final DateTime startsAt;
+  final DateTime endsAt;
+  final String kind; // 'SE_CRUZA' | 'MUY_CERCA'
+
+  EventConflict({
+    required this.eventId,
+    required this.title,
+    required this.scope,
+    required this.churchName,
+    required this.startsAt,
+    required this.endsAt,
+    required this.kind,
+  });
+
+  factory EventConflict.fromJson(Map<String, dynamic> j) => EventConflict(
+    eventId: j['eventId'] as String? ?? '',
+    title: j['title'] as String? ?? '',
+    scope: eventScopeFromString(j['scope'] as String?),
+    churchName: j['churchName'] as String?,
+    startsAt: _fechaLocal(j['startsAt']),
+    endsAt: _fechaLocal(j['endsAt']),
+    kind: j['kind'] as String? ?? 'SE_CRUZA',
+  );
+
+  /// Frase en lenguaje llano, igual que en la web.
+  String describir() {
+    final nombre = churchName;
+    final quien = scope == EventScope.GLOBAL
+        ? 'de toda la Asociación'
+        : (nombre == null || nombre.isEmpty)
+        ? 'de una iglesia'
+        : 'de $nombre';
+    return kind == 'MUY_CERCA'
+        ? 'Queda a menos de dos horas de "$title" ($quien).'
+        : 'Queda encima de "$title" ($quien).';
+  }
+}
+
+/// Cruces de una fecha concreta (en una repetición, cada fecha por su cuenta).
+class ConflictsForDate {
+  final DateTime startsAt;
+  final DateTime endsAt;
+  final List<EventConflict> conflicts;
+
+  ConflictsForDate({
+    required this.startsAt,
+    required this.endsAt,
+    required this.conflicts,
+  });
+
+  factory ConflictsForDate.fromJson(Map<String, dynamic> j) => ConflictsForDate(
+    startsAt: _fechaLocal(j['startsAt']),
+    endsAt: _fechaLocal(j['endsAt']),
+    conflicts: ((j['conflicts'] as List?) ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .map(EventConflict.fromJson)
+        .toList(),
+  );
+
+  static List<ConflictsForDate> listFrom(dynamic v) {
+    if (v is! List) return const [];
+    return v
+        .whereType<Map<String, dynamic>>()
+        .map(ConflictsForDate.fromJson)
+        .toList();
+  }
+}
+
+class EventAlertItem {
+  final ChurchEvent event;
+  final List<EventConflict> conflicts;
+  EventAlertItem({required this.event, required this.conflicts});
+
+  factory EventAlertItem.fromJson(Map<String, dynamic> j) => EventAlertItem(
+    event: ChurchEvent.fromJson(j['event'] as Map<String, dynamic>),
+    conflicts: ((j['conflicts'] as List?) ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .map(EventConflict.fromJson)
+        .toList(),
+  );
+}
+
+/// Eventos próximos que hoy tienen cruces: el recordatorio para los encargados.
+class EventAlerts {
+  final int count;
+  final List<EventAlertItem> items;
+  EventAlerts({required this.count, required this.items});
+
+  factory EventAlerts.fromJson(Map<String, dynamic> j) => EventAlerts(
+    count: (j['count'] as num?)?.toInt() ?? 0,
+    items: ((j['items'] as List?) ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .map(EventAlertItem.fromJson)
+        .toList(),
+  );
 }
