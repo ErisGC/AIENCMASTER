@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 
-import { adminGetEventAlerts } from '@/app/lib/admin-events';
+import { EVENT_ALERTS_CHANGED, adminGetEventAlerts } from '@/app/lib/admin-events';
 import {
   adminGetSession,
   adminLogout,
@@ -106,8 +106,14 @@ export default function AdminLayout({
       .catch(() => {
         /* la insignia no debe estorbar si falla */
       });
+    const alCambiar = (e: Event) => {
+      const n = (e as CustomEvent<number>).detail;
+      if (typeof n === 'number') setEventAlerts(n);
+    };
+    window.addEventListener(EVENT_ALERTS_CHANGED, alCambiar);
     return () => {
       mounted = false;
+      window.removeEventListener(EVENT_ALERTS_CHANGED, alCambiar);
     };
   }, [isPublic, session?.status, pathname]);
 

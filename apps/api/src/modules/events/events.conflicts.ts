@@ -197,7 +197,12 @@ export function describirRepeticion(
   ];
   const { diaSemana, ordinal, ultimo } = posicionEnElMes(inicio);
   const nombre = nombres[diaSemana];
-  if (frecuencia === "WEEKLY") return `todos los ${nombre}`;
+  // "todos los jueves" no cambia, pero "todos los sábados" y "todos los
+  // domingos" sí llevan plural.
+  if (frecuencia === "WEEKLY") {
+    const plural = nombre.endsWith("o") ? `${nombre}s` : nombre;
+    return `todos los ${plural}`;
+  }
   const posicion = ultimo
     ? "último"
     : ["primer", "segundo", "tercer", "cuarto", "quinto"][ordinal - 1];

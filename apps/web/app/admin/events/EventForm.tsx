@@ -81,7 +81,8 @@ function describirSemanal(date: string): string {
   const [y, m, d] = date.split('-').map(Number);
   if (!y || !m || !d) return 'cada semana';
   const dt = new Date(Date.UTC(y, m - 1, d));
-  return `todos los ${NOMBRES_DIA[dt.getUTCDay()]}`;
+  const nombre = NOMBRES_DIA[dt.getUTCDay()];
+  return `todos los ${nombre.endsWith('o') ? `${nombre}s` : nombre}`;
 }
 
 function finDeAnio(date: string) {
@@ -138,7 +139,10 @@ export function EventForm({
   // alcance global (si la persona puede), sin imponerlo.
   useEffect(() => {
     if (mode !== 'create') return;
-    if (TIPOS_NORMALMENTE_GLOBALES.includes(type) && canGlobal) setScope('GLOBAL');
+    if (TIPOS_NORMALMENTE_GLOBALES.includes(type) && canGlobal) {
+      setScope('GLOBAL');
+      setChurchId('');
+    }
   }, [type, canGlobal, mode]);
 
   // Para un evento local, los encargados salen de su iglesia.
@@ -311,14 +315,32 @@ export function EventForm({
         <fieldset className={styles.fieldsetScope}>
           <legend>¿A quién compete?</legend>
           <label className={styles.radio}>
-            <input type="radio" name="scope" checked={scope === 'LOCAL'} onChange={() => setScope('LOCAL')} disabled={churches.length === 0} />
+            <input
+              type="radio"
+              name="scope"
+              checked={scope === 'LOCAL'}
+              onChange={() => {
+                setScope('LOCAL');
+                if (!churches.some((c) => c.id === churchId)) setChurchId(defaultChurchId);
+              }}
+              disabled={churches.length === 0}
+            />
             <span>
               <strong>Solo a una iglesia</strong>
               <small>Avisa si se cruza con un evento de toda la Asociación.</small>
             </span>
           </label>
           <label className={styles.radio}>
-            <input type="radio" name="scope" checked={scope === 'GLOBAL'} onChange={() => setScope('GLOBAL')} disabled={!canGlobal} />
+            <input
+              type="radio"
+              name="scope"
+              checked={scope === 'GLOBAL'}
+              onChange={() => {
+                setScope('GLOBAL');
+                setChurchId('');
+              }}
+              disabled={!canGlobal}
+            />
             <span>
               <strong>A toda la Asociación</strong>
               <small>{canGlobal ? 'Avisa si se cruza con cualquier otro evento.' : 'Solo el administrador principal o quien tenga el permiso.'}</small>

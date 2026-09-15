@@ -7,6 +7,7 @@ import { useActiveChurch } from '@/app/admin/_components/ActiveChurchContext';
 import { adminGetSession } from '@/app/lib/admin-auth';
 import { adminGetChurches, type Church } from '@/app/lib/admin-churches';
 import {
+  EVENT_ALERTS_CHANGED,
   adminDeleteEvent,
   adminGetEventAlerts,
   adminListEvents,
@@ -111,7 +112,9 @@ export function EventsAdminClient() {
 
   const cargarAvisos = useCallback(async () => {
     try {
-      setAlerts(await adminGetEventAlerts());
+      const a = await adminGetEventAlerts();
+      setAlerts(a);
+      window.dispatchEvent(new CustomEvent(EVENT_ALERTS_CHANGED, { detail: a.count }));
     } catch {
       /* la bandeja no debe estorbar si falla */
     }

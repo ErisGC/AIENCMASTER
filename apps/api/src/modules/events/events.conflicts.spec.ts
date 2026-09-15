@@ -219,6 +219,15 @@ describe("describirRepeticion — texto llano", () => {
     ).toBe("todos los jueves");
   });
 
+  it("pone en plural los días que lo llevan (sábados, domingos)", () => {
+    expect(
+      describirRepeticion("WEEKLY", new Date("2026-01-11T10:00:00-05:00")),
+    ).toBe("todos los domingos");
+    expect(
+      describirRepeticion("WEEKLY", new Date("2026-01-10T10:00:00-05:00")),
+    ).toBe("todos los sábados");
+  });
+
   it("nombra la posición y el día para la mensual", () => {
     expect(
       describirRepeticion(

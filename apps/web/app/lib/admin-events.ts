@@ -184,6 +184,10 @@ export function adminGetEvent(id: string) {
   return eventsRequest<AdminEvent>(`/admin/events/${id}`);
 }
 
+/** Nombre del aviso que la pantalla de eventos emite al refrescar los cruces,
+ *  para que la insignia de la barra lateral se actualice sin recargar. */
+export const EVENT_ALERTS_CHANGED = 'aienc:event-alerts';
+
 export function adminGetEventAlerts() {
   return eventsRequest<EventAlerts>('/admin/events/alerts');
 }
