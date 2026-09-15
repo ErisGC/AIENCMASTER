@@ -13,7 +13,7 @@ import {
   type CreateEventPayload,
   type RepeatFrequency,
 } from '@/app/lib/admin-events';
-import { adminListDirectors, type AdminDirector } from '@/app/lib/directors';
+import { getPublicChurchById, type ChurchPublicDirector } from '@/app/lib/churches';
 import {
   EVENT_TYPES,
   EVENT_TYPE_LABELS,
@@ -126,7 +126,7 @@ export function EventForm({
     () => new Map((initial?.directors ?? []).map((d) => [d.id, { id: d.id, nombre: d.displayName, iglesia: '' }])),
   );
   const [iglesiaEncargados, setIglesiaEncargados] = useState(initial?.churchId ?? defaultChurchId);
-  const [catalogo, setCatalogo] = useState<AdminDirector[]>([]);
+  const [catalogo, setCatalogo] = useState<ChurchPublicDirector[]>([]);
   const [cargandoCatalogo, setCargandoCatalogo] = useState(false);
 
   const [cruces, setCruces] = useState<ConflictsForDate[] | null>(null);
@@ -153,9 +153,9 @@ export function EventForm({
     }
     let mounted = true;
     setCargandoCatalogo(true);
-    adminListDirectors(iglesiaEncargados)
-      .then((lista) => {
-        if (mounted) setCatalogo(lista);
+    getPublicChurchById(iglesiaEncargados)
+      .then((iglesia) => {
+        if (mounted) setCatalogo(iglesia.directors ?? []);
       })
       .catch(() => {
         if (mounted) setCatalogo([]);
@@ -170,11 +170,11 @@ export function EventForm({
 
   const nombreIglesia = (id: string) => allChurches.find((c) => c.id === id)?.name ?? '';
 
-  function alternarEncargado(d: AdminDirector) {
+  function alternarEncargado(d: ChurchPublicDirector) {
     setSeleccionados((prev) => {
       const next = new Map(prev);
       if (next.has(d.id)) next.delete(d.id);
-      else next.set(d.id, { id: d.id, nombre: d.displayName, iglesia: nombreIglesia(d.churchId) });
+      else next.set(d.id, { id: d.id, nombre: d.displayName, iglesia: nombreIglesia(iglesiaEncargados) });
       return next;
     });
   }
