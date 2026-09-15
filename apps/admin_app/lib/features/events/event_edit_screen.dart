@@ -136,7 +136,10 @@ class _EventEditScreenState extends State<EventEditScreen> {
     'domingo',
   ];
 
-  String get _fraseSemanal => 'todos los ${_nombresDia[_fecha.weekday - 1]}';
+  String get _fraseSemanal {
+    final nombre = _nombresDia[_fecha.weekday - 1];
+    return 'todos los ${nombre.endsWith('o') ? '${nombre}s' : nombre}';
+  }
 
   /// "el primer jueves de cada mes", a partir de la fecha elegida.
   String get _fraseMensual {

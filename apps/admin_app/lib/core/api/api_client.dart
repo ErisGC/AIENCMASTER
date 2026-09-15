@@ -101,6 +101,23 @@ class ApiClient {
     );
 
     dio.interceptors.add(CookieManager(jar));
+    // Las cabeceras base declaran `Content-Type: application/json` para todas
+    // las peticiones, y dio no la retira cuando no hay cuerpo. Fastify, al ver
+    // ese tipo de contenido sin cuerpo, responde 400 ("Body cannot be empty
+    // when content-type is set to 'application/json'"), asi que TODO DELETE y
+    // todo POST sin datos (cerrar sesion, eliminar anuncios, directores,
+    // estudios, invitaciones o eventos) fallaba con "Datos invalidos". Sin
+    // cuerpo, sin tipo de contenido.
+    dio.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (options, handler) {
+          if (options.data == null) {
+            options.headers.remove(HttpHeaders.contentTypeHeader);
+          }
+          handler.next(options);
+        },
+      ),
+    );
     dio.interceptors.add(_ErrorMappingInterceptor());
 
     _instance = ApiClient._(dio);
