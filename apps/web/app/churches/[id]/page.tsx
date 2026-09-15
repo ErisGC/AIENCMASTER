@@ -10,6 +10,13 @@ import {
   getPublicChurchStudies,
   type ChurchStudy,
 } from '@/app/lib/church-studies';
+import {
+  EVENT_TYPE_LABELS,
+  formatDiaCorto,
+  formatRango,
+  getPublicChurchEvents,
+  type PublicEvent,
+} from '@/app/lib/events';
 import { ChurchMap } from './ChurchMap';
 import { DirectorsSection } from './DirectorsSection';
 import styles from './page.module.css';
@@ -40,6 +47,14 @@ async function safeLoadAnnouncements(
   }
 }
 
+async function safeLoadEvents(id: string): Promise<PublicEvent[]> {
+  try {
+    return await getPublicChurchEvents(id);
+  } catch {
+    return [];
+  }
+}
+
 async function safeLoadStudies(id: string): Promise<ChurchStudy[]> {
   try {
     return await getPublicChurchStudies(id);
@@ -50,11 +65,13 @@ async function safeLoadStudies(id: string): Promise<ChurchStudy[]> {
 
 export default async function ChurchDetailPage({ params }: ChurchPageProps) {
   const { id } = await params;
-  const [church, announcements, studies] = await Promise.all([
+  const [church, announcements, studies, events] = await Promise.all([
     loadChurch(id),
     safeLoadAnnouncements(id),
     safeLoadStudies(id),
+    safeLoadEvents(id),
   ]);
+  const proximosEventos = events.slice(0, 8);
 
   const mapsHref =
     church.mapsUrl ??
@@ -161,6 +178,35 @@ export default async function ChurchDetailPage({ params }: ChurchPageProps) {
         </div>
 
         <DirectorsSection directors={directors} />
+
+        {proximosEventos.length > 0 && (
+          <section className={styles.eventsSection}>
+            <header className={styles.eventsHead}>
+              <h2 className={styles.cardTitle}>Próximos eventos</h2>
+              <Link href={`/events?churchId=${church.id}`} className={styles.eventsLink}>
+                Ver el calendario completo
+              </Link>
+            </header>
+            <ul className={styles.eventsList}>
+              {proximosEventos.map((e) => (
+                <li
+                  key={e.id}
+                  className={`${styles.eventCard} ${e.scope === 'GLOBAL' ? styles.eventGlobal : styles.eventLocal}`}
+                >
+                  <span className={styles.eventDate}>{formatDiaCorto(e.startsAt)}</span>
+                  <div className={styles.eventBody}>
+                    <span className={styles.eventTitle}>{e.title}</span>
+                    <span className={styles.eventMeta}>
+                      {formatRango(e.startsAt, e.endsAt)} · {EVENT_TYPE_LABELS[e.type]}
+                      {e.scope === 'GLOBAL' && ' · Toda la Asociación'}
+                      {e.location ? ` · ${e.location}` : ''}
+                    </span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
         {announcements.length > 0 && (
           <section className={styles.announcementsSection}>

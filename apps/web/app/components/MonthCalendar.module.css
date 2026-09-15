@@ -1,0 +1,245 @@
+.calendar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: clamp(0.9rem, 2vw, 1.4rem);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-soft);
+  background: var(--bg-surface-strong);
+  box-shadow: var(--shadow-1);
+}
+
+.head {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.headCenter {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.monthTitle {
+  margin: 0;
+  font-size: clamp(1.15rem, 2.4vw, 1.5rem);
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.navBtn,
+.todayBtn {
+  border: 1px solid var(--border-soft);
+  background: var(--bg-surface-muted);
+  color: var(--text-main);
+  border-radius: 999px;
+  cursor: pointer;
+  font-weight: 700;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.navBtn {
+  width: 2.4rem;
+  height: 2.4rem;
+  font-size: 1.4rem;
+  line-height: 1;
+}
+
+.todayBtn {
+  padding: 0.35rem 0.85rem;
+  font-size: 0.8rem;
+}
+
+.navBtn:hover,
+.todayBtn:hover {
+  background: var(--state-hover);
+  transform: translateY(-1px);
+}
+
+.weekdays,
+.grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.35rem;
+}
+
+.weekdays span {
+  text-align: center;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-soft);
+  padding-bottom: 0.15rem;
+}
+
+.cell,
+.cellEmpty {
+  min-height: 5.6rem;
+  border-radius: 12px;
+}
+
+.cellEmpty {
+  background: transparent;
+}
+
+.cell {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.3rem;
+  padding: 0.4rem;
+  border: 1px solid var(--border-soft);
+  background: var(--bg-surface-muted);
+  color: var(--text-main);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.cell:hover {
+  border-color: var(--border-strong);
+  transform: translateY(-1px);
+}
+
+.cellBusy {
+  background: var(--bg-surface-strong);
+}
+
+.cellToday .dayNumber {
+  background: var(--gem-topaz);
+  color: #1a1400;
+}
+
+.cellSelected {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--accent-weak);
+}
+
+.dayNumber {
+  align-self: flex-start;
+  min-width: 1.6rem;
+  height: 1.6rem;
+  padding: 0 0.4rem;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.chips {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.chip {
+  display: block;
+  padding: 0.15rem 0.4rem;
+  border-radius: 6px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border-left: 3px solid transparent;
+}
+
+.chipGlobal {
+  background: var(--gem-emerald-soft);
+  color: var(--gem-emerald-deep);
+  border-left-color: var(--gem-emerald);
+}
+
+.chipLocal {
+  background: var(--gem-sapphire-soft);
+  color: var(--gem-sapphire-deep);
+  border-left-color: var(--gem-sapphire);
+}
+
+.chipConflict {
+  outline: 2px solid var(--gem-ruby);
+  outline-offset: -2px;
+}
+
+.more {
+  font-size: 0.68rem;
+  color: var(--text-soft);
+  padding-left: 0.2rem;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  padding-top: 0.25rem;
+}
+
+.legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.dot {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 3px;
+  display: inline-block;
+}
+
+.dotGlobal {
+  background: var(--gem-emerald);
+}
+
+.dotLocal {
+  background: var(--gem-sapphire);
+}
+
+.dotConflict {
+  background: transparent;
+  outline: 2px solid var(--gem-ruby);
+  outline-offset: -1px;
+}
+
+:root[data-theme='dark'] .chipGlobal {
+  background: rgba(15, 123, 108, 0.28);
+  color: #b9f0e4;
+}
+
+:root[data-theme='dark'] .chipLocal {
+  background: rgba(15, 76, 129, 0.32);
+  color: #cfe4fb;
+}
+
+@media (max-width: 720px) {
+  .cell,
+  .cellEmpty {
+    min-height: 4rem;
+  }
+
+  .chip {
+    font-size: 0.62rem;
+    padding: 0.1rem 0.3rem;
+  }
+
+  .weekdays span {
+    font-size: 0.62rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .chips .chip:nth-child(n + 2) {
+    display: none;
+  }
+}

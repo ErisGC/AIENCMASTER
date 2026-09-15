@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 
+import { adminGetEventAlerts } from '@/app/lib/admin-events';
 import {
   adminGetSession,
   adminLogout,
@@ -57,6 +58,9 @@ export default function AdminLayout({
   const router = useRouter();
   const [session, setSession] = useState<AdminSessionResponse | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
+  // Eventos próximos con cruce de horario: se muestra como insignia junto a
+  // "Eventos", que es el recordatorio para los encargados.
+  const [eventAlerts, setEventAlerts] = useState(0);
 
   const isPublic = isPublicAdminPath(pathname);
   const { isMobile, ready: mobileReady } = useIsMobileDevice();
@@ -91,6 +95,21 @@ export default function AdminLayout({
   useEffect(() => {
     setMobileOpen(false);
   }, [pathname]);
+
+  useEffect(() => {
+    if (isPublic || session?.status !== 'ACTIVE') return;
+    let mounted = true;
+    void adminGetEventAlerts()
+      .then((a) => {
+        if (mounted) setEventAlerts(a.count);
+      })
+      .catch(() => {
+        /* la insignia no debe estorbar si falla */
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [isPublic, session?.status, pathname]);
 
   async function handleLogout() {
     try {
@@ -202,6 +221,20 @@ export default function AdminLayout({
             className={isActive('/admin/announcements') ? styles.navActive : ''}
           >
             Anuncios
+          </Link>
+          <Link
+            href="/admin/events"
+            className={isActive('/admin/events') ? styles.navActive : ''}
+          >
+            Eventos
+            {eventAlerts > 0 && (
+              <span
+                className={styles.navBadge}
+                aria-label={`${eventAlerts} con cruce de horario`}
+              >
+                {eventAlerts}
+              </span>
+            )}
           </Link>
           <Link
             href="/admin/churches"

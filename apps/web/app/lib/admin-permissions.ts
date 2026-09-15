@@ -5,13 +5,15 @@ export type GlobalPermission =
   | 'MANAGE_GLOBAL_ANNOUNCEMENTS'
   | 'MANAGE_CHURCHES'
   | 'MANAGE_ADMINS'
-  | 'VIEW_ALL_REPORTS';
+  | 'VIEW_ALL_REPORTS'
+  | 'MANAGE_GLOBAL_EVENTS';
 
 export type ChurchPermission =
   | 'MANAGE_CHURCH_ANNOUNCEMENTS'
   | 'SUBMIT_REPORTS'
   | 'EDIT_CHURCH_INFO'
-  | 'MANAGE_DIRECTORS';
+  | 'MANAGE_DIRECTORS'
+  | 'MANAGE_EVENTS';
 
 export type AnyPermission = GlobalPermission | ChurchPermission;
 

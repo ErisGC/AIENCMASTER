@@ -1,0 +1,646 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+
+.head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.title {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--text);
+}
+
+.subtitle {
+  margin: 0.3rem 0 0;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  max-width: 60ch;
+}
+
+/* ── Botones ── */
+
+.primaryBtn,
+.secondaryBtn,
+.ghostBtn,
+.dangerBtn {
+  border-radius: 999px;
+  padding: 0.55rem 1.05rem;
+  font-size: 0.86rem;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.primaryBtn:disabled,
+.secondaryBtn:disabled,
+.ghostBtn:disabled,
+.dangerBtn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.primaryBtn {
+  background: var(--accent);
+  color: #fff;
+}
+
+.secondaryBtn {
+  background: var(--accent-weak);
+  color: var(--accent);
+  border-color: var(--border-soft);
+}
+
+.ghostBtn {
+  background: transparent;
+  color: var(--text-muted);
+  border-color: var(--border-soft);
+}
+
+.dangerBtn {
+  background: var(--danger);
+  color: #fff;
+}
+
+.primaryBtn:hover:not(:disabled),
+.secondaryBtn:hover:not(:disabled),
+.ghostBtn:hover:not(:disabled),
+.dangerBtn:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.linkBtn {
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font-weight: 600;
+  font-size: 0.82rem;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  padding: 0;
+}
+
+/* ── Avisos ── */
+
+.toast {
+  padding: 0.7rem 1rem;
+  border-radius: 12px;
+  background: var(--accent-emerald-weak);
+  color: var(--accent-emerald);
+  border: 1px solid var(--accent-emerald);
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.error {
+  padding: 0.7rem 0.9rem;
+  border-radius: 12px;
+  background: var(--danger-weak);
+  color: var(--danger);
+  border: 1px solid var(--danger);
+  font-size: 0.86rem;
+}
+
+.alerts {
+  padding: 1rem 1.1rem;
+  border-radius: 18px;
+  border: 1px solid var(--gem-ruby);
+  background: var(--gem-ruby-soft);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+:root[data-theme='dark'] .alerts {
+  background: rgba(176, 39, 77, 0.18);
+}
+
+.alertsTitle {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--gem-ruby);
+}
+
+.alertsList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.alertItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: 0.6rem 0.8rem;
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.alertMain {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+  font-size: 0.86rem;
+  color: var(--text);
+}
+
+.alertWhen {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.alertReasons {
+  margin: 0.2rem 0 0;
+  padding-left: 1.1rem;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+
+/* ── Filtros ── */
+
+.filters {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.segmented {
+  display: inline-flex;
+  padding: 0.25rem;
+  border-radius: 999px;
+  border: 1px solid var(--border-soft);
+  background: var(--surface);
+  gap: 0.2rem;
+}
+
+.segmented button {
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  padding: 0.4rem 0.85rem;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.segActive {
+  background: var(--accent) !important;
+  color: #fff !important;
+}
+
+.loading {
+  font-size: 0.8rem;
+  color: var(--text-soft);
+}
+
+/* ── Calendario + agenda ── */
+
+.columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(300px, 0.9fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.agenda {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  padding: 1.1rem;
+  border-radius: 20px;
+  border: 1px solid var(--border-soft);
+  background: var(--gradient-surface);
+  box-shadow: var(--shadow-1);
+}
+
+.agendaHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.agendaTitle {
+  margin: 0;
+  font-size: 1.02rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.empty {
+  color: var(--text-muted);
+  font-size: 0.88rem;
+}
+
+.agendaDay {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.agendaDayTitle {
+  margin: 0;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-soft);
+}
+
+.agendaList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.eventCard {
+  padding: 0.7rem 0.85rem;
+  border-radius: 14px;
+  border: 1px solid var(--border-soft);
+  border-left-width: 4px;
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.eventGlobal {
+  border-left-color: var(--gem-emerald);
+}
+
+.eventLocal {
+  border-left-color: var(--gem-sapphire);
+}
+
+.eventConflict {
+  box-shadow: 0 0 0 2px var(--gem-ruby) inset;
+}
+
+.eventWhen {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.eventTitle {
+  margin: 0;
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.eventMeta {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
+.eventWarn {
+  margin: 0.2rem 0 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--gem-ruby);
+}
+
+.eventActions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.4rem;
+}
+
+.eventActions button {
+  padding: 0.35rem 0.8rem;
+  font-size: 0.78rem;
+}
+
+/* ── Modal ── */
+
+.modalBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: var(--overlay);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 2rem 1rem;
+  overflow-y: auto;
+}
+
+.modal {
+  width: min(760px, 100%);
+  border-radius: 22px;
+  border: 1px solid var(--border-soft);
+  background: var(--bg-surface-strong);
+  box-shadow: var(--shadow-3);
+  padding: clamp(1.1rem, 2.5vw, 1.6rem);
+}
+
+.modalSmall {
+  width: min(480px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.modalTitle {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: var(--text);
+}
+
+.modalText {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.modalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+}
+
+/* ── Formulario ── */
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.formHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.closeBtn {
+  border: 1px solid var(--border-soft);
+  background: var(--surface);
+  color: var(--text-muted);
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  font-size: 1.2rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+
+.row3 {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr;
+  gap: 0.9rem;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.field label,
+.label {
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.field input,
+.field select,
+.field textarea,
+.inlineSelect select {
+  padding: 0.6rem 0.8rem;
+  border-radius: 10px;
+  border: 1px solid var(--border-soft);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.9rem;
+}
+
+.field input:focus,
+.field select:focus,
+.field textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-weak);
+}
+
+.field textarea {
+  resize: vertical;
+}
+
+.hint {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
+.fieldsetScope {
+  border: 1px solid var(--border-soft);
+  border-radius: 12px;
+  padding: 0.6rem 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin: 0;
+}
+
+.fieldsetScope legend {
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: var(--text);
+  padding: 0 0.3rem;
+}
+
+.radio,
+.check {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  font-size: 0.86rem;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.radio input,
+.check input {
+  margin-top: 0.2rem;
+}
+
+.radio span,
+.check span {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.radio small,
+.check small {
+  color: var(--text-muted);
+  font-size: 0.76rem;
+}
+
+.repeatBox,
+.directorsBox {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.85rem;
+  border-radius: 14px;
+  border: 1px dashed var(--border-soft);
+  background: var(--surface-2);
+}
+
+.directorsHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.inlineSelect {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.chipsRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.chipRemovable {
+  border: 1px solid var(--border-soft);
+  background: var(--accent-weak);
+  color: var(--accent);
+  border-radius: 999px;
+  padding: 0.3rem 0.7rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.directorsList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 0.35rem;
+}
+
+.conflicts {
+  padding: 0.9rem 1rem;
+  border-radius: 14px;
+  border: 1px solid;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.conflictsBad {
+  border-color: var(--gem-ruby);
+  background: var(--gem-ruby-soft);
+}
+
+.conflictsOk {
+  border-color: var(--gem-emerald);
+  background: var(--gem-emerald-soft);
+}
+
+:root[data-theme='dark'] .conflictsBad {
+  background: rgba(176, 39, 77, 0.18);
+}
+
+:root[data-theme='dark'] .conflictsOk {
+  background: rgba(15, 123, 108, 0.2);
+}
+
+.conflictsTitle {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--gem-ruby);
+}
+
+.conflictsOkText {
+  margin: 0;
+  font-weight: 600;
+  color: var(--gem-emerald-deep);
+}
+
+.conflictsList {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: 0.84rem;
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.conflictsList ul {
+  margin: 0.2rem 0 0;
+  padding-left: 1rem;
+  color: var(--text-muted);
+}
+
+.formActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  padding-top: 0.4rem;
+  border-top: 1px solid var(--border-soft);
+}
+
+@media (max-width: 920px) {
+  .columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 720px) {
+  .row,
+  .row3 {
+    grid-template-columns: 1fr;
+  }
+}
