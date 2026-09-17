@@ -414,13 +414,28 @@ class SessionResponse {
   status; // 'ACTIVE' | 'BOOTSTRAP_REQUIRED' | 'UNAUTHENTICATED' | 'PENDING'
   final AdminAccount? account;
 
-  SessionResponse({required this.status, required this.account});
+  /// Alcance del dispositivo desde el que se abrió la sesión: 'ROOT_DEVICE'
+  /// (el dispositivo principal, único) o 'APPROVED_DEVICE'.
+  final String? deviceRoleScope;
+
+  SessionResponse({
+    required this.status,
+    required this.account,
+    this.deviceRoleScope,
+  });
+
+  /// El módulo de seguridad de la API (cuentas, permisos, dispositivos y
+  /// auditoría) solo atiende al dispositivo principal, aunque la cuenta sea
+  /// ROOT. Desde cualquier otro teléfono responde 403.
+  bool get isRootDevice => deviceRoleScope == 'ROOT_DEVICE';
 
   factory SessionResponse.fromJson(Map<String, dynamic> j) => SessionResponse(
     status: j['status'] as String? ?? 'UNAUTHENTICATED',
     account: j['account'] == null
         ? null
         : AdminAccount.fromJson(j['account'] as Map<String, dynamic>),
+    deviceRoleScope:
+        (j['device'] as Map<String, dynamic>?)?['roleScope'] as String?,
   );
 }
 

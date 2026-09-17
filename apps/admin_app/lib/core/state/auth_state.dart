@@ -48,8 +48,8 @@ enum UnlockOutcome {
 
 class AuthState extends ChangeNotifier {
   AuthState({required AuthService auth, required LocalAuthService localAuth})
-      : _auth = auth,
-        _localAuth = localAuth;
+    : _auth = auth,
+      _localAuth = localAuth;
 
   final AuthService _auth;
   final LocalAuthService _localAuth;
@@ -59,6 +59,11 @@ class AuthState extends ChangeNotifier {
 
   AdminAccount? _account;
   AdminAccount? get account => _account;
+
+  /// Si la sesión se abrió desde el dispositivo principal (ROOT_DEVICE).
+  /// Solo ese dispositivo puede usar el módulo de seguridad de la API.
+  bool _isRootDevice = false;
+  bool get isRootDevice => _isRootDevice;
 
   String? _activeChurchId;
   String? get activeChurchId => _activeChurchId;
@@ -90,6 +95,7 @@ class AuthState extends ChangeNotifier {
       // cifrados como texto plano (corrompería el índice del jar).
       ApiClient.I.markCookiesSealed();
       _account = null;
+      _isRootDevice = false;
       _phase = AuthPhase.locked;
       notifyListeners();
       return;
@@ -99,14 +105,16 @@ class AuthState extends ChangeNotifier {
       final session = await _getSessionWithRetry();
       if (session.status == 'ACTIVE' && session.account != null) {
         _account = session.account;
+        _isRootDevice = session.isRootDevice;
         _selectDefaultChurch();
         // Control periódico: aunque la sesión siga viva, cada cierto tiempo se
         // vuelve a pedir la contraseña de la cuenta.
         if (await _localAuth.passwordDue()) {
           _phase = AuthPhase.needsPassword;
         } else {
-          _phase =
-              mode == LockMode.bio ? AuthPhase.locked : AuthPhase.authenticated;
+          _phase = mode == LockMode.bio
+              ? AuthPhase.locked
+              : AuthPhase.authenticated;
         }
       } else {
         await _askPasswordOrSignOut(mode);
@@ -142,6 +150,7 @@ class AuthState extends ChangeNotifier {
   /// lo recordamos, sólo pedimos la contraseña; si no, sesión cerrada.
   Future<void> _askPasswordOrSignOut(LockMode mode) async {
     _account = null;
+    _isRootDevice = false;
     _activeChurchId = null;
     final user = await _localAuth.lastUser();
     _phase = (mode != LockMode.none && user != null)
@@ -152,8 +161,12 @@ class AuthState extends ChangeNotifier {
   /// Tras login exitoso. Si el dispositivo tiene biometría disponible o el
   /// usuario ya configuró un PIN, queda autenticado de inmediato (acaba de
   /// pasar contraseña). El opt-in al re-login local lo configura aparte.
-  Future<void> onLoginSuccess(AdminAccount account) async {
+  Future<void> onLoginSuccess(
+    AdminAccount account, {
+    bool isRootDevice = false,
+  }) async {
     _account = account;
+    _isRootDevice = isRootDevice;
     _selectDefaultChurch();
     await _localAuth.setLastUser(account.username);
     // Acaba de escribir su contraseña: reinicia el reloj del control periódico.
@@ -196,6 +209,7 @@ class AuthState extends ChangeNotifier {
       final session = await _auth.getSession();
       if (session.status == 'ACTIVE' && session.account != null) {
         _account = session.account;
+        _isRootDevice = session.isRootDevice;
         _selectDefaultChurch();
         // Ya tenemos la llave del PIN: si el usuario había elegido huella en
         // una versión anterior (y el PIN se quedó pegado), migramos ahora para
@@ -264,6 +278,7 @@ class AuthState extends ChangeNotifier {
     await _auth.logout();
     await _localAuth.clearAll();
     _account = null;
+    _isRootDevice = false;
     _activeChurchId = null;
     _phase = AuthPhase.signedOut;
     notifyListeners();

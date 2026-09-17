@@ -51,7 +51,10 @@ class _LoginScreenState extends State<LoginScreen> {
         setState(() => _error = 'No se pudo iniciar sesión.');
         return;
       }
-      await Locator.authState.onLoginSuccess(session.account!);
+      await Locator.authState.onLoginSuccess(
+        session.account!,
+        isRootDevice: session.isRootDevice,
+      );
       // Solo ofrecemos configurar la protección local la PRIMERA vez. Si el
       // usuario ya decidió (huella, PIN o nada), respetamos su elección y
       // entramos directo: antes se le forzaba esta pantalla en cada login.

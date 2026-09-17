@@ -59,7 +59,10 @@ class _ReauthScreenState extends State<ReauthScreen> {
         setState(() => _error = 'No se pudo confirmar la sesión.');
         return;
       }
-      await Locator.authState.onLoginSuccess(session.account!);
+      await Locator.authState.onLoginSuccess(
+        session.account!,
+        isRootDevice: session.isRootDevice,
+      );
       if (!mounted) return;
       context.go('/');
     } on ApiException catch (e) {
@@ -82,8 +85,10 @@ class _ReauthScreenState extends State<ReauthScreen> {
     if (!mounted) return;
     setState(() => _submitting = false);
     if (Locator.authState.phase == AuthPhase.needsPassword) {
-      setState(() => _error =
-          'La sesión ya no está activa. Confirma tu contraseña para continuar.');
+      setState(
+        () => _error =
+            'La sesión ya no está activa. Confirma tu contraseña para continuar.',
+      );
     }
   }
 
@@ -116,16 +121,19 @@ class _ReauthScreenState extends State<ReauthScreen> {
                       _username == null
                           ? 'Por seguridad, vuelve a escribir tu contraseña.'
                           : 'Por seguridad, confirma la contraseña de @$_username '
-                              'para seguir usando la app. Tu PIN y tu huella se '
-                              'mantienen como los tienes.',
+                                'para seguir usando la app. Tu PIN y tu huella se '
+                                'mantienen como los tienes.',
                       style: const TextStyle(
-                          color: GemPalette.textMuted, height: 1.5),
+                        color: GemPalette.textMuted,
+                        height: 1.5,
+                      ),
                     ),
                     const SizedBox(height: 18),
                     TextField(
                       controller: _passwordCtrl,
-                      decoration:
-                          const InputDecoration(labelText: 'Contraseña'),
+                      decoration: const InputDecoration(
+                        labelText: 'Contraseña',
+                      ),
                       obscureText: true,
                       autofocus: true,
                       onSubmitted: (_) => _submit(),

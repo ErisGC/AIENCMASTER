@@ -36,8 +36,16 @@ class _SecurityScreenState extends State<SecurityScreen> {
   int _soporteSinLeer = 0;
 
   bool get _esPrincipal => Locator.authState.account?.isRoot ?? false;
+
+  /// El módulo root de la API (cuentas, permisos, dispositivos, auditoría)
+  /// solo atiende al dispositivo principal. Un ROOT en otro teléfono recibe
+  /// 403; antes eso tumbaba la pestaña entera, con la bandeja de soporte
+  /// dentro.
+  bool get _esDispositivoPrincipal => Locator.authState.isRootDevice;
+  bool get _gestionaCuentas => _esPrincipal && _esDispositivoPrincipal;
+
   bool _loading = true;
-  String? _error;
+  String? _errorCuentas;
 
   @override
   void initState() {
@@ -58,22 +66,21 @@ class _SecurityScreenState extends State<SecurityScreen> {
   Future<void> _load() async {
     setState(() {
       _loading = true;
-      _error = null;
+      _errorCuentas = null;
     });
-    try {
-      // El listado de cuentas es exclusivo del administrador principal; un
-      // administrador normal entra a esta sección por su protección, el
-      // tutorial y el canal de soporte.
-      if (_esPrincipal) {
+    // El listado de cuentas es del módulo root: solo se pide desde el
+    // dispositivo principal. Si falla, el error se muestra en su sección y
+    // el resto de la pestaña (soporte, protección, tutorial) sigue visible.
+    if (_gestionaCuentas) {
+      try {
         final list = await Locator.security.listAccounts();
         if (mounted) setState(() => _accounts = list);
+      } catch (e) {
+        if (mounted) setState(() => _errorCuentas = userMessageFor(e));
       }
-      await _cargarSinLeer();
-    } catch (e) {
-      if (mounted) setState(() => _error = userMessageFor(e));
-    } finally {
-      if (mounted) setState(() => _loading = false);
     }
+    await _cargarSinLeer();
+    if (mounted) setState(() => _loading = false);
   }
 
   @override
@@ -93,7 +100,8 @@ class _SecurityScreenState extends State<SecurityScreen> {
                 builder: (ctx) => AlertDialog(
                   title: const Text('Cerrar sesión'),
                   content: const Text(
-                      '¿Seguro que quieres salir? Tendrás que volver a iniciar sesión.'),
+                    '¿Seguro que quieres salir? Tendrás que volver a iniciar sesión.',
+                  ),
                   actions: [
                     TextButton(
                       onPressed: () => Navigator.pop(ctx, false),
@@ -117,263 +125,343 @@ class _SecurityScreenState extends State<SecurityScreen> {
         Expanded(
           child: _loading
               ? const Center(child: CircularProgressIndicator())
-              : _error != null && _accounts.isEmpty
-                  ? Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: GemErrorBanner(message: _error!),
-                    )
-                  : RefreshIndicator(
-                      onRefresh: _load,
-                      child: ListView(
-                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 90),
-                        children: [
-                          if (_esPrincipal) GemCard(
-                            onTap: () async {
-                              await Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) => const InvitationsScreen(),
-                                ),
-                              );
-                              if (mounted) await _load();
-                            },
-                            child: Row(
-                              children: [
-                                Container(
-                                  width: 44,
-                                  height: 44,
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(12),
-                                    gradient: GemPalette
-                                        .sapphireEmeraldGradient,
-                                  ),
-                                  alignment: Alignment.center,
-                                  child: const Icon(Icons.mail_outline_rounded,
-                                      color: Colors.white),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text('Invitaciones',
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .titleMedium),
-                                      const Text(
-                                        'Generar enlaces para nuevos administradores y revocar los pendientes',
-                                        style: TextStyle(
-                                            color: GemPalette.textMuted,
-                                            fontSize: 12.5,
-                                            height: 1.35),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const Icon(Icons.chevron_right,
-                                    color: GemPalette.textMuted),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          GemCard(
-                            onTap: () async {
-                              await Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) => const SupportScreen(),
-                                ),
-                              );
-                              if (mounted) await _load();
-                            },
-                            child: Row(
-                              children: [
-                                Container(
-                                  width: 44,
-                                  height: 44,
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(12),
-                                    gradient: const LinearGradient(
-                                      colors: [
-                                        GemPalette.amethyst,
-                                        GemPalette.sapphire,
-                                      ],
-                                    ),
-                                  ),
-                                  alignment: Alignment.center,
-                                  child: const Icon(Icons.forum_outlined,
-                                      color: Colors.white),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          Text(
-                                            _esPrincipal
-                                                ? 'Bandeja de soporte'
-                                                : 'Soporte',
-                                            style: Theme.of(context)
-                                                .textTheme
-                                                .titleMedium,
-                                          ),
-                                          if (_soporteSinLeer > 0) ...[
-                                            const SizedBox(width: 8),
-                                            Container(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                      horizontal: 7,
-                                                      vertical: 2),
-                                              decoration: BoxDecoration(
-                                                color: GemPalette.danger,
-                                                borderRadius:
-                                                    BorderRadius.circular(100),
-                                              ),
-                                              child: Text(
-                                                '$_soporteSinLeer',
-                                                style: const TextStyle(
-                                                    color: Colors.white,
-                                                    fontSize: 11,
-                                                    fontWeight:
-                                                        FontWeight.w800),
-                                              ),
-                                            ),
-                                          ],
-                                        ],
-                                      ),
-                                      Text(
-                                        _esPrincipal
-                                            ? 'Reportes y sugerencias que te han enviado'
-                                            : 'Escríbele al administrador principal: fallos, faltantes o sugerencias',
-                                        style: const TextStyle(
-                                            color: GemPalette.textMuted,
-                                            fontSize: 12.5,
-                                            height: 1.35),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const Icon(Icons.chevron_right,
-                                    color: GemPalette.textMuted),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          GemCard(
-                            onTap: () => context.push('/setup-lock'),
-                            child: Row(
-                              children: [
-                                Container(
-                                  width: 44,
-                                  height: 44,
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(12),
-                                    gradient: const LinearGradient(
-                                      colors: [
-                                        GemPalette.emerald,
-                                        GemPalette.sapphire,
-                                      ],
-                                    ),
-                                  ),
-                                  alignment: Alignment.center,
-                                  child: const Icon(Icons.fingerprint,
-                                      color: Colors.white),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text('Protección de la app',
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .titleMedium),
-                                      const Text(
-                                        'Entra con tu huella, con un PIN, o sin clave. Puedes cambiarlo cuando quieras',
-                                        style: TextStyle(
-                                            color: GemPalette.textMuted,
-                                            fontSize: 12.5,
-                                            height: 1.35),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const Icon(Icons.chevron_right,
-                                    color: GemPalette.textMuted),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          _buildTutorialCard(),
-                          const SizedBox(height: 10),
-                          if (_esPrincipal) GemCard(
-                            onTap: () => Navigator.of(context).push(
+              : RefreshIndicator(
+                  onRefresh: _load,
+                  child: ListView(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 90),
+                    children: [
+                      if (_esPrincipal && !_esDispositivoPrincipal) ...[
+                        _dispositivoPrincipalCard(context),
+                        const SizedBox(height: 10),
+                      ],
+                      if (_gestionaCuentas)
+                        GemCard(
+                          onTap: () async {
+                            await Navigator.of(context).push(
                               MaterialPageRoute(
-                                builder: (_) => const _GlobalAuditScreen(),
+                                builder: (_) => const InvitationsScreen(),
+                              ),
+                            );
+                            if (mounted) await _load();
+                          },
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 44,
+                                height: 44,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(12),
+                                  gradient: GemPalette.sapphireEmeraldGradient,
+                                ),
+                                alignment: Alignment.center,
+                                child: const Icon(
+                                  Icons.mail_outline_rounded,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Invitaciones',
+                                      style: Theme.of(
+                                        context,
+                                      ).textTheme.titleMedium,
+                                    ),
+                                    const Text(
+                                      'Generar enlaces para nuevos administradores y revocar los pendientes',
+                                      style: TextStyle(
+                                        color: GemPalette.textMuted,
+                                        fontSize: 12.5,
+                                        height: 1.35,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const Icon(
+                                Icons.chevron_right,
+                                color: GemPalette.textMuted,
+                              ),
+                            ],
+                          ),
+                        ),
+                      const SizedBox(height: 10),
+                      GemCard(
+                        onTap: () async {
+                          await Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const SupportScreen(),
+                            ),
+                          );
+                          if (mounted) await _load();
+                        },
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 44,
+                              height: 44,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(12),
+                                gradient: const LinearGradient(
+                                  colors: [
+                                    GemPalette.amethyst,
+                                    GemPalette.sapphire,
+                                  ],
+                                ),
+                              ),
+                              alignment: Alignment.center,
+                              child: const Icon(
+                                Icons.forum_outlined,
+                                color: Colors.white,
                               ),
                             ),
-                            child: Row(
-                              children: [
-                                Container(
-                                  width: 44,
-                                  height: 44,
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(12),
-                                    gradient: const LinearGradient(
-                                      colors: [
-                                        GemPalette.amethyst,
-                                        GemPalette.sapphire,
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Text(
+                                        _esPrincipal
+                                            ? 'Bandeja de soporte'
+                                            : 'Soporte',
+                                        style: Theme.of(
+                                          context,
+                                        ).textTheme.titleMedium,
+                                      ),
+                                      if (_soporteSinLeer > 0) ...[
+                                        const SizedBox(width: 8),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 7,
+                                            vertical: 2,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: GemPalette.danger,
+                                            borderRadius: BorderRadius.circular(
+                                              100,
+                                            ),
+                                          ),
+                                          child: Text(
+                                            '$_soporteSinLeer',
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w800,
+                                            ),
+                                          ),
+                                        ),
                                       ],
+                                    ],
+                                  ),
+                                  Text(
+                                    _esPrincipal
+                                        ? 'Reportes y sugerencias que te han enviado'
+                                        : 'Escríbele al administrador principal: fallos, faltantes o sugerencias',
+                                    style: const TextStyle(
+                                      color: GemPalette.textMuted,
+                                      fontSize: 12.5,
+                                      height: 1.35,
                                     ),
                                   ),
-                                  alignment: Alignment.center,
-                                  child: const Icon(Icons.fact_check_outlined,
-                                      color: Colors.white),
+                                ],
+                              ),
+                            ),
+                            const Icon(
+                              Icons.chevron_right,
+                              color: GemPalette.textMuted,
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      GemCard(
+                        onTap: () => context.push('/setup-lock'),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 44,
+                              height: 44,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(12),
+                                gradient: const LinearGradient(
+                                  colors: [
+                                    GemPalette.emerald,
+                                    GemPalette.sapphire,
+                                  ],
                                 ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text('Historial de auditoría',
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .titleMedium),
-                                      const Text(
-                                        'Registro de todas las acciones del sistema, con su autor y fecha',
-                                        style: TextStyle(
-                                            color: GemPalette.textMuted,
-                                            fontSize: 12.5,
-                                            height: 1.35),
-                                      ),
+                              ),
+                              alignment: Alignment.center,
+                              child: const Icon(
+                                Icons.fingerprint,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Protección de la app',
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.titleMedium,
+                                  ),
+                                  const Text(
+                                    'Entra con tu huella, con un PIN, o sin clave. Puedes cambiarlo cuando quieras',
+                                    style: TextStyle(
+                                      color: GemPalette.textMuted,
+                                      fontSize: 12.5,
+                                      height: 1.35,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const Icon(
+                              Icons.chevron_right,
+                              color: GemPalette.textMuted,
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      _buildTutorialCard(),
+                      const SizedBox(height: 10),
+                      if (_gestionaCuentas)
+                        GemCard(
+                          onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const _GlobalAuditScreen(),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 44,
+                                height: 44,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(12),
+                                  gradient: const LinearGradient(
+                                    colors: [
+                                      GemPalette.amethyst,
+                                      GemPalette.sapphire,
                                     ],
                                   ),
                                 ),
-                                const Icon(Icons.chevron_right,
-                                    color: GemPalette.textMuted),
-                              ],
-                            ),
+                                alignment: Alignment.center,
+                                child: const Icon(
+                                  Icons.fact_check_outlined,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Historial de auditoría',
+                                      style: Theme.of(
+                                        context,
+                                      ).textTheme.titleMedium,
+                                    ),
+                                    const Text(
+                                      'Registro de todas las acciones del sistema, con su autor y fecha',
+                                      style: TextStyle(
+                                        color: GemPalette.textMuted,
+                                        fontSize: 12.5,
+                                        height: 1.35,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const Icon(
+                                Icons.chevron_right,
+                                color: GemPalette.textMuted,
+                              ),
+                            ],
                           ),
-                          if (_esPrincipal) ...[
-                            const SizedBox(height: 14),
-                            Padding(
-                              padding: const EdgeInsets.only(left: 4),
-                              child: Text('Administradores',
-                                  style:
-                                      Theme.of(context).textTheme.titleMedium),
-                            ),
-                            const SizedBox(height: 6),
-                            for (final a in _accounts) _accountTile(a),
-                          ],
-                        ],
-                      ),
-                    ),
+                        ),
+                      if (_gestionaCuentas) ...[
+                        const SizedBox(height: 14),
+                        Padding(
+                          padding: const EdgeInsets.only(left: 4),
+                          child: Text(
+                            'Administradores',
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        if (_errorCuentas != null)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 10),
+                            child: GemErrorBanner(message: _errorCuentas!),
+                          ),
+                        for (final a in _accounts) _accountTile(a),
+                      ],
+                    ],
+                  ),
+                ),
         ),
       ],
+    );
+  }
+
+  /// Un ROOT fuera del dispositivo principal: se le explica dónde está el
+  /// módulo de cuentas en vez de mostrarle un rechazo sin contexto.
+  Widget _dispositivoPrincipalCard(BuildContext context) {
+    return GemCard(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              color: GemPalette.topaz.withValues(alpha: 0.2),
+            ),
+            alignment: Alignment.center,
+            child: const Icon(
+              Icons.devices_other_outlined,
+              color: GemPalette.topaz,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Cuentas y auditoría: desde el dispositivo principal',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  'Por seguridad, la gestión de administradores, permisos, '
+                  'dispositivos e historial solo se abre desde el dispositivo '
+                  'principal: el navegador donde se creó la cuenta principal, '
+                  'en el panel web. Desde este teléfono puedes atender la '
+                  'bandeja de soporte, proteger la app y trabajar iglesias, '
+                  'anuncios, eventos e informes.',
+                  style: TextStyle(
+                    color: GemPalette.textMuted,
+                    fontSize: 12.5,
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -392,8 +480,9 @@ class _SecurityScreenState extends State<SecurityScreen> {
                     ? a.displayName.substring(0, 1).toUpperCase()
                     : '?',
                 style: const TextStyle(
-                    color: GemPalette.textPrimary,
-                    fontWeight: FontWeight.w800),
+                  color: GemPalette.textPrimary,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
             ),
             const SizedBox(width: 12),
@@ -401,11 +490,17 @@ class _SecurityScreenState extends State<SecurityScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(a.displayName,
-                      style: Theme.of(context).textTheme.titleMedium),
-                  Text('@${a.username}',
-                      style: const TextStyle(
-                          color: GemPalette.textMuted, fontSize: 12)),
+                  Text(
+                    a.displayName,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  Text(
+                    '@${a.username}',
+                    style: const TextStyle(
+                      color: GemPalette.textMuted,
+                      fontSize: 12,
+                    ),
+                  ),
                   const SizedBox(height: 4),
                   Wrap(
                     spacing: 6,
@@ -419,7 +514,9 @@ class _SecurityScreenState extends State<SecurityScreen> {
                       ),
                       if (!a.isActive)
                         const GemBadge(
-                            label: 'Inactiva', color: GemPalette.danger),
+                          label: 'Inactiva',
+                          color: GemPalette.danger,
+                        ),
                     ],
                   ),
                 ],
@@ -463,15 +560,13 @@ class _SecurityScreenState extends State<SecurityScreen> {
             ListTile(
               leading: const Icon(Icons.history),
               title: const Text('Ver historial'),
-              onTap: () =>
-                  Navigator.pop(ctx, _AccountAction.history),
+              onTap: () => Navigator.pop(ctx, _AccountAction.history),
             ),
             if (!a.isRoot)
               ListTile(
                 leading: const Icon(Icons.shield_outlined),
                 title: const Text('Gestionar permisos'),
-                onTap: () =>
-                    Navigator.pop(ctx, _AccountAction.permissions),
+                onTap: () => Navigator.pop(ctx, _AccountAction.permissions),
               ),
             const SizedBox(height: 8),
           ],
@@ -534,16 +629,19 @@ class _SecurityScreenState extends State<SecurityScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Tutorial guiado',
-                        style: Theme.of(context).textTheme.titleMedium),
+                    Text(
+                      'Tutorial guiado',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
                     Text(
                       puedeContinuar
                           ? 'Lo dejaste en el paso $paso de $total'
                           : 'Un recorrido corto por las secciones de la app',
                       style: const TextStyle(
-                          color: GemPalette.textMuted,
-                          fontSize: 12.5,
-                          height: 1.35),
+                        color: GemPalette.textMuted,
+                        fontSize: 12.5,
+                        height: 1.35,
+                      ),
                     ),
                   ],
                 ),
@@ -613,44 +711,48 @@ class _AccountHistoryScreenState extends State<_AccountHistoryScreen> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: GemErrorBanner(message: _error!),
-                )
-              : ListView.separated(
-                  padding: const EdgeInsets.all(16),
-                  separatorBuilder: (_, __) => const SizedBox(height: 10),
-                  itemCount: d?.actions.length ?? 0,
-                  itemBuilder: (_, i) {
-                    final a = d!.actions[i];
-                    return GemCard(
-                      padding: const EdgeInsets.all(14),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            actionTypeLabel(a.actionType),
-                            style: const TextStyle(
-                              color: GemPalette.emerald,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 12,
-                              letterSpacing: 0.4,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(a.description),
-                          const SizedBox(height: 6),
-                          Text(
-                            DateFormat("d 'de' MMMM yyyy, HH:mm", 'es')
-                                .format(a.createdAt.toLocal()),
-                            style: const TextStyle(
-                                color: GemPalette.textMuted, fontSize: 11),
-                          ),
-                        ],
+          ? Padding(
+              padding: const EdgeInsets.all(16),
+              child: GemErrorBanner(message: _error!),
+            )
+          : ListView.separated(
+              padding: const EdgeInsets.all(16),
+              separatorBuilder: (_, __) => const SizedBox(height: 10),
+              itemCount: d?.actions.length ?? 0,
+              itemBuilder: (_, i) {
+                final a = d!.actions[i];
+                return GemCard(
+                  padding: const EdgeInsets.all(14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        actionTypeLabel(a.actionType),
+                        style: const TextStyle(
+                          color: GemPalette.emerald,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 12,
+                          letterSpacing: 0.4,
+                        ),
                       ),
-                    );
-                  },
-                ),
+                      const SizedBox(height: 4),
+                      Text(a.description),
+                      const SizedBox(height: 6),
+                      Text(
+                        DateFormat(
+                          "d 'de' MMMM yyyy, HH:mm",
+                          'es',
+                        ).format(a.createdAt.toLocal()),
+                        style: const TextStyle(
+                          color: GemPalette.textMuted,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
     );
   }
 }
@@ -708,90 +810,94 @@ class _GlobalAuditScreenState extends State<_GlobalAuditScreen> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: GemErrorBanner(message: _error!),
-                )
-              : _items.isEmpty
-                  ? const Center(
-                      child: Padding(
-                        padding: EdgeInsets.all(24),
-                        child: Text(
-                          'Aún no hay acciones registradas.',
-                          style: TextStyle(color: GemPalette.textMuted),
+          ? Padding(
+              padding: const EdgeInsets.all(16),
+              child: GemErrorBanner(message: _error!),
+            )
+          : _items.isEmpty
+          ? const Center(
+              child: Padding(
+                padding: EdgeInsets.all(24),
+                child: Text(
+                  'Aún no hay acciones registradas.',
+                  style: TextStyle(color: GemPalette.textMuted),
+                ),
+              ),
+            )
+          : RefreshIndicator(
+              onRefresh: _load,
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                children: [
+                  for (final entry in _grouped().entries) ...[
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(4, 8, 4, 8),
+                      child: Text(
+                        entry.key,
+                        style: const TextStyle(
+                          color: GemPalette.textMuted,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 12,
+                          letterSpacing: 0.3,
                         ),
                       ),
-                    )
-                  : RefreshIndicator(
-                      onRefresh: _load,
-                      child: ListView(
-                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-                        children: [
-                          for (final entry in _grouped().entries) ...[
-                            Padding(
-                              padding:
-                                  const EdgeInsets.fromLTRB(4, 8, 4, 8),
-                              child: Text(
-                                entry.key,
-                                style: const TextStyle(
-                                  color: GemPalette.textMuted,
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 12,
-                                  letterSpacing: 0.3,
-                                ),
+                    ),
+                    for (final a in entry.value) ...[
+                      GemCard(
+                        padding: const EdgeInsets.all(14),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              actionTypeLabel(a.actionType),
+                              style: const TextStyle(
+                                color: GemPalette.emerald,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 12,
+                                letterSpacing: 0.4,
                               ),
                             ),
-                            for (final a in entry.value) ...[
-                              GemCard(
-                                padding: const EdgeInsets.all(14),
-                                child: Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      actionTypeLabel(a.actionType),
-                                      style: const TextStyle(
-                                        color: GemPalette.emerald,
-                                        fontWeight: FontWeight.w700,
-                                        fontSize: 12,
-                                        letterSpacing: 0.4,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(a.description),
-                                    const SizedBox(height: 6),
-                                    Row(
-                                      children: [
-                                        const Icon(Icons.person_outline,
-                                            size: 13,
-                                            color: GemPalette.textMuted),
-                                        const SizedBox(width: 4),
-                                        Expanded(
-                                          child: Text(
-                                            a.actorName ?? 'Sistema',
-                                            style: const TextStyle(
-                                                color: GemPalette.textMuted,
-                                                fontSize: 11.5),
-                                          ),
-                                        ),
-                                        Text(
-                                          DateFormat('HH:mm', 'es')
-                                              .format(a.createdAt.toLocal()),
-                                          style: const TextStyle(
-                                              color: GemPalette.textMuted,
-                                              fontSize: 11.5),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
+                            const SizedBox(height: 4),
+                            Text(a.description),
+                            const SizedBox(height: 6),
+                            Row(
+                              children: [
+                                const Icon(
+                                  Icons.person_outline,
+                                  size: 13,
+                                  color: GemPalette.textMuted,
                                 ),
-                              ),
-                              const SizedBox(height: 10),
-                            ],
+                                const SizedBox(width: 4),
+                                Expanded(
+                                  child: Text(
+                                    a.actorName ?? 'Sistema',
+                                    style: const TextStyle(
+                                      color: GemPalette.textMuted,
+                                      fontSize: 11.5,
+                                    ),
+                                  ),
+                                ),
+                                Text(
+                                  DateFormat(
+                                    'HH:mm',
+                                    'es',
+                                  ).format(a.createdAt.toLocal()),
+                                  style: const TextStyle(
+                                    color: GemPalette.textMuted,
+                                    fontSize: 11.5,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ],
-                        ],
+                        ),
                       ),
-                    ),
+                      const SizedBox(height: 10),
+                    ],
+                  ],
+                ],
+              ),
+            ),
     );
   }
 }

@@ -362,8 +362,9 @@ class _HomeShellState extends State<HomeShell> {
           'avisa si dos se cruzan.\n'
           '•  Iglesias: gestiona los datos, el logo y el mapa de cada iglesia.\n'
           '•  Informes: registra ofrendas, egresos y asistencia.\n'
-          '•  Seguridad: revisa el historial de auditoría, configura tu PIN o '
-          'huella y cierra sesión.\n\n'
+          '•  Seguridad: atiende la bandeja de soporte, configura tu PIN o '
+          'huella y cierra sesión. Las cuentas y la auditoría se gestionan '
+          'desde el dispositivo principal, en el panel web.\n\n'
           'Crear o eliminar iglesias se hace solo desde la web, por control.';
     } else {
       final c = _churchLabel(account);
