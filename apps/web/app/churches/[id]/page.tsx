@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
+import { cache } from 'react';
 import { getPublicChurchById } from '@/app/lib/churches';
 import {
   getPublicChurchAnnouncements,
@@ -25,7 +26,7 @@ type ChurchPageProps = {
   params: Promise<{ id: string }>;
 };
 
-async function loadChurch(id: string) {
+const loadChurch = cache(async (id: string) => {
   try {
     return await getPublicChurchById(id);
   } catch (error) {
@@ -34,6 +35,19 @@ async function loadChurch(id: string) {
     }
 
     throw error;
+  }
+});
+
+export async function generateMetadata({ params }: ChurchPageProps) {
+  const { id } = await params;
+  try {
+    const c = await loadChurch(id);
+    return {
+      title: `${c.name} — Iglesias AIENC`,
+      description: `Iglesia ${c.name}${c.city ? ` en ${c.city}` : ''}: dirección y ubicación, cuerpo directivo, anuncios, estudios y próximos eventos.`,
+    };
+  } catch {
+    return { title: 'Iglesia — AIENC' };
   }
 }
 

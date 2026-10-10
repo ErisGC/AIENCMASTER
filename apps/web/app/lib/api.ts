@@ -23,6 +23,14 @@ function resolveApiBase(): string {
 export const API_BASE_URL = resolveApiBase();
 
 /**
+ * URL real del backend, sin el proxy. Solo para subidas de archivos grandes:
+ * el proxy corre en Vercel, que rechaza cuerpos de más de 4,5 MB. Esas
+ * subidas no usan cookies sino un permiso temporal (ver admin-reports.ts).
+ */
+export const API_DIRECT_URL =
+  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+
+/**
  * GET genérico para la API
  */
 export async function apiGet<T>(path: string): Promise<T> {

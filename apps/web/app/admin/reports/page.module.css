@@ -61,7 +61,7 @@
 
 .filters {
   display: grid;
-  grid-template-columns: repeat(4, minmax(160px, 1fr)) auto;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 0.75rem;
   align-items: end;
   background: var(--gradient-surface);
@@ -462,5 +462,254 @@
   .editBtn,
   .deleteBtn {
     flex: 1;
+  }
+}
+
+/* ── Identificación por iglesia y mes ── */
+
+.filterCheck {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  align-self: end;
+  min-height: 2.6rem;
+  font-size: 0.85rem;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.monthGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.monthTitle {
+  margin: 0;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid var(--border-soft);
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--text);
+}
+
+.churchBadge {
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 0.25rem 0.7rem;
+  border-radius: 100px;
+  background: var(--surface-2);
+  color: var(--text);
+  border: 1px solid var(--border-soft);
+}
+
+.docOnlyBadge {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.25rem 0.65rem;
+  border-radius: 100px;
+  background: var(--accent-weak);
+  color: var(--accent);
+}
+
+.moreRow {
+  display: flex;
+  justify-content: center;
+  margin-top: 1rem;
+}
+
+/* ── Cómo se entrega el informe ── */
+
+.modoBox {
+  border: 0;
+  padding: 0;
+  margin: 0.25rem 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.modoBox legend {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 0.5rem;
+}
+
+.modoOpciones {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.modoOpcion,
+.modoActivo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  text-align: left;
+  padding: 0.85rem 1rem;
+  border-radius: 14px;
+  border: 1px solid var(--border-soft);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+}
+
+.modoOpcion span,
+.modoActivo span {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.modoActivo {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-weak);
+}
+
+/* ── Documentos ── */
+
+.docsSection {
+  padding: 1.1rem 1.25rem;
+  border-radius: 16px;
+  border: 1px dashed var(--border-soft);
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.docsSection .hint {
+  margin: 0;
+}
+
+.docList {
+  list-style: none;
+  margin: 0.6rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.docItem,
+.docItemPendiente {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    'kind name actions'
+    'kind meta actions';
+  column-gap: 0.75rem;
+  row-gap: 0.1rem;
+  align-items: center;
+  padding: 0.55rem 0.75rem;
+  border-radius: 12px;
+  border: 1px solid var(--border-soft);
+  background: var(--surface);
+}
+
+.docItemPendiente {
+  border-style: dashed;
+}
+
+.docKind {
+  grid-area: kind;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 0.2rem 0.55rem;
+  border-radius: 8px;
+  background: var(--accent-weak);
+  color: var(--accent);
+}
+
+.docName {
+  grid-area: name;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.docMeta {
+  grid-area: meta;
+  font-size: 0.76rem;
+  color: var(--text-muted);
+}
+
+.docActions {
+  grid-area: actions;
+  display: flex;
+  gap: 0.4rem;
+}
+
+.docBtn,
+.docBtnDanger {
+  border-radius: 999px;
+  padding: 0.35rem 0.85rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1px solid var(--border-soft);
+  background: transparent;
+  color: var(--accent);
+}
+
+.docBtnDanger {
+  color: var(--danger);
+}
+
+.docBtn:disabled,
+.docBtnDanger:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.docPicker {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.55rem 1rem;
+  border-radius: 999px;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.docPicker input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.docPicker:focus-within {
+  box-shadow: 0 0 0 3px var(--accent-weak);
+}
+
+@media (max-width: 700px) {
+  .modoOpciones {
+    grid-template-columns: 1fr;
+  }
+
+  .docItem,
+  .docItemPendiente {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      'kind'
+      'name'
+      'meta'
+      'actions';
+  }
+
+  .docKind {
+    justify-self: start;
   }
 }

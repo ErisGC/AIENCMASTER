@@ -1,6 +1,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { cache } from 'react';
 
 import {
   AnnouncementAttachment,
@@ -54,11 +55,32 @@ function buildDownloadUrl(url: string): string {
   return url.replace('/upload/', '/upload/fl_attachment/');
 }
 
+/** Una sola consulta por petición, compartida entre los metadatos y la página. */
+const cargarAnuncio = cache((id: string) => getAnnouncementById(id));
+
+function resumen(texto: string, max = 155): string {
+  const limpio = texto.replace(/[ ]+/g, ' ').trim();
+  return limpio.length > max ? `${limpio.slice(0, max - 1).trimEnd()}…` : limpio;
+}
+
+export async function generateMetadata({ params }: Props) {
+  const { id } = await params;
+  try {
+    const a = await cargarAnuncio(id);
+    return {
+      title: `${a.title} — Anuncios AIENC`,
+      description: resumen(a.description || `Anuncio de la AIENC: ${a.title}`),
+    };
+  } catch {
+    return { title: 'Anuncio — AIENC' };
+  }
+}
+
 export default async function AnnouncementPage({ params }: Props) {
   const { id } = await params;
   let announcement: AnnouncementDetail;
   try {
-    announcement = await getAnnouncementById(id);
+    announcement = await cargarAnuncio(id);
   } catch {
     notFound();
   }

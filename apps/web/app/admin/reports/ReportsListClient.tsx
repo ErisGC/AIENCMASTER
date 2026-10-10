@@ -1,11 +1,17 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   adminListReports,
   adminDeleteReport,
+  openReportDocument,
+  formatBytes,
+  formatPeriodo,
+  isDocumentOnly,
+  mesDelPeriodo,
+  DOCUMENT_KIND_LABELS,
   REPORT_TYPE_LABELS,
   EXPENSE_CATEGORY_LABELS,
   REQUEST_STATUS_LABELS,
@@ -20,7 +26,7 @@ import {
   adminGetSession,
   type AdminSessionResponse,
 } from '@/app/lib/admin-auth';
-import { formatCalendarDate, formatDateTime } from '@/app/lib/formatDate';
+import { formatDateTime } from '@/app/lib/formatDate';
 
 import styles from './page.module.css';
 
@@ -33,11 +39,15 @@ const REPORT_TYPES: ReportType[] = [
   'OTHER',
 ];
 
+/** Informes por página. */
+const PAGINA = 30;
+
 /**
  * Resumen corto de un dato puntual del reporte para mostrar en la lista
  * (monto, categoría, scope, etc.) sin tener que abrir el detalle.
  */
 function describeReport(report: ReportSummary): string | null {
+  if (isDocumentOnly(report)) return null;
   const d = report.data ?? {};
   switch (report.reportType) {
     case 'OFFERINGS':
@@ -51,8 +61,8 @@ function describeReport(report: ReportSummary): string | null {
           : null;
       const cat =
         typeof d.category === 'string'
-          ? EXPENSE_CATEGORY_LABELS[d.category as ExpenseCategory] ??
-            String(d.category)
+          ? (EXPENSE_CATEGORY_LABELS[d.category as ExpenseCategory] ??
+            String(d.category))
           : null;
       return [cat, amount].filter(Boolean).join(' · ') || null;
     }
@@ -67,8 +77,8 @@ function describeReport(report: ReportSummary): string | null {
       const subj = typeof d.subject === 'string' ? d.subject : null;
       const st =
         typeof d.status === 'string'
-          ? REQUEST_STATUS_LABELS[d.status as RequestStatus] ??
-            String(d.status)
+          ? (REQUEST_STATUS_LABELS[d.status as RequestStatus] ??
+            String(d.status))
           : null;
       return [subj, st].filter(Boolean).join(' · ') || null;
     }
@@ -89,36 +99,75 @@ export function ReportsListClient() {
   const [total, setTotal] = useState(0);
   const [churches, setChurches] = useState<Church[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [filterChurchId, setFilterChurchId] = useState('');
   const [filterType, setFilterType] = useState<ReportType | ''>('');
   const [filterFromDate, setFilterFromDate] = useState('');
   const [filterToDate, setFilterToDate] = useState('');
+  const [filterWithDocs, setFilterWithDocs] = useState(false);
+
+  // Evita que una respuesta vieja pise a una más nueva al cambiar filtros.
+  const cargaVigente = useRef(0);
 
   const isRoot = session?.account?.role === 'ROOT';
 
+  const query = useMemo<ReportsQuery>(() => {
+    const q: ReportsQuery = { limit: PAGINA };
+    if (filterChurchId) q.churchId = filterChurchId;
+    if (filterType) q.reportType = filterType;
+    if (filterFromDate) q.fromDate = filterFromDate;
+    if (filterToDate) q.toDate = filterToDate;
+    if (filterWithDocs) q.withDocuments = true;
+    return q;
+  }, [
+    filterChurchId,
+    filterType,
+    filterFromDate,
+    filterToDate,
+    filterWithDocs,
+  ]);
+
   const loadData = useCallback(async () => {
+    const mia = ++cargaVigente.current;
     setLoading(true);
     try {
-      const query: ReportsQuery = {};
-      if (filterChurchId) query.churchId = filterChurchId;
-      if (filterType) query.reportType = filterType;
-      if (filterFromDate) query.fromDate = filterFromDate;
-      if (filterToDate) query.toDate = filterToDate;
-
       const result = await adminListReports(query);
+      if (mia !== cargaVigente.current) return;
       setItems(result.items);
       setTotal(result.total);
       setError(null);
     } catch (err) {
+      if (mia !== cargaVigente.current) return;
       setError(
-        err instanceof Error ? err.message : 'No se pudieron cargar los informes.',
+        err instanceof Error
+          ? err.message
+          : 'No se pudieron cargar los informes.',
       );
     } finally {
-      setLoading(false);
+      if (mia === cargaVigente.current) setLoading(false);
     }
-  }, [filterChurchId, filterType, filterFromDate, filterToDate]);
+  }, [query]);
+
+  async function loadMore() {
+    const mia = cargaVigente.current;
+    setLoadingMore(true);
+    try {
+      const result = await adminListReports({ ...query, offset: items.length });
+      if (mia !== cargaVigente.current) return;
+      setItems((prev) => [...prev, ...result.items]);
+      setTotal(result.total);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'No se pudieron cargar más informes.',
+      );
+    } finally {
+      setLoadingMore(false);
+    }
+  }
 
   useEffect(() => {
     void adminGetSession()
@@ -139,12 +188,15 @@ export function ReportsListClient() {
     void loadData();
   }, [loadData]);
 
-  async function handleDelete(id: string, title: string) {
-    if (!window.confirm(`¿Eliminar el informe "${title}"? Esta acción no se puede deshacer.`)) {
-      return;
-    }
+  async function handleDelete(report: ReportSummary) {
+    const docs = report.documents?.length ?? 0;
+    const aviso =
+      docs > 0
+        ? `¿Eliminar el informe "${report.title}" y sus ${docs} documento(s)? Esta acción no se puede deshacer.`
+        : `¿Eliminar el informe "${report.title}"? Esta acción no se puede deshacer.`;
+    if (!window.confirm(aviso)) return;
     try {
-      await adminDeleteReport(id);
+      await adminDeleteReport(report.id);
       await loadData();
     } catch (err) {
       setError(
@@ -153,9 +205,23 @@ export function ReportsListClient() {
     }
   }
 
-  const hasFilters = useMemo(
-    () => Boolean(filterChurchId || filterType || filterFromDate || filterToDate),
-    [filterChurchId, filterType, filterFromDate, filterToDate],
+  async function abrirDocumento(reportId: string, documentId: string) {
+    setError(null);
+    try {
+      await openReportDocument(reportId, documentId);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : 'No se pudo abrir el documento.',
+      );
+    }
+  }
+
+  const hasFilters = Boolean(
+    filterChurchId ||
+    filterType ||
+    filterFromDate ||
+    filterToDate ||
+    filterWithDocs,
   );
 
   function clearFilters() {
@@ -163,7 +229,21 @@ export function ReportsListClient() {
     setFilterType('');
     setFilterFromDate('');
     setFilterToDate('');
+    setFilterWithDocs(false);
   }
+
+  // Agrupados por el mes del período, en el orden en que llegan (más
+  // reciente primero), para ubicar rápido cada informe en el tiempo.
+  const grupos = useMemo(() => {
+    const out: Array<{ mes: string; informes: ReportSummary[] }> = [];
+    for (const r of items) {
+      const mes = mesDelPeriodo(r.periodStart);
+      const ultimo = out[out.length - 1];
+      if (ultimo && ultimo.mes === mes) ultimo.informes.push(r);
+      else out.push({ mes, informes: [r] });
+    }
+    return out;
+  }, [items]);
 
   return (
     <div className={styles.page}>
@@ -171,8 +251,9 @@ export function ReportsListClient() {
         <div>
           <h1 className={styles.title}>Informes</h1>
           <p className={styles.subtitle}>
-            Generación y consulta de informes para soporte ante la DIAN:
-            ofrendas, asistencia, egresos y eventos.
+            Ofrendas, asistencia, egresos, eventos y solicitudes de cada
+            iglesia, como soporte para los reportes ante la DIAN. Se pueden
+            llenar con el formulario o entregar como documento.
           </p>
         </div>
         <Link href="/admin/reports/new" className={styles.newBtn}>
@@ -185,7 +266,9 @@ export function ReportsListClient() {
           <label>Tipo</label>
           <select
             value={filterType}
-            onChange={(e) => setFilterType((e.target.value as ReportType) || '')}
+            onChange={(e) =>
+              setFilterType((e.target.value as ReportType) || '')
+            }
           >
             <option value="">Todos</option>
             {REPORT_TYPES.map((t) => (
@@ -231,6 +314,15 @@ export function ReportsListClient() {
           />
         </div>
 
+        <label className={styles.filterCheck}>
+          <input
+            type="checkbox"
+            checked={filterWithDocs}
+            onChange={(e) => setFilterWithDocs(e.target.checked)}
+          />
+          <span>Solo con documentos</span>
+        </label>
+
         {hasFilters && (
           <button
             type="button"
@@ -260,66 +352,121 @@ export function ReportsListClient() {
               : 'Aún no se han registrado informes. Empieza con el primero.'}
           </div>
         ) : (
-          <ul className={styles.list}>
-            {items.map((report) => (
-              <li key={report.id} className={styles.item}>
-                <div className={styles.itemMain}>
-                  <div className={styles.itemHead}>
-                    <span
-                      className={`${styles.typeBadge} ${styles[`type_${report.reportType}`]}`}
-                    >
-                      {REPORT_TYPE_LABELS[report.reportType]}
-                    </span>
-                    <h3 className={styles.itemTitle}>{report.title}</h3>
-                  </div>
-                  {describeReport(report) && (
-                    <p className={styles.itemSummary}>{describeReport(report)}</p>
-                  )}
+          grupos.map((g) => (
+            <div key={g.mes} className={styles.monthGroup}>
+              <h2 className={styles.monthTitle}>{g.mes}</h2>
+              <ul className={styles.list}>
+                {g.informes.map((report) => (
+                  <li key={report.id} className={styles.item}>
+                    <div className={styles.itemMain}>
+                      <div className={styles.itemHead}>
+                        <span
+                          className={`${styles.typeBadge} ${styles[`type_${report.reportType}`]}`}
+                        >
+                          {REPORT_TYPE_LABELS[report.reportType]}
+                        </span>
+                        {report.church && (
+                          <span className={styles.churchBadge}>
+                            {report.church.name}
+                          </span>
+                        )}
+                        {isDocumentOnly(report) && (
+                          <span className={styles.docOnlyBadge}>
+                            Entregado como documento
+                          </span>
+                        )}
+                      </div>
+                      <h3 className={styles.itemTitle}>{report.title}</h3>
+                      {describeReport(report) && (
+                        <p className={styles.itemSummary}>
+                          {describeReport(report)}
+                        </p>
+                      )}
 
-                  <dl className={styles.itemMeta}>
-                    {report.church && (
-                      <>
-                        <dt>Iglesia</dt>
-                        <dd>{report.church.name}</dd>
-                      </>
-                    )}
-                    <dt>Período</dt>
-                    <dd>
-                      {formatCalendarDate(report.periodStart)} —{' '}
-                      {formatCalendarDate(report.periodEnd)}
-                    </dd>
-                    <dt>Creado por</dt>
-                    <dd>{report.createdByDisplayName}</dd>
-                    {report.lastUpdatedByDisplayName && (
-                      <>
-                        <dt>Última edición</dt>
+                      <dl className={styles.itemMeta}>
+                        <dt>Período</dt>
                         <dd>
-                          {report.lastUpdatedByDisplayName} (
-                          {formatDateTime(report.updatedAt)})
+                          {formatPeriodo(report.periodStart, report.periodEnd)}
                         </dd>
-                      </>
-                    )}
-                  </dl>
-                </div>
+                        <dt>Creado por</dt>
+                        <dd>{report.createdByDisplayName}</dd>
+                        {report.lastUpdatedByDisplayName && (
+                          <>
+                            <dt>Última edición</dt>
+                            <dd>
+                              {report.lastUpdatedByDisplayName} (
+                              {formatDateTime(report.updatedAt)})
+                            </dd>
+                          </>
+                        )}
+                      </dl>
 
-                <div className={styles.itemActions}>
-                  <Link
-                    href={`/admin/reports/${report.id}/edit`}
-                    className={styles.editBtn}
-                  >
-                    Editar
-                  </Link>
-                  <button
-                    type="button"
-                    className={styles.deleteBtn}
-                    onClick={() => void handleDelete(report.id, report.title)}
-                  >
-                    Eliminar
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
+                      {(report.documents?.length ?? 0) > 0 && (
+                        <ul className={styles.docList}>
+                          {report.documents!.map((d) => (
+                            <li key={d.id} className={styles.docItem}>
+                              <span className={styles.docKind}>
+                                {DOCUMENT_KIND_LABELS[d.kind] ?? d.kind}
+                              </span>
+                              <span className={styles.docName}>
+                                {d.fileName}
+                              </span>
+                              <span className={styles.docMeta}>
+                                {formatBytes(d.sizeBytes)} ·{' '}
+                                {d.uploadedByDisplayName}
+                              </span>
+                              <span className={styles.docActions}>
+                                <button
+                                  type="button"
+                                  className={styles.docBtn}
+                                  onClick={() =>
+                                    void abrirDocumento(report.id, d.id)
+                                  }
+                                >
+                                  Abrir
+                                </button>
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+
+                    <div className={styles.itemActions}>
+                      <Link
+                        href={`/admin/reports/${report.id}/edit`}
+                        className={styles.editBtn}
+                      >
+                        Editar
+                      </Link>
+                      <button
+                        type="button"
+                        className={styles.deleteBtn}
+                        onClick={() => void handleDelete(report)}
+                      >
+                        Eliminar
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))
+        )}
+
+        {!loading && items.length < total && (
+          <div className={styles.moreRow}>
+            <button
+              type="button"
+              className={styles.clearBtn}
+              onClick={() => void loadMore()}
+              disabled={loadingMore}
+            >
+              {loadingMore
+                ? 'Cargando…'
+                : `Cargar más (${total - items.length} restantes)`}
+            </button>
+          </div>
         )}
       </section>
     </div>

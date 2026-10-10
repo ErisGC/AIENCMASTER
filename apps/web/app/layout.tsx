@@ -23,7 +23,8 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: 'AIENC',
-  description: 'Plataforma de anuncios AIENC',
+  description:
+    'Portal oficial de la Iglesia Asociación de Iglesias Evangélicas del Norte de Colombia: anuncios, iglesias asociadas, eventos e información institucional.',
 };
 
 export default function RootLayout({

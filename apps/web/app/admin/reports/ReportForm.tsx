@@ -7,13 +7,23 @@ import {
   REPORT_TYPE_LABELS,
   EXPENSE_CATEGORY_LABELS,
   REQUEST_STATUS_LABELS,
+  DOCUMENT_ACCEPT,
+  DOCUMENT_KIND_LABELS,
+  MAX_DOCUMENTS_PER_REPORT,
+  adminDeleteReportDocument,
+  documentProblem,
+  formatBytes,
+  isDocumentOnly,
+  openReportDocument,
   type ReportType,
   type ReportSummary,
+  type ReportDocument,
   type CreateReportPayload,
   type ExpenseCategory,
   type RequestStatus,
   type AttendanceScope,
 } from '@/app/lib/admin-reports';
+import { formatDateTime } from '@/app/lib/formatDate';
 import {
   adminGetSession,
   type AdminSessionResponse,
@@ -47,11 +57,18 @@ const REQUEST_STATUSES: RequestStatus[] = [
   'RESOLVED',
 ];
 
+/** Cómo entrega la iglesia el informe. */
+type Modo = 'FORM' | 'DOCUMENT';
+
 interface Props {
   initial?: ReportSummary | null;
   submitting: boolean;
   errorMessage: string | null;
-  onSubmit: (payload: CreateReportPayload) => void | Promise<void>;
+  /** `files`: documentos nuevos por subir después de guardar el informe. */
+  onSubmit: (
+    payload: CreateReportPayload,
+    files: File[],
+  ) => void | Promise<void>;
   onCancel?: () => void;
 }
 
@@ -144,6 +161,78 @@ export function ReportForm({
   );
 
   const [formError, setFormError] = useState<string | null>(null);
+
+  // Documentos: el informe puede entregarse solo como documento, o con
+  // documentos de soporte además del formulario.
+  const [modo, setModo] = useState<Modo>(
+    initial && isDocumentOnly(initial) ? 'DOCUMENT' : 'FORM',
+  );
+  const [archivos, setArchivos] = useState<File[]>([]);
+  const [existentes, setExistentes] = useState<ReportDocument[]>(
+    initial?.documents ?? [],
+  );
+  const [docError, setDocError] = useState<string | null>(null);
+  const [docOcupado, setDocOcupado] = useState<string | null>(null);
+
+  function agregarArchivos(e: React.ChangeEvent<HTMLInputElement>) {
+    const elegidos = Array.from(e.target.files ?? []);
+    e.target.value = '';
+    setDocError(null);
+    const aceptados: File[] = [];
+    for (const f of elegidos) {
+      const problema = documentProblem(f);
+      if (problema) {
+        setDocError(problema);
+        continue;
+      }
+      if (
+        existentes.length + archivos.length + aceptados.length >=
+        MAX_DOCUMENTS_PER_REPORT
+      ) {
+        setDocError(
+          `Un informe admite hasta ${MAX_DOCUMENTS_PER_REPORT} documentos.`,
+        );
+        break;
+      }
+      aceptados.push(f);
+    }
+    if (aceptados.length) setArchivos((prev) => [...prev, ...aceptados]);
+  }
+
+  async function abrirExistente(doc: ReportDocument) {
+    if (!initial) return;
+    setDocError(null);
+    try {
+      await openReportDocument(initial.id, doc.id);
+    } catch (err) {
+      setDocError(
+        err instanceof Error ? err.message : 'No se pudo abrir el documento.',
+      );
+    }
+  }
+
+  async function quitarExistente(doc: ReportDocument) {
+    if (!initial) return;
+    if (
+      !window.confirm(
+        `¿Quitar «${doc.fileName}» de este informe? El archivo se elimina y no se puede recuperar.`,
+      )
+    ) {
+      return;
+    }
+    setDocOcupado(doc.id);
+    setDocError(null);
+    try {
+      await adminDeleteReportDocument(initial.id, doc.id);
+      setExistentes((prev) => prev.filter((d) => d.id !== doc.id));
+    } catch (err) {
+      setDocError(
+        err instanceof Error ? err.message : 'No se pudo quitar el documento.',
+      );
+    } finally {
+      setDocOcupado(null);
+    }
+  }
 
   useEffect(() => {
     void adminGetSession()
@@ -248,6 +337,28 @@ export function ReportForm({
       return;
     }
 
+    if (modo === 'DOCUMENT') {
+      if (archivos.length + existentes.length === 0) {
+        setFormError(
+          'Adjunta el documento del informe: PDF, foto, Word o Excel.',
+        );
+        return;
+      }
+      void onSubmit(
+        {
+          churchId,
+          reportType,
+          title: title.trim(),
+          notes: notes.trim() || undefined,
+          periodStart: new Date(periodStart).toISOString(),
+          periodEnd: new Date(periodEnd).toISOString(),
+          data: { documentOnly: true },
+        },
+        archivos,
+      );
+      return;
+    }
+
     if (
       (reportType === 'OFFERINGS' || reportType === 'EXPENSES') &&
       (!Number.isFinite(Number(totalCop)) || Number(totalCop) < 0)
@@ -277,19 +388,24 @@ export function ReportForm({
       return;
     }
     if (reportType === 'REQUEST' && requestSubject.trim().length < 3) {
-      setFormError('El asunto de la solicitud es obligatorio (mínimo 3 caracteres).');
+      setFormError(
+        'El asunto de la solicitud es obligatorio (mínimo 3 caracteres).',
+      );
       return;
     }
 
-    void onSubmit({
-      churchId,
-      reportType,
-      title: title.trim(),
-      notes: notes.trim() || undefined,
-      periodStart: new Date(periodStart).toISOString(),
-      periodEnd: new Date(periodEnd).toISOString(),
-      data: data as Record<string, unknown>,
-    });
+    void onSubmit(
+      {
+        churchId,
+        reportType,
+        title: title.trim(),
+        notes: notes.trim() || undefined,
+        periodStart: new Date(periodStart).toISOString(),
+        periodEnd: new Date(periodEnd).toISOString(),
+        data: data as Record<string, unknown>,
+      },
+      archivos,
+    );
   }
 
   // Lista de iglesias seleccionables: para ROOT todas; para admin, sus
@@ -364,7 +480,9 @@ export function ReportForm({
       <div className={styles.field}>
         <label>Título</label>
         <span className={styles.hint}>
-          Identificador descriptivo del informe (ej. &laquo;Ofrendas enero 2026&raquo;).
+          {modo === 'DOCUMENT'
+            ? 'Qué documento es (ej. «Extracto bancario de septiembre 2026»).'
+            : 'Identificador descriptivo del informe (ej. «Ofrendas enero 2026»).'}
         </span>
         <input
           value={title}
@@ -395,208 +513,328 @@ export function ReportForm({
         </div>
       </div>
 
+      <fieldset className={styles.modoBox}>
+        <legend>¿Cómo vas a entregar este informe?</legend>
+        <div className={styles.modoOpciones}>
+          <button
+            type="button"
+            className={modo === 'FORM' ? styles.modoActivo : styles.modoOpcion}
+            aria-pressed={modo === 'FORM'}
+            onClick={() => setModo('FORM')}
+          >
+            <strong>Llenando el formulario</strong>
+            <span>Escribes los montos o datos aquí mismo.</span>
+          </button>
+          <button
+            type="button"
+            className={
+              modo === 'DOCUMENT' ? styles.modoActivo : styles.modoOpcion
+            }
+            aria-pressed={modo === 'DOCUMENT'}
+            onClick={() => setModo('DOCUMENT')}
+          >
+            <strong>Subiendo el documento</strong>
+            <span>Un PDF, una foto, un Word o un Excel ya hecho.</span>
+          </button>
+        </div>
+      </fieldset>
+
       {/* Datos específicos por tipo */}
-      <div className={styles.typeSection}>
-        <h3 className={styles.typeTitle}>Datos del informe</h3>
+      {modo === 'FORM' && (
+        <div className={styles.typeSection}>
+          <h3 className={styles.typeTitle}>Datos del informe</h3>
 
-        {reportType === 'OFFERINGS' && (
-          <div className={styles.field}>
-            <label>Total de ofrendas (COP)</label>
-            <input
-              type="number"
-              min="0"
-              step="0.01"
-              value={totalCop}
-              onChange={(e) => setTotalCop(e.target.value)}
-              required
-            />
-          </div>
-        )}
+          {reportType === 'OFFERINGS' && (
+            <div className={styles.field}>
+              <label>Total de ofrendas (COP)</label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={totalCop}
+                onChange={(e) => setTotalCop(e.target.value)}
+                required
+              />
+            </div>
+          )}
 
-        {reportType === 'EXPENSES' && (
-          <>
-            <div className={styles.formGrid}>
+          {reportType === 'EXPENSES' && (
+            <>
+              <div className={styles.formGrid}>
+                <div className={styles.field}>
+                  <label>Total del gasto (COP)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={totalCop}
+                    onChange={(e) => setTotalCop(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className={styles.field}>
+                  <label>Categoría</label>
+                  <select
+                    value={expenseCategory}
+                    onChange={(e) =>
+                      setExpenseCategory(e.target.value as ExpenseCategory)
+                    }
+                  >
+                    {EXPENSE_CATEGORIES.map((c) => (
+                      <option key={c} value={c}>
+                        {EXPENSE_CATEGORY_LABELS[c]}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
               <div className={styles.field}>
-                <label>Total del gasto (COP)</label>
+                <label>Descripción breve (opcional)</label>
+                <span className={styles.hint}>
+                  Cuenta qué se compró, qué se reparó o qué pasó. Máx 2000
+                  caracteres.
+                </span>
+                <textarea
+                  rows={3}
+                  value={expenseDesc}
+                  onChange={(e) => setExpenseDesc(e.target.value)}
+                  maxLength={2000}
+                />
+              </div>
+            </>
+          )}
+
+          {reportType === 'ATTENDANCE' && (
+            <>
+              <div className={styles.formGrid}>
+                <div className={styles.field}>
+                  <label>Alcance</label>
+                  <select
+                    value={attendanceScope}
+                    onChange={(e) =>
+                      setAttendanceScope(e.target.value as AttendanceScope)
+                    }
+                  >
+                    <option value="month">Acumulado mensual</option>
+                    <option value="session">Culto / sesión específica</option>
+                  </select>
+                </div>
+                <div className={styles.field}>
+                  <label>Número de asistentes</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={count}
+                    onChange={(e) => setCount(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+              {attendanceScope === 'session' && (
+                <div className={styles.field}>
+                  <label>Fecha del culto / sesión</label>
+                  <span className={styles.hint}>
+                    Útil para distinguir culto dominical, juventud, oración,
+                    etc.
+                  </span>
+                  <input
+                    type="date"
+                    value={sessionDate}
+                    onChange={(e) => setSessionDate(e.target.value)}
+                    required
+                  />
+                </div>
+              )}
+            </>
+          )}
+
+          {reportType === 'EVENT' && (
+            <>
+              <div className={styles.field}>
+                <label>Nombre del evento</label>
                 <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={totalCop}
-                  onChange={(e) => setTotalCop(e.target.value)}
+                  value={eventName}
+                  onChange={(e) => setEventName(e.target.value)}
+                  maxLength={200}
                   required
                 />
               </div>
               <div className={styles.field}>
-                <label>Categoría</label>
-                <select
-                  value={expenseCategory}
-                  onChange={(e) =>
-                    setExpenseCategory(e.target.value as ExpenseCategory)
-                  }
-                >
-                  {EXPENSE_CATEGORIES.map((c) => (
-                    <option key={c} value={c}>
-                      {EXPENSE_CATEGORY_LABELS[c]}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            <div className={styles.field}>
-              <label>Descripción breve (opcional)</label>
-              <span className={styles.hint}>
-                Cuenta qué se compró, qué se reparó o qué pasó. Máx 2000 caracteres.
-              </span>
-              <textarea
-                rows={3}
-                value={expenseDesc}
-                onChange={(e) => setExpenseDesc(e.target.value)}
-                maxLength={2000}
-              />
-            </div>
-          </>
-        )}
-
-        {reportType === 'ATTENDANCE' && (
-          <>
-            <div className={styles.formGrid}>
-              <div className={styles.field}>
-                <label>Alcance</label>
-                <select
-                  value={attendanceScope}
-                  onChange={(e) =>
-                    setAttendanceScope(e.target.value as AttendanceScope)
-                  }
-                >
-                  <option value="month">Acumulado mensual</option>
-                  <option value="session">Culto / sesión específica</option>
-                </select>
-              </div>
-              <div className={styles.field}>
-                <label>Número de asistentes</label>
+                <label>Asistentes (opcional)</label>
                 <input
                   type="number"
                   min="0"
                   step="1"
-                  value={count}
-                  onChange={(e) => setCount(e.target.value)}
-                  required
+                  value={attendees}
+                  onChange={(e) => setAttendees(e.target.value)}
                 />
               </div>
-            </div>
-            {attendanceScope === 'session' && (
               <div className={styles.field}>
-                <label>Fecha del culto / sesión</label>
+                <label>Resumen / observaciones</label>
+                <textarea
+                  rows={3}
+                  value={eventSummary}
+                  onChange={(e) => setEventSummary(e.target.value)}
+                  maxLength={2000}
+                />
+              </div>
+            </>
+          )}
+
+          {reportType === 'REQUEST' && (
+            <>
+              <div className={styles.field}>
+                <label>Asunto de la solicitud</label>
                 <span className={styles.hint}>
-                  Útil para distinguir culto dominical, juventud, oración, etc.
+                  Resumen claro de lo que estás pidiendo a la oficina nacional
+                  (ej. &laquo;Apoyo para reparación de cubierta&raquo;).
                 </span>
                 <input
-                  type="date"
-                  value={sessionDate}
-                  onChange={(e) => setSessionDate(e.target.value)}
+                  value={requestSubject}
+                  onChange={(e) => setRequestSubject(e.target.value)}
+                  maxLength={180}
                   required
                 />
               </div>
-            )}
-          </>
-        )}
+              <div className={styles.field}>
+                <label>Estado</label>
+                <span className={styles.hint}>
+                  Inicialmente queda en &laquo;Pendiente&raquo;. ROOT podrá
+                  cambiarlo a aprobada, rechazada o resuelta.
+                </span>
+                <select
+                  value={requestStatus}
+                  onChange={(e) =>
+                    setRequestStatus(e.target.value as RequestStatus)
+                  }
+                  disabled={!isRoot && Boolean(initial)}
+                >
+                  {REQUEST_STATUSES.map((s) => (
+                    <option key={s} value={s}>
+                      {REQUEST_STATUS_LABELS[s]}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className={styles.field}>
+                <label>Detalle de la solicitud</label>
+                <span className={styles.hint}>
+                  Explica con todo el contexto necesario. Máx 4000 caracteres.
+                </span>
+                <textarea
+                  rows={5}
+                  value={requestBody}
+                  onChange={(e) => setRequestBody(e.target.value)}
+                  maxLength={4000}
+                />
+              </div>
+            </>
+          )}
 
-        {reportType === 'EVENT' && (
-          <>
+          {reportType === 'OTHER' && (
             <div className={styles.field}>
-              <label>Nombre del evento</label>
-              <input
-                value={eventName}
-                onChange={(e) => setEventName(e.target.value)}
-                maxLength={200}
-                required
-              />
-            </div>
-            <div className={styles.field}>
-              <label>Asistentes (opcional)</label>
-              <input
-                type="number"
-                min="0"
-                step="1"
-                value={attendees}
-                onChange={(e) => setAttendees(e.target.value)}
-              />
-            </div>
-            <div className={styles.field}>
-              <label>Resumen / observaciones</label>
-              <textarea
-                rows={3}
-                value={eventSummary}
-                onChange={(e) => setEventSummary(e.target.value)}
-                maxLength={2000}
-              />
-            </div>
-          </>
-        )}
-
-        {reportType === 'REQUEST' && (
-          <>
-            <div className={styles.field}>
-              <label>Asunto de la solicitud</label>
-              <span className={styles.hint}>
-                Resumen claro de lo que estás pidiendo a la oficina nacional
-                (ej. &laquo;Apoyo para reparación de cubierta&raquo;).
-              </span>
-              <input
-                value={requestSubject}
-                onChange={(e) => setRequestSubject(e.target.value)}
-                maxLength={180}
-                required
-              />
-            </div>
-            <div className={styles.field}>
-              <label>Estado</label>
-              <span className={styles.hint}>
-                Inicialmente queda en &laquo;Pendiente&raquo;. ROOT podrá
-                cambiarlo a aprobada, rechazada o resuelta.
-              </span>
-              <select
-                value={requestStatus}
-                onChange={(e) =>
-                  setRequestStatus(e.target.value as RequestStatus)
-                }
-                disabled={!isRoot && Boolean(initial)}
-              >
-                {REQUEST_STATUSES.map((s) => (
-                  <option key={s} value={s}>
-                    {REQUEST_STATUS_LABELS[s]}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className={styles.field}>
-              <label>Detalle de la solicitud</label>
-              <span className={styles.hint}>
-                Explica con todo el contexto necesario. Máx 4000 caracteres.
-              </span>
+              <label>Detalle libre</label>
               <textarea
                 rows={5}
-                value={requestBody}
-                onChange={(e) => setRequestBody(e.target.value)}
-                maxLength={4000}
+                value={freeText}
+                onChange={(e) => setFreeText(e.target.value)}
+                maxLength={8000}
               />
             </div>
-          </>
+          )}
+        </div>
+      )}
+
+      <section className={styles.docsSection}>
+        <h3 className={styles.typeTitle}>
+          {modo === 'DOCUMENT'
+            ? 'Documento del informe'
+            : 'Documentos de soporte (opcional)'}
+        </h3>
+        <p className={styles.hint}>
+          {modo === 'DOCUMENT'
+            ? 'El documento es el informe. Puedes adjuntar varios si viene en partes.'
+            : 'Extractos, recibos, facturas o actas que respalden este informe.'}{' '}
+          PDF, JPG, PNG, WEBP, Word o Excel, hasta 10 MB cada uno. Solo los ven
+          el administrador principal y quien los sube.
+        </p>
+
+        {existentes.length > 0 && (
+          <ul className={styles.docList}>
+            {existentes.map((d) => (
+              <li key={d.id} className={styles.docItem}>
+                <span className={styles.docKind}>
+                  {DOCUMENT_KIND_LABELS[d.kind] ?? d.kind}
+                </span>
+                <span className={styles.docName}>{d.fileName}</span>
+                <span className={styles.docMeta}>
+                  {formatBytes(d.sizeBytes)} · subido por{' '}
+                  {d.uploadedByDisplayName}, {formatDateTime(d.createdAt)}
+                </span>
+                <span className={styles.docActions}>
+                  <button
+                    type="button"
+                    className={styles.docBtn}
+                    onClick={() => void abrirExistente(d)}
+                  >
+                    Abrir
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.docBtnDanger}
+                    disabled={docOcupado === d.id}
+                    onClick={() => void quitarExistente(d)}
+                  >
+                    {docOcupado === d.id ? 'Quitando…' : 'Quitar'}
+                  </button>
+                </span>
+              </li>
+            ))}
+          </ul>
         )}
 
-        {reportType === 'OTHER' && (
-          <div className={styles.field}>
-            <label>Detalle libre</label>
-            <textarea
-              rows={5}
-              value={freeText}
-              onChange={(e) => setFreeText(e.target.value)}
-              maxLength={8000}
-            />
-          </div>
+        {archivos.length > 0 && (
+          <ul className={styles.docList}>
+            {archivos.map((f, i) => (
+              <li key={`${f.name}-${i}`} className={styles.docItemPendiente}>
+                <span className={styles.docKind}>Por subir</span>
+                <span className={styles.docName}>{f.name}</span>
+                <span className={styles.docMeta}>{formatBytes(f.size)}</span>
+                <span className={styles.docActions}>
+                  <button
+                    type="button"
+                    className={styles.docBtn}
+                    onClick={() =>
+                      setArchivos((prev) => prev.filter((_, j) => j !== i))
+                    }
+                  >
+                    Quitar
+                  </button>
+                </span>
+              </li>
+            ))}
+          </ul>
         )}
-      </div>
+
+        {existentes.length + archivos.length < MAX_DOCUMENTS_PER_REPORT && (
+          <label className={styles.docPicker}>
+            <input
+              type="file"
+              multiple
+              accept={DOCUMENT_ACCEPT}
+              onChange={agregarArchivos}
+            />
+            <span>
+              {archivos.length + existentes.length === 0
+                ? 'Elegir documento'
+                : 'Agregar otro documento'}
+            </span>
+          </label>
+        )}
+
+        {docError && <p className={styles.formError}>{docError}</p>}
+      </section>
 
       <div className={styles.field}>
         <label>Notas / observaciones generales (opcional)</label>

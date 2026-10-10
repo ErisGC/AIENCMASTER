@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react';
 import {
   adminGetReport,
   adminUpdateReport,
+  adminUploadReportDocuments,
   type ReportSummary,
   type CreateReportPayload,
 } from '@/app/lib/admin-reports';
@@ -23,6 +24,20 @@ export function EditReportClient({ id }: Props) {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Viene de «Nuevo informe» cuando el formulario se guardó pero los
+  // documentos no alcanzaron a subir.
+  useEffect(() => {
+    if (
+      new URLSearchParams(window.location.search).get('documentos') ===
+      'pendientes'
+    ) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setErrorMessage(
+        'El informe se guardó, pero los documentos no se pudieron subir. Vuelve a adjuntarlos aquí abajo.',
+      );
+    }
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -41,13 +56,11 @@ export function EditReportClient({ id }: Props) {
     };
   }, [id]);
 
-  async function handleSubmit(payload: CreateReportPayload) {
+  async function handleSubmit(payload: CreateReportPayload, files: File[]) {
     setSubmitting(true);
     setErrorMessage(null);
     try {
       await adminUpdateReport(id, payload);
-      router.push('/admin/reports');
-      router.refresh();
     } catch (err) {
       setErrorMessage(
         err instanceof Error
@@ -55,7 +68,27 @@ export function EditReportClient({ id }: Props) {
           : 'No se pudo actualizar el informe.',
       );
       setSubmitting(false);
+      return;
     }
+
+    if (files.length > 0) {
+      try {
+        await adminUploadReportDocuments(id, files);
+      } catch (err) {
+        const motivo =
+          err instanceof Error
+            ? err.message
+            : 'No se pudieron subir los documentos.';
+        setErrorMessage(
+          `Los cambios se guardaron, pero los documentos no se pudieron subir. ${motivo}`,
+        );
+        setSubmitting(false);
+        return;
+      }
+    }
+
+    router.push('/admin/reports');
+    router.refresh();
   }
 
   if (loadError) {
@@ -91,8 +124,8 @@ export function EditReportClient({ id }: Props) {
           </Link>
           <h1 className={styles.title}>Editar informe</h1>
           <p className={styles.subtitle}>
-            Toda edición queda registrada en el historial de auditoría junto
-            con el admin que la realizó.
+            Toda edición queda registrada en el historial de auditoría junto con
+            el admin que la realizó.
           </p>
         </div>
       </header>

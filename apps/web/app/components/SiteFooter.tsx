@@ -42,6 +42,9 @@ export function SiteFooter() {
           <Link href="/announcements" className={styles.link}>
             Anuncios
           </Link>
+          <Link href="/events" className={styles.link}>
+            Eventos
+          </Link>
           <Link href="/churches" className={styles.link}>
             Iglesias
           </Link>
@@ -63,6 +66,9 @@ export function SiteFooter() {
           <span className={styles.line}>Personería Jurídica 6252/2010</span>
           <Link href="/admin" className={styles.link}>
             Administración
+          </Link>
+          <Link href="/descargar" className={styles.link}>
+            App para administradores
           </Link>
         </div>
       </div>

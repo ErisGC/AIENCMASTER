@@ -56,7 +56,7 @@ export function MapPicker({
         scrollWheelZoom
       >
         <TileLayer
-          attribution="&copy; OpenStreetMap"
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         <ClickHandler onPick={onChange} />

@@ -159,6 +159,24 @@ export function actionTypeLabel(code: string): string {
       return 'Informe editado';
     case 'REPORT_DELETED':
       return 'Informe eliminado';
+    case 'REPORT_DOCUMENT_ADDED':
+      return 'Documento adjunto a un informe';
+    case 'REPORT_DOCUMENT_VIEWED':
+      return 'Documento de informe consultado';
+    case 'REPORT_DOCUMENT_DELETED':
+      return 'Documento de informe eliminado';
+
+    // ── Cronograma ──
+    case 'EVENT_CREATED':
+      return 'Evento creado';
+    case 'EVENT_SERIES_CREATED':
+      return 'Serie de eventos creada';
+    case 'EVENT_UPDATED':
+      return 'Evento editado';
+    case 'EVENT_DELETED':
+      return 'Evento eliminado';
+    case 'EVENT_SERIES_DELETED':
+      return 'Serie de eventos eliminada';
 
     // ── Anuncios ──
     case 'ANNOUNCEMENT_CREATED':
@@ -228,6 +246,8 @@ export function targetTypeLabel(targetType: string | null | undefined): string {
   switch (targetType) {
     case 'REPORT':
       return 'Informe';
+    case 'EVENT':
+      return 'Evento';
     case 'ANNOUNCEMENT':
       return 'Anuncio global';
     case 'CHURCH_ANNOUNCEMENT':

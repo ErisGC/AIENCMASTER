@@ -7,6 +7,12 @@ import { BackgroundRotator } from './components/BackgroundRotator';
 import { ChurchCard } from './components/ChurchCard';
 import styles from './page.module.css';
 
+export const metadata = {
+  title: 'AIENC — Iglesia Asociación de Iglesias Evangélicas del Norte de Colombia',
+  description:
+    'Anuncios oficiales, iglesias asociadas, cronograma de eventos e información institucional de la AIENC, en Valledupar y el norte de Colombia.',
+};
+
 export default async function HomePage() {
   // El sitio público NUNCA debe caerse por una intermitencia de la API: si
   // una sección no carga, se degrada a vacío en lugar de tumbar la página
