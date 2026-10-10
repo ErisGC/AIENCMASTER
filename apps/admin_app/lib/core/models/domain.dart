@@ -228,6 +228,24 @@ String actionTypeLabel(String code) {
       return 'Informe editado';
     case 'REPORT_DELETED':
       return 'Informe eliminado';
+    case 'REPORT_DOCUMENT_ADDED':
+      return 'Documento adjunto a un informe';
+    case 'REPORT_DOCUMENT_VIEWED':
+      return 'Documento de informe consultado';
+    case 'REPORT_DOCUMENT_DELETED':
+      return 'Documento de informe eliminado';
+
+    // ── Cronograma ──
+    case 'EVENT_CREATED':
+      return 'Evento creado';
+    case 'EVENT_SERIES_CREATED':
+      return 'Serie de eventos creada';
+    case 'EVENT_UPDATED':
+      return 'Evento editado';
+    case 'EVENT_DELETED':
+      return 'Evento eliminado';
+    case 'EVENT_SERIES_DELETED':
+      return 'Serie de eventos eliminada';
 
     // ── Anuncios ──
     case 'ANNOUNCEMENT_CREATED':
@@ -778,6 +796,13 @@ class Report {
   final DateTime createdAt;
   final String? churchName;
 
+  /// Documentos que puede ver quien consulta. Son privados: el principal los
+  /// ve todos; un administrador, solo los que él subió.
+  final List<ReportDocument> documents;
+
+  /// Informe entregado solo como documento, sin los datos del formulario.
+  bool get documentOnly => data['documentOnly'] == true;
+
   Report({
     required this.id,
     required this.churchId,
@@ -790,6 +815,7 @@ class Report {
     required this.createdByDisplayName,
     required this.createdAt,
     this.churchName,
+    this.documents = const [],
   });
 
   factory Report.fromJson(Map<String, dynamic> j) => Report(
@@ -807,7 +833,121 @@ class Report {
     createdAt:
         DateTime.tryParse(j['createdAt'] as String? ?? '') ?? DateTime.now(),
     churchName: (j['church'] as Map?)?['name'] as String?,
+    documents: ((j['documents'] as List?) ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .map(ReportDocument.fromJson)
+        .toList(),
   );
+}
+
+/// Extensiones que acepta el servidor para los documentos de informes.
+const reportDocumentExtensions = [
+  'pdf',
+  'jpg',
+  'jpeg',
+  'png',
+  'webp',
+  'doc',
+  'docx',
+  'xls',
+  'xlsx',
+];
+
+/// Tope por documento (el del plan de almacenamiento).
+const maxReportDocumentBytes = 10 * 1024 * 1024;
+
+/// Documento adjunto a un informe. Nunca trae el archivo ni su ubicación:
+/// para abrirlo se pide un enlace que vence en minutos.
+class ReportDocument {
+  final String id;
+  final String fileName;
+  final String mimeType;
+  final String kind; // pdf | image | word | excel
+  final int sizeBytes;
+  final String uploadedByAdminAccountId;
+  final String uploadedByDisplayName;
+  final DateTime createdAt;
+
+  ReportDocument({
+    required this.id,
+    required this.fileName,
+    required this.mimeType,
+    required this.kind,
+    required this.sizeBytes,
+    required this.uploadedByAdminAccountId,
+    required this.uploadedByDisplayName,
+    required this.createdAt,
+  });
+
+  factory ReportDocument.fromJson(Map<String, dynamic> j) => ReportDocument(
+    id: j['id'] as String,
+    fileName: j['fileName'] as String? ?? 'documento',
+    mimeType: j['mimeType'] as String? ?? '',
+    kind: j['kind'] as String? ?? '',
+    sizeBytes: (j['sizeBytes'] as num?)?.toInt() ?? 0,
+    uploadedByAdminAccountId: j['uploadedByAdminAccountId'] as String? ?? '',
+    uploadedByDisplayName: j['uploadedByDisplayName'] as String? ?? '',
+    createdAt:
+        DateTime.tryParse(j['createdAt'] as String? ?? '')?.toLocal() ??
+        DateTime.now(),
+  );
+
+  String get kindLabel => switch (kind) {
+    'pdf' => 'PDF',
+    'image' => 'Imagen',
+    'word' => 'Word',
+    'excel' => 'Excel',
+    _ => kind.toUpperCase(),
+  };
+}
+
+/// Tamaño legible: «820 KB», «6.0 MB».
+String formatBytes(int bytes) {
+  if (bytes <= 0) return '';
+  if (bytes < 1024) return '$bytes B';
+  if (bytes < 1024 * 1024) return '${(bytes / 1024).round()} KB';
+  return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+}
+
+const _mesesInforme = [
+  'enero',
+  'febrero',
+  'marzo',
+  'abril',
+  'mayo',
+  'junio',
+  'julio',
+  'agosto',
+  'septiembre',
+  'octubre',
+  'noviembre',
+  'diciembre',
+];
+
+/// Período en palabras, leído en UTC (los períodos se guardan como la
+/// medianoche UTC del día elegido): «septiembre de 2026», «14 de septiembre
+/// de 2026» o «1 de septiembre al 15 de octubre de 2026».
+String formatPeriodoInforme(DateTime inicio, DateTime fin) {
+  final a = inicio.toUtc();
+  final b = fin.toUtc();
+  final ultimo = DateTime.utc(b.year, b.month + 1, 0).day;
+  if (a.year == b.year && a.month == b.month && a.day == 1 && b.day == ultimo) {
+    return '${_mesesInforme[a.month - 1]} de ${a.year}';
+  }
+  if (a.year == b.year && a.month == b.month && a.day == b.day) {
+    return '${a.day} de ${_mesesInforme[a.month - 1]} de ${a.year}';
+  }
+  final desde = a.year == b.year
+      ? '${a.day} de ${_mesesInforme[a.month - 1]}'
+      : '${a.day} de ${_mesesInforme[a.month - 1]} de ${a.year}';
+  return '$desde al ${b.day} de ${_mesesInforme[b.month - 1]} de ${b.year}';
+}
+
+/// Encabezado del grupo por mes del período: «Septiembre de 2026».
+String mesDelPeriodoInforme(DateTime inicio) {
+  final a = inicio.toUtc();
+  final texto = '${_mesesInforme[a.month - 1]} de ${a.year}';
+  return texto[0].toUpperCase() + texto.substring(1);
 }
 
 class ReportListResponse {

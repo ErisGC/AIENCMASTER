@@ -314,10 +314,16 @@ class ReportService {
     ReportType? type,
     DateTime? fromDate,
     DateTime? toDate,
+    bool withDocuments = false,
+    int? limit,
+    int? offset,
   }) async {
     final query = <String, dynamic>{};
     if (churchId != null && churchId.isNotEmpty) query['churchId'] = churchId;
     if (type != null) query['reportType'] = type.name;
+    if (withDocuments) query['withDocuments'] = 'true';
+    if (limit != null) query['limit'] = limit;
+    if (offset != null) query['offset'] = offset;
     if (fromDate != null) {
       query['fromDate'] = fromDate.toIso8601String().substring(0, 10);
     }
@@ -352,6 +358,55 @@ class ReportService {
       body: body,
     );
     return Report.fromJson(res);
+  }
+
+  Future<void> delete(String id) async {
+    await _api.deleteVoid('/admin/reports/$id');
+  }
+
+  /// Sube documentos a un informe, de a cinco por envío. El tipo de cada
+  /// archivo se deduce de su nombre; el servidor confirma su contenido.
+  Future<List<ReportDocument>> uploadDocuments(
+    String reportId,
+    List<({String path, String name})> files,
+  ) async {
+    final subidos = <ReportDocument>[];
+    for (var i = 0; i < files.length; i += 5) {
+      final lote = files.skip(i).take(5);
+      final form = FormData();
+      for (final f in lote) {
+        form.files.add(
+          MapEntry(
+            'files',
+            await MultipartFile.fromFile(f.path, filename: f.name),
+          ),
+        );
+      }
+      final res = await _api.dio.post(
+        '/admin/reports/$reportId/documents',
+        data: form,
+        options: Options(contentType: 'multipart/form-data'),
+      );
+      _api.ensureOk(res);
+      subidos.addAll(
+        ((res.data as List?) ?? const []).whereType<Map<String, dynamic>>().map(
+          ReportDocument.fromJson,
+        ),
+      );
+    }
+    return subidos;
+  }
+
+  /// Enlace temporal (cinco minutos) para abrir un documento.
+  Future<String> documentUrl(String reportId, String documentId) async {
+    final data = await _api.getJson<Map<String, dynamic>>(
+      '/admin/reports/$reportId/documents/$documentId/url',
+    );
+    return data['url'] as String;
+  }
+
+  Future<void> deleteDocument(String reportId, String documentId) async {
+    await _api.deleteVoid('/admin/reports/$reportId/documents/$documentId');
   }
 
   Future<MetricsTimeline> metrics({

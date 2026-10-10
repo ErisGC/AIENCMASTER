@@ -88,8 +88,9 @@ class _ChurchEditScreenState extends State<ChurchEditScreen> {
       _nameCtrl.text = c.name;
       _cityCtrl.text = c.city;
       _addressCtrl.text = c.address ?? '';
-      _avgAttendanceCtrl.text =
-          c.avgAttendance != null ? c.avgAttendance.toString() : '';
+      _avgAttendanceCtrl.text = c.avgAttendance != null
+          ? c.avgAttendance.toString()
+          : '';
       _isActive = c.isActive;
       if (c.mapsLat != null && c.mapsLng != null) {
         _point = LatLng(c.mapsLat!, c.mapsLng!);
@@ -137,14 +138,18 @@ class _ChurchEditScreenState extends State<ChurchEditScreen> {
       }
       if (perm == LocationPermission.denied ||
           perm == LocationPermission.deniedForever) {
-        setState(() => _error =
-            'Sin permiso de ubicación. Concédelo desde los ajustes de la app.');
+        setState(
+          () => _error =
+              'Sin permiso de ubicación. Concédelo desde los ajustes de la app.',
+        );
         return;
       }
       final enabled = await Geolocator.isLocationServiceEnabled();
       if (!enabled) {
-        setState(() => _error =
-            'El GPS está apagado. Actívalo desde los ajustes del sistema.');
+        setState(
+          () => _error =
+              'El GPS está apagado. Actívalo desde los ajustes del sistema.',
+        );
         return;
       }
       final pos = await Geolocator.getCurrentPosition(
@@ -183,7 +188,8 @@ class _ChurchEditScreenState extends State<ChurchEditScreen> {
     final p = _point;
     if (p == null) return;
     final url = Uri.parse(
-        'https://www.google.com/maps?q=${p.latitude},${p.longitude}');
+      'https://www.google.com/maps?q=${p.latitude},${p.longitude}',
+    );
     await launchUrl(url, mode: LaunchMode.externalApplication);
   }
 
@@ -239,9 +245,9 @@ class _ChurchEditScreenState extends State<ChurchEditScreen> {
       );
       _initial = updated;
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Cambios guardados.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Cambios guardados.')));
       context.pop(true);
     } catch (e) {
       setState(() => _error = userMessageFor(e));
@@ -255,9 +261,7 @@ class _ChurchEditScreenState extends State<ChurchEditScreen> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(
-          _isActive ? 'Marcar como inactiva' : 'Reactivar iglesia',
-        ),
+        title: Text(_isActive ? 'Marcar como inactiva' : 'Reactivar iglesia'),
         content: Text(
           _isActive
               ? '¿Confirmas que esta iglesia ya no está activa? Dejará de aparecer en el listado público.'
@@ -286,9 +290,11 @@ class _ChurchEditScreenState extends State<ChurchEditScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(updated.isActive
-              ? 'Iglesia reactivada.'
-              : 'Iglesia marcada como inactiva.'),
+          content: Text(
+            updated.isActive
+                ? 'Iglesia reactivada.'
+                : 'Iglesia marcada como inactiva.',
+          ),
         ),
       );
     } catch (e) {
@@ -329,12 +335,16 @@ class _ChurchEditScreenState extends State<ChurchEditScreen> {
                     ),
                     const SizedBox(height: 10),
                     OutlinedButton.icon(
-                      icon: Icon(_isActive
-                          ? Icons.visibility_off_outlined
-                          : Icons.visibility_outlined),
-                      label: Text(_isActive
-                          ? 'Marcar como inactiva'
-                          : 'Reactivar iglesia'),
+                      icon: Icon(
+                        _isActive
+                            ? Icons.visibility_off_outlined
+                            : Icons.visibility_outlined,
+                      ),
+                      label: Text(
+                        _isActive
+                            ? 'Marcar como inactiva'
+                            : 'Reactivar iglesia',
+                      ),
                       onPressed: _toggling ? null : _toggle,
                     ),
                   ],
@@ -350,20 +360,27 @@ class _ChurchEditScreenState extends State<ChurchEditScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text('Contenido de la iglesia',
-              style: Theme.of(context).textTheme.titleMedium),
+          Text(
+            'Contenido de la iglesia',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
           const SizedBox(height: 4),
           const Text(
             'Gestiona los representantes y los estudios en audio que aparecen '
             'en la página pública de esta iglesia.',
             style: TextStyle(
-                color: GemPalette.textMuted, fontSize: 12, height: 1.45),
+              color: GemPalette.textMuted,
+              fontSize: 12,
+              height: 1.45,
+            ),
           ),
           const SizedBox(height: 6),
           ListTile(
             contentPadding: EdgeInsets.zero,
-            leading: const Icon(Icons.groups_outlined,
-                color: GemPalette.sapphire),
+            leading: const Icon(
+              Icons.groups_outlined,
+              color: GemPalette.sapphire,
+            ),
             title: const Text('Representantes'),
             subtitle: const Text('Nombre, cargo, celular, correo y foto'),
             trailing: const Icon(Icons.chevron_right),
@@ -379,8 +396,10 @@ class _ChurchEditScreenState extends State<ChurchEditScreen> {
           const Divider(height: 8),
           ListTile(
             contentPadding: EdgeInsets.zero,
-            leading:
-                const Icon(Icons.campaign_outlined, color: GemPalette.emerald),
+            leading: const Icon(
+              Icons.campaign_outlined,
+              color: GemPalette.emerald,
+            ),
             title: const Text('Anuncios de la iglesia'),
             subtitle: const Text('Publica y edita los anuncios locales'),
             trailing: const Icon(Icons.chevron_right),
@@ -396,17 +415,17 @@ class _ChurchEditScreenState extends State<ChurchEditScreen> {
           const Divider(height: 8),
           ListTile(
             contentPadding: EdgeInsets.zero,
-            leading: const Icon(Icons.audiotrack_outlined,
-                color: GemPalette.amethyst),
+            leading: const Icon(
+              Icons.audiotrack_outlined,
+              color: GemPalette.amethyst,
+            ),
             title: const Text('Estudios en audio'),
             subtitle: const Text('Sube mensajes con enseñador y tema'),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute(
-                builder: (_) => StudiesScreen(
-                  churchId: widget.churchId,
-                  churchName: name,
-                ),
+                builder: (_) =>
+                    StudiesScreen(churchId: widget.churchId, churchName: name),
               ),
             ),
           ),
@@ -420,8 +439,10 @@ class _ChurchEditScreenState extends State<ChurchEditScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text('Datos generales',
-              style: Theme.of(context).textTheme.titleMedium),
+          Text(
+            'Datos generales',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
           const SizedBox(height: 12),
           TextField(
             controller: _nameCtrl,
@@ -435,8 +456,9 @@ class _ChurchEditScreenState extends State<ChurchEditScreen> {
           const SizedBox(height: 10),
           TextField(
             controller: _addressCtrl,
-            decoration:
-                const InputDecoration(labelText: 'Dirección (opcional)'),
+            decoration: const InputDecoration(
+              labelText: 'Dirección (opcional)',
+            ),
           ),
           const SizedBox(height: 10),
           TextField(
@@ -469,14 +491,16 @@ class _ChurchEditScreenState extends State<ChurchEditScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text('Imágenes',
-              style: Theme.of(context).textTheme.titleMedium),
+          Text('Imágenes', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 4),
           const Text(
             'Se suben a Cloudinary al guardar los cambios. Toca el botón '
             'para reemplazar la imagen actual.',
-            style:
-                TextStyle(color: GemPalette.textMuted, fontSize: 12, height: 1.45),
+            style: TextStyle(
+              color: GemPalette.textMuted,
+              fontSize: 12,
+              height: 1.45,
+            ),
           ),
           const SizedBox(height: 14),
           _ImageSlot(
@@ -511,8 +535,10 @@ class _ChurchEditScreenState extends State<ChurchEditScreen> {
           Row(
             children: [
               Expanded(
-                child: Text('Ubicación',
-                    style: Theme.of(context).textTheme.titleMedium),
+                child: Text(
+                  'Ubicación',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
               ),
               if (_point != null)
                 TextButton.icon(
@@ -526,8 +552,11 @@ class _ChurchEditScreenState extends State<ChurchEditScreen> {
           const Text(
             'Toca el mapa para fijar la ubicación de la iglesia, o usa '
             'el botón de tu ubicación actual.',
-            style:
-                TextStyle(color: GemPalette.textMuted, fontSize: 12, height: 1.45),
+            style: TextStyle(
+              color: GemPalette.textMuted,
+              fontSize: 12,
+              height: 1.45,
+            ),
           ),
           const SizedBox(height: 10),
           ClipRRect(
@@ -537,7 +566,8 @@ class _ChurchEditScreenState extends State<ChurchEditScreen> {
               child: FlutterMap(
                 mapController: _mapController,
                 options: MapOptions(
-                  initialCenter: _point ??
+                  initialCenter:
+                      _point ??
                       const LatLng(10.9685, -74.7813), // Barranquilla, default
                   initialZoom: _point != null ? 15 : 6,
                   onTap: (tapPos, point) => _setPoint(point),
@@ -567,6 +597,19 @@ class _ChurchEditScreenState extends State<ChurchEditScreen> {
                         ),
                       ],
                     ),
+                  // La licencia de OpenStreetMap (ODbL) exige mostrar la
+                  // atribución sobre el mapa.
+                  RichAttributionWidget(
+                    attributions: [
+                      TextSourceAttribution(
+                        'OpenStreetMap contributors',
+                        onTap: () => launchUrl(
+                          Uri.parse('https://www.openstreetmap.org/copyright'),
+                          mode: LaunchMode.externalApplication,
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
@@ -590,10 +633,15 @@ class _ChurchEditScreenState extends State<ChurchEditScreen> {
               const SizedBox(width: 10),
               if (_point != null)
                 OutlinedButton.icon(
-                  icon: const Icon(Icons.close, size: 18,
-                      color: GemPalette.danger),
-                  label: const Text('Quitar',
-                      style: TextStyle(color: GemPalette.danger)),
+                  icon: const Icon(
+                    Icons.close,
+                    size: 18,
+                    color: GemPalette.danger,
+                  ),
+                  label: const Text(
+                    'Quitar',
+                    style: TextStyle(color: GemPalette.danger),
+                  ),
                   onPressed: _clearLocation,
                   style: OutlinedButton.styleFrom(
                     side: const BorderSide(color: GemPalette.danger),
@@ -638,11 +686,14 @@ class _ImageSlot extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label,
-            style: const TextStyle(
-                fontSize: 12.5,
-                fontWeight: FontWeight.w700,
-                color: GemPalette.textMuted)),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 12.5,
+            fontWeight: FontWeight.w700,
+            color: GemPalette.textMuted,
+          ),
+        ),
         const SizedBox(height: 6),
         Container(
           height: 140,
@@ -651,16 +702,16 @@ class _ImageSlot extends StatelessWidget {
             color: GemPalette.surface,
             border: Border.all(color: GemPalette.borderSoft),
             image: _imageProvider() != null
-                ? DecorationImage(
-                    image: _imageProvider()!,
-                    fit: BoxFit.cover,
-                  )
+                ? DecorationImage(image: _imageProvider()!, fit: BoxFit.cover)
                 : null,
           ),
           alignment: Alignment.center,
           child: _imageProvider() == null
-              ? const Icon(Icons.image_outlined,
-                  color: GemPalette.textMuted, size: 32)
+              ? const Icon(
+                  Icons.image_outlined,
+                  color: GemPalette.textMuted,
+                  size: 32,
+                )
               : null,
         ),
         const SizedBox(height: 6),
@@ -670,9 +721,7 @@ class _ImageSlot extends StatelessWidget {
               child: Text(
                 newFile != null
                     ? 'Nueva imagen seleccionada — se subirá al guardar'
-                    : (currentUrl != null
-                        ? 'Imagen actual'
-                        : 'Sin imagen'),
+                    : (currentUrl != null ? 'Imagen actual' : 'Sin imagen'),
                 style: TextStyle(
                   color: newFile != null
                       ? GemPalette.emerald
@@ -682,20 +731,17 @@ class _ImageSlot extends StatelessWidget {
               ),
             ),
             if (newFile != null && onClear != null)
-              TextButton(
-                onPressed: onClear,
-                child: const Text('Quitar'),
-              ),
+              TextButton(onPressed: onClear, child: const Text('Quitar')),
             TextButton.icon(
               icon: Icon(
-                newFile != null
-                    ? Icons.refresh
-                    : Icons.upload_outlined,
+                newFile != null ? Icons.refresh : Icons.upload_outlined,
                 size: 16,
               ),
-              label: Text(newFile != null
-                  ? 'Otra'
-                  : (currentUrl != null ? 'Cambiar' : 'Subir')),
+              label: Text(
+                newFile != null
+                    ? 'Otra'
+                    : (currentUrl != null ? 'Cambiar' : 'Subir'),
+              ),
               onPressed: onPick,
             ),
           ],
