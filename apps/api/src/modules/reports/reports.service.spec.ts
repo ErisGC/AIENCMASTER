@@ -5,6 +5,8 @@ import { AdminAccount } from "../admin-security/admin-account.entity";
 import { PermissionsService } from "../admin-security/permissions/permissions.service";
 import { Church } from "../churches/church.entity";
 import { Report } from "./report.entity";
+import { ReportDocument } from "./report-document.entity";
+import { CloudinaryService } from "../cloudinary/cloudinary.service";
 import { ReportType } from "./enums/report-type.enum";
 import { ReportsService } from "./reports.service";
 import type { UpdateReportDto } from "./dto/update-report.dto";
@@ -44,6 +46,11 @@ describe("ReportsService — findOne no expone la cuenta del autor", () => {
         { provide: getRepositoryToken(Report), useValue: reportRepo },
         { provide: getRepositoryToken(Church), useValue: churchRepo },
         { provide: PermissionsService, useValue: permissions },
+        {
+          provide: getRepositoryToken(ReportDocument),
+          useValue: { find: jest.fn().mockResolvedValue([]) },
+        },
+        { provide: CloudinaryService, useValue: {} },
       ],
     }).compile();
 

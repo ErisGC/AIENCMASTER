@@ -171,6 +171,151 @@ export function validateStudyAudio(file: ValidatableFile): void {
   }
 }
 
+/* ── Documentos de informes ─────────────────────────────────────────────── */
+
+/**
+ * Tope por documento. Es el máximo que admite el plan gratuito de Cloudinary
+ * para archivos crudos, que es como se guardan estos documentos.
+ */
+export const MAX_REPORT_DOCUMENT_BYTES = 10 * 1024 * 1024; // 10 MB
+export const MAX_REPORT_DOCUMENTS_PER_UPLOAD = 5;
+export const MAX_REPORT_DOCUMENTS_PER_REPORT = 10;
+
+export type ReportDocumentKind = "pdf" | "image" | "word" | "excel";
+
+const OLE = [0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1];
+const ZIP = [0x50, 0x4b, 0x03, 0x04];
+
+const REPORT_DOCUMENT_TYPES: Record<
+  string,
+  {
+    mime: string;
+    kind: ReportDocumentKind;
+    segments: Array<{ offset: number; bytes: number[] }>;
+    /** Texto que debe aparecer dentro del archivo (formatos ZIP de Office). */
+    contiene?: string;
+  }
+> = {
+  pdf: {
+    mime: "application/pdf",
+    kind: "pdf",
+    segments: [{ offset: 0, bytes: [0x25, 0x50, 0x44, 0x46] }],
+  },
+  jpg: {
+    mime: "image/jpeg",
+    kind: "image",
+    segments: [{ offset: 0, bytes: [0xff, 0xd8, 0xff] }],
+  },
+  png: {
+    mime: "image/png",
+    kind: "image",
+    segments: [{ offset: 0, bytes: [0x89, 0x50, 0x4e, 0x47] }],
+  },
+  webp: {
+    mime: "image/webp",
+    kind: "image",
+    segments: [
+      { offset: 0, bytes: [0x52, 0x49, 0x46, 0x46] },
+      { offset: 8, bytes: [0x57, 0x45, 0x42, 0x50] },
+    ],
+  },
+  docx: {
+    mime: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    kind: "word",
+    segments: [{ offset: 0, bytes: ZIP }],
+    contiene: "word/",
+  },
+  xlsx: {
+    mime: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    kind: "excel",
+    segments: [{ offset: 0, bytes: ZIP }],
+    contiene: "xl/",
+  },
+  doc: {
+    mime: "application/msword",
+    kind: "word",
+    segments: [{ offset: 0, bytes: OLE }],
+  },
+  xls: {
+    mime: "application/vnd.ms-excel",
+    kind: "excel",
+    segments: [{ offset: 0, bytes: OLE }],
+  },
+};
+
+/** Tipos genéricos que mandan algunos navegadores cuando no reconocen el archivo. */
+const MIME_GENERICOS = new Set([
+  "",
+  "application/octet-stream",
+  "binary/octet-stream",
+  "application/x-download",
+]);
+
+export interface ValidatedReportDocument {
+  extension: string;
+  mimeType: string;
+  kind: ReportDocumentKind;
+}
+
+/**
+ * Valida un documento de informe: PDF, imagen JPG, PNG o WEBP, Word o Excel,
+ * de hasta 10 MB.
+ *
+ * El tipo se decide por la extensión y se confirma con el contenido real del
+ * archivo. El tipo que declara el cliente solo se usa para rechazar
+ * contradicciones: hay navegadores que no reconocen los formatos de Office y
+ * los mandan como genéricos, y eso no debe impedir la subida.
+ */
+export function validateReportDocument(
+  file: ValidatableFile,
+): ValidatedReportDocument {
+  const nombre = (file.filename ?? "").trim();
+  const punto = nombre.lastIndexOf(".");
+  let ext = punto >= 0 ? nombre.slice(punto + 1).toLowerCase() : "";
+  if (ext === "jpeg") ext = "jpg";
+
+  const spec = REPORT_DOCUMENT_TYPES[ext];
+  if (!spec) {
+    throw new BadRequestException(
+      `No se acepta "${nombre || "el archivo"}". Se permiten PDF, imágenes JPG, PNG o WEBP, Word y Excel.`,
+    );
+  }
+
+  const declarado = (file.mimetype ?? "").toLowerCase();
+  const coincide =
+    declarado === spec.mime ||
+    (spec.mime === "image/jpeg" && declarado === "image/jpg");
+  if (!coincide && !MIME_GENERICOS.has(declarado)) {
+    throw new BadRequestException(
+      `El archivo ${nombre} no coincide con el tipo declarado.`,
+    );
+  }
+
+  const size = file.buffer.byteLength;
+  if (size === 0) {
+    throw new BadRequestException(`El archivo ${nombre} está vacío.`);
+  }
+  if (size > MAX_REPORT_DOCUMENT_BYTES) {
+    throw new BadRequestException(
+      `El archivo ${nombre} supera el tamaño máximo de 10 MB.`,
+    );
+  }
+
+  const firmaOk = spec.segments.every((seg) =>
+    seg.bytes.every((byte, i) => file.buffer[seg.offset + i] === byte),
+  );
+  const contenidoOk =
+    !spec.contiene ||
+    file.buffer.includes(Buffer.from(spec.contiene, "latin1"));
+  if (!firmaOk || !contenidoOk) {
+    throw new BadRequestException(
+      `El contenido de ${nombre} no corresponde a un archivo ${ext.toUpperCase()} válido.`,
+    );
+  }
+
+  return { extension: ext, mimeType: spec.mime, kind: spec.kind };
+}
+
 /** For churches: only images are allowed for main/cover. */
 export function validateChurchImage(file: ValidatableFile): void {
   const kind = detectKind(file.mimetype);

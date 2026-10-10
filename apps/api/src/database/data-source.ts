@@ -16,6 +16,7 @@ import { ChurchStudy } from "../modules/church-studies/church-study.entity";
 import { ChurchDirector } from "../modules/churches/church-director.entity";
 import { Church } from "../modules/churches/church.entity";
 import { Report } from "../modules/reports/report.entity";
+import { ReportDocument } from "../modules/reports/report-document.entity";
 import { SiteBackground } from "../modules/site/site-background.entity";
 import { SiteSettings } from "../modules/site/site-settings.entity";
 import { SupportConversation } from "../modules/support/support-conversation.entity";
@@ -55,6 +56,7 @@ const ENTITIES = [
   ChurchAnnouncementAttachment,
   ChurchStudy,
   Report,
+  ReportDocument,
   SiteBackground,
   SiteSettings,
   SupportConversation,

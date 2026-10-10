@@ -1,17 +1,28 @@
 import {
   BadRequestException,
   ForbiddenException,
+  HttpException,
   Injectable,
+  InternalServerErrorException,
   NotFoundException,
 } from "@nestjs/common";
+import { randomBytes } from "node:crypto";
 import { InjectRepository } from "@nestjs/typeorm";
 import {
   Between,
   FindOptionsWhere,
+  In,
   LessThanOrEqual,
   MoreThanOrEqual,
   Repository,
 } from "typeorm";
+
+import {
+  MAX_REPORT_DOCUMENTS_PER_REPORT,
+  MAX_REPORT_DOCUMENTS_PER_UPLOAD,
+  type ValidatableFile,
+  validateReportDocument,
+} from "../../common/validation/file-validation";
 
 import { AdminAccount } from "../admin-security/admin-account.entity";
 import {
@@ -20,11 +31,60 @@ import {
 } from "../admin-security/permissions/permission.enums";
 import { PermissionsService } from "../admin-security/permissions/permissions.service";
 import { Church } from "../churches/church.entity";
+import { CloudinaryService } from "../cloudinary/cloudinary.service";
 import { CreateReportDto } from "./dto/create-report.dto";
 import { QueryReportsDto } from "./dto/query-reports.dto";
 import { UpdateReportDto } from "./dto/update-report.dto";
 import { ReportType } from "./enums/report-type.enum";
 import { Report } from "./report.entity";
+import { ReportDocument } from "./report-document.entity";
+
+/** Documento tal como lo ve quien tiene permiso: nunca incluye el archivo ni su ubicación. */
+export interface ReportDocumentView {
+  id: string;
+  fileName: string;
+  mimeType: string;
+  kind: string;
+  sizeBytes: number;
+  uploadedByAdminAccountId: string;
+  uploadedByDisplayName: string;
+  createdAt: Date;
+}
+
+/** Marcas diacríticas que quedan sueltas tras normalizar a NFD (tildes, diéresis). */
+const DIACRITICOS = new RegExp(
+  `[${String.fromCharCode(0x300)}-${String.fromCharCode(0x36f)}]`,
+  "g",
+);
+const BARRA_INVERTIDA = String.fromCharCode(92);
+
+/** Convierte el nombre de un archivo en un tramo seguro para un identificador. */
+function slug(texto: string, max = 50): string {
+  return (
+    texto
+      .normalize("NFD")
+      .replace(DIACRITICOS, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, max)
+      .replace(/-+$/g, "") || "documento"
+  );
+}
+
+/** Nombre visible: sin rutas, sin caracteres de control y con un largo razonable. */
+function nombreVisible(original: string): string {
+  const base =
+    (original ?? "").split("/").pop()?.split(BARRA_INVERTIDA).pop() ?? "";
+  const limpio = Array.from(base)
+    .filter((ch) => {
+      const c = ch.charCodeAt(0);
+      return c >= 32 && c !== 127;
+    })
+    .join("")
+    .trim();
+  return (limpio || "documento").slice(0, 200);
+}
 
 const MAX_DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 100;
@@ -36,7 +96,10 @@ export class ReportsService {
     private readonly reportRepo: Repository<Report>,
     @InjectRepository(Church)
     private readonly churchRepo: Repository<Church>,
+    @InjectRepository(ReportDocument)
+    private readonly documentRepo: Repository<ReportDocument>,
     private readonly permissions: PermissionsService,
+    private readonly cloudinary: CloudinaryService,
   ) {}
 
   /* ── Helpers ── */
@@ -83,6 +146,10 @@ export class ReportsService {
     if (!data || typeof data !== "object") {
       throw new BadRequestException("data debe ser un objeto");
     }
+
+    // Informe entregado solo como documento: los datos del formulario no
+    // aplican. El documento se adjunta justo después de crearlo.
+    if ((data as { documentOnly?: unknown }).documentOnly === true) return;
 
     switch (reportType) {
       case ReportType.OFFERINGS: {
@@ -238,7 +305,7 @@ export class ReportsService {
       notes: (dto.notes ?? "").trim(),
       periodStart,
       periodEnd,
-      data: dto.data,
+      data: this.normalizarDatos(dto.data),
       createdByAdminAccountId: actor.id,
       createdByDisplayName: actor.displayName,
       lastUpdatedByAdminAccountId: null,
@@ -250,6 +317,13 @@ export class ReportsService {
 
   async findAll(query: QueryReportsDto, actor: AdminAccount) {
     const where: FindOptionsWhere<Report> = {};
+
+    let conDocs: string[] | null = null;
+    if (query.withDocuments) {
+      conDocs = await this.informesConDocumentos(actor);
+      if (conDocs.length === 0) return { items: [], total: 0 };
+      where.id = In(conDocs);
+    }
 
     // Scope:
     //  - ROOT ve todo (puede filtrar por churchId si quiere).
@@ -277,7 +351,7 @@ export class ReportsService {
         // Filtrar por TODAS sus iglesias.
         // Como `where` no soporta IN nativo en este shape, usamos
         // una segunda búsqueda con QueryBuilder más abajo.
-        return this.findAllForMultipleChurches(assigned, query);
+        return this.findAllForMultipleChurches(assigned, query, actor, conDocs);
       }
     }
 
@@ -307,7 +381,7 @@ export class ReportsService {
       skip: offset,
     });
 
-    return { items, total };
+    return { items: await this.conDocumentos(items, actor), total };
   }
 
   /**
@@ -317,11 +391,17 @@ export class ReportsService {
   private async findAllForMultipleChurches(
     churchIds: string[],
     query: QueryReportsDto,
+    actor: AdminAccount,
+    conDocs: string[] | null,
   ) {
     const qb = this.reportRepo
       .createQueryBuilder("report")
       .leftJoinAndSelect("report.church", "church")
       .where("report.churchId IN (:...churchIds)", { churchIds });
+
+    if (conDocs) {
+      qb.andWhere("report.id IN (:...conDocs)", { conDocs });
+    }
 
     if (query.reportType) {
       qb.andWhere("report.reportType = :reportType", {
@@ -350,7 +430,7 @@ export class ReportsService {
     qb.take(limit).skip(offset);
 
     const [items, total] = await qb.getManyAndCount();
-    return { items, total };
+    return { items: await this.conDocumentos(items, actor), total };
   }
 
   async findOne(id: string, actor: AdminAccount): Promise<Report> {
@@ -419,7 +499,7 @@ export class ReportsService {
       ...(dto.notes !== undefined && { notes: dto.notes.trim() }),
       ...(dto.periodStart && { periodStart: new Date(dto.periodStart) }),
       ...(dto.periodEnd && { periodEnd: new Date(dto.periodEnd) }),
-      ...(dto.data && { data: dto.data }),
+      ...(dto.data && { data: this.normalizarDatos(dto.data) }),
       lastUpdatedByAdminAccountId: actor.id,
       lastUpdatedByDisplayName: actor.displayName,
     });
@@ -430,8 +510,238 @@ export class ReportsService {
   async remove(id: string, actor: AdminAccount) {
     const report = await this.findOne(id, actor);
     await this.assertSubmitScope(actor, report.churchId);
+    // Las filas de documentos se van con el informe (CASCADE); los archivos
+    // se borran de Cloudinary después, para no dejarlos huérfanos.
+    const docs = await this.documentRepo.find({ where: { reportId: id } });
+    // Los documentos son privados de quien los subió: otro administrador de
+    // la misma iglesia no puede hacerlos desaparecer borrando el informe.
+    if (
+      !this.permissions.isRoot(actor) &&
+      docs.some((d) => d.uploadedByAdminAccountId !== actor.id)
+    ) {
+      throw new ForbiddenException(
+        "Este informe tiene documentos de otra persona. Solo el administrador principal puede eliminarlo.",
+      );
+    }
     await this.reportRepo.remove(report);
-    return { deleted: true, id };
+    await Promise.all(
+      docs.map((d) => this.cloudinary.deletePrivateDocument(d.publicId)),
+    );
+    return { deleted: true, id, documentsDeleted: docs.length };
+  }
+
+  /* ── Documentos ── */
+
+  /** Un informe entregado solo como documento guarda únicamente esa marca. */
+  private normalizarDatos(data: Record<string, unknown>) {
+    return (data as { documentOnly?: unknown }).documentOnly === true
+      ? { documentOnly: true }
+      : data;
+  }
+
+  /** Los documentos son privados: solo el principal y quien los subió. */
+  private puedeVerDocumento(actor: AdminAccount, doc: ReportDocument) {
+    return (
+      this.permissions.isRoot(actor) ||
+      doc.uploadedByAdminAccountId === actor.id
+    );
+  }
+
+  private vistaDocumento(doc: ReportDocument): ReportDocumentView {
+    return {
+      id: doc.id,
+      fileName: doc.fileName,
+      mimeType: doc.mimeType,
+      kind: doc.kind,
+      sizeBytes: doc.sizeBytes,
+      uploadedByAdminAccountId: doc.uploadedByAdminAccountId,
+      uploadedByDisplayName: doc.uploadedByDisplayName,
+      createdAt: doc.createdAt,
+    };
+  }
+
+  /** Documentos que el actor puede ver, agrupados por informe. */
+  private async documentosVisibles(reportIds: string[], actor: AdminAccount) {
+    const porInforme = new Map<string, ReportDocumentView[]>();
+    if (reportIds.length === 0) return porInforme;
+    const docs = await this.documentRepo.find({
+      where: {
+        reportId: In(reportIds),
+        ...(this.permissions.isRoot(actor)
+          ? {}
+          : { uploadedByAdminAccountId: actor.id }),
+      },
+      order: { createdAt: "ASC" },
+    });
+    for (const d of docs) {
+      const lista = porInforme.get(d.reportId) ?? [];
+      lista.push(this.vistaDocumento(d));
+      porInforme.set(d.reportId, lista);
+    }
+    return porInforme;
+  }
+
+  private async conDocumentos(items: Report[], actor: AdminAccount) {
+    const docs = await this.documentosVisibles(
+      items.map((r) => r.id),
+      actor,
+    );
+    return items.map((r) => ({ ...r, documents: docs.get(r.id) ?? [] }));
+  }
+
+  /** Informes con algún documento visible para el actor (filtro «con documentos»). */
+  private async informesConDocumentos(actor: AdminAccount): Promise<string[]> {
+    const qb = this.documentRepo
+      .createQueryBuilder("d")
+      .select('DISTINCT "d"."reportId"', "reportId");
+    if (!this.permissions.isRoot(actor)) {
+      qb.where('"d"."uploadedByAdminAccountId" = :actor', { actor: actor.id });
+    }
+    const filas = await qb.getRawMany<{ reportId: string }>();
+    return filas.map((f) => f.reportId);
+  }
+
+  async findOneForView(id: string, actor: AdminAccount) {
+    const report = await this.findOne(id, actor);
+    const [conDocs] = await this.conDocumentos([report], actor);
+    return conDocs;
+  }
+
+  /** Verifica que el actor puede adjuntar documentos a este informe. */
+  async assertPuedeAdjuntar(reportId: string, actor: AdminAccount) {
+    const report = await this.findOne(reportId, actor);
+    await this.assertSubmitScope(actor, report.churchId);
+    return report;
+  }
+
+  /**
+   * Identificador del archivo en Cloudinary. Lleva el período, el tipo y el
+   * nombre original, para que también allá quede claro a qué corresponde.
+   */
+  private publicIdDocumento(
+    report: Report,
+    fileName: string,
+    extension: string,
+  ) {
+    const periodo = report.periodStart.toISOString().slice(0, 7);
+    const tipo = report.reportType.toLowerCase();
+    const sinExtension = fileName.replace(/[.][^.]*$/, "");
+    const azar = randomBytes(4).toString("hex");
+    return `informes/${report.churchId}/${periodo}_${tipo}_${slug(sinExtension)}_${azar}.${extension}`;
+  }
+
+  async addDocuments(
+    reportId: string,
+    files: ValidatableFile[],
+    actor: AdminAccount,
+  ) {
+    if (files.length === 0) {
+      throw new BadRequestException("Adjunta al menos un documento.");
+    }
+    if (files.length > MAX_REPORT_DOCUMENTS_PER_UPLOAD) {
+      throw new BadRequestException(
+        `Se pueden subir hasta ${MAX_REPORT_DOCUMENTS_PER_UPLOAD} documentos a la vez.`,
+      );
+    }
+    const report = await this.assertPuedeAdjuntar(reportId, actor);
+    const existentes = await this.documentRepo.count({ where: { reportId } });
+    if (existentes + files.length > MAX_REPORT_DOCUMENTS_PER_REPORT) {
+      throw new BadRequestException(
+        `Un informe admite hasta ${MAX_REPORT_DOCUMENTS_PER_REPORT} documentos y este ya tiene ${existentes}.`,
+      );
+    }
+
+    // Se valida todo antes de subir nada: un archivo malo no deja la mitad arriba.
+    const validados = files.map((file) => ({
+      file,
+      info: validateReportDocument(file),
+    }));
+
+    const subidos: string[] = [];
+    try {
+      const entidades: ReportDocument[] = [];
+      for (const { file, info } of validados) {
+        const nombre = nombreVisible(file.filename);
+        const subido = await this.cloudinary.uploadPrivateDocument(
+          file.buffer,
+          this.publicIdDocumento(report, nombre, info.extension),
+        );
+        subidos.push(subido.publicId);
+        entidades.push(
+          this.documentRepo.create({
+            reportId: report.id,
+            fileName: nombre,
+            mimeType: info.mimeType,
+            kind: info.kind,
+            sizeBytes: file.buffer.byteLength,
+            publicId: subido.publicId,
+            uploadedByAdminAccountId: actor.id,
+            uploadedByDisplayName: actor.displayName,
+          }),
+        );
+      }
+      const guardados = await this.documentRepo.save(entidades);
+      return {
+        report,
+        documents: guardados.map((d) => this.vistaDocumento(d)),
+      };
+    } catch (err) {
+      // Si algo falla a mitad de camino, no quedan archivos huérfanos.
+      await Promise.all(
+        subidos.map((id) => this.cloudinary.deletePrivateDocument(id)),
+      );
+      if (err instanceof HttpException) throw err;
+      throw new InternalServerErrorException(
+        "No se pudieron guardar los documentos. Intenta de nuevo.",
+      );
+    }
+  }
+
+  private async documentoVisible(
+    reportId: string,
+    documentId: string,
+    actor: AdminAccount,
+  ) {
+    const doc = await this.documentRepo.findOne({
+      where: { id: documentId, reportId },
+    });
+    // Mismo error si no existe o si no le corresponde: no se confirma que exista.
+    if (!doc || !this.puedeVerDocumento(actor, doc)) {
+      throw new NotFoundException("Documento no encontrado");
+    }
+    return doc;
+  }
+
+  /** Enlace para abrir el documento. Vence a los cinco minutos. */
+  async documentDownloadUrl(
+    reportId: string,
+    documentId: string,
+    actor: AdminAccount,
+  ) {
+    const doc = await this.documentoVisible(reportId, documentId, actor);
+    const { url, expiresAt } = this.cloudinary.privateDownloadUrl(
+      doc.publicId,
+      300,
+    );
+    return {
+      url,
+      expiresAt,
+      fileName: doc.fileName,
+      document: this.vistaDocumento(doc),
+    };
+  }
+
+  async removeDocument(
+    reportId: string,
+    documentId: string,
+    actor: AdminAccount,
+  ) {
+    const doc = await this.documentoVisible(reportId, documentId, actor);
+    const publicId = doc.publicId;
+    const fileName = doc.fileName;
+    await this.documentRepo.remove(doc);
+    await this.cloudinary.deletePrivateDocument(publicId);
+    return { deleted: true, id: documentId, fileName };
   }
 
   /* ────────── Métricas / Agregados ────────── */
@@ -509,6 +819,7 @@ export class ReportsService {
       all.filter((r) => r.reportType === ReportType.OFFERINGS),
       (r) => {
         const v = (r.data as { totalCop?: unknown }).totalCop;
+        if (v === undefined || v === null) return null;
         return typeof v === "number" ? v : Number(v) || 0;
       },
     );
@@ -517,6 +828,7 @@ export class ReportsService {
       all.filter((r) => r.reportType === ReportType.EXPENSES),
       (r) => {
         const v = (r.data as { totalCop?: unknown }).totalCop;
+        if (v === undefined || v === null) return null;
         return typeof v === "number" ? v : Number(v) || 0;
       },
     );
@@ -525,6 +837,7 @@ export class ReportsService {
       all.filter((r) => r.reportType === ReportType.ATTENDANCE),
       (r) => {
         const v = (r.data as { count?: unknown }).count;
+        if (v === undefined || v === null) return null;
         return typeof v === "number" ? v : Number(v) || 0;
       },
     );

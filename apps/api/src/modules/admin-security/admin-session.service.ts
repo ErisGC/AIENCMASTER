@@ -796,4 +796,88 @@ export class AdminSessionService {
 
     return { account, device, session: payload };
   }
+
+  /* ── Permisos de subida directa ─────────────────────────────────────────
+   *
+   * La web pasa por un proxy en Vercel que rechaza cuerpos de más de 4,5 MB,
+   * así que los documentos grandes se suben directo a esta API. El navegador
+   * no puede mandar aquí las cookies de sesión (son del dominio de la web),
+   * de modo que, con la sesión ya validada, se emite un permiso de un solo
+   * propósito que vence en minutos.
+   *
+   * Se firma con una clave derivada y distinta de la de sesión: un permiso
+   * nunca sirve como sesión ni una sesión como permiso. Al usarlo se repiten
+   * las comprobaciones de la sesión normal: cuenta activa, misma versión de
+   * credenciales y dispositivo aprobado de esa cuenta.
+   */
+
+  private get uploadTicketSecret() {
+    return createHash("sha256")
+      .update(`${this.sessionSecret}:upload-ticket:v1`)
+      .digest("hex");
+  }
+
+  async issueUploadTicket(
+    ctx: AuthenticatedAdminContext,
+    scope: string,
+    ttlSeconds = 600,
+  ): Promise<{ ticket: string; expiresAt: Date }> {
+    const ticket = await this.jwtService.signAsync(
+      {
+        sub: ctx.account.id,
+        dev: ctx.device.deviceId,
+        tv: ctx.account.tokenVersion,
+        scope,
+      },
+      {
+        secret: this.uploadTicketSecret,
+        expiresIn: ttlSeconds,
+        audience: "aienc-upload",
+      },
+    );
+    return { ticket, expiresAt: new Date(Date.now() + ttlSeconds * 1000) };
+  }
+
+  async validateUploadTicket(
+    ticket: string | undefined,
+    scope: string,
+  ): Promise<{ account: AdminAccount; device: AdminDevice }> {
+    if (!ticket) {
+      throw new UnauthorizedException("Upload ticket required");
+    }
+
+    let payload: { sub: string; dev: string; tv: number; scope: string };
+    try {
+      payload = await this.jwtService.verifyAsync(ticket, {
+        secret: this.uploadTicketSecret,
+        audience: "aienc-upload",
+      });
+    } catch {
+      throw new UnauthorizedException("Upload ticket is invalid or expired");
+    }
+
+    if (payload.scope !== scope) {
+      throw new ForbiddenException("Upload ticket does not match this upload");
+    }
+
+    const account = await this.accountRepo.findOne({
+      where: { id: payload.sub },
+    });
+    if (!account || !account.isActive || account.tokenVersion !== payload.tv) {
+      throw new UnauthorizedException("Admin account is not available");
+    }
+
+    const device = await this.deviceRepo.findOne({
+      where: { deviceId: payload.dev, adminAccountId: account.id },
+    });
+    if (!device) {
+      throw new UnauthorizedException("Trusted device not found");
+    }
+    this.ensureRootDeviceBinding(account, device);
+    if (device.status !== AdminDeviceStatus.APPROVED) {
+      throw new ForbiddenException("Device is not approved");
+    }
+
+    return { account, device };
+  }
 }

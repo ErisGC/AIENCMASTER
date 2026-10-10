@@ -103,6 +103,79 @@ export class CloudinaryService implements OnModuleInit {
     return "image";
   }
 
+  /* ── Documentos privados ─────────────────────────────────────────────── */
+
+  /**
+   * Sube un documento privado: archivo crudo con entrega `authenticated`.
+   * Sin una URL firmada no se puede abrir (Cloudinary responde 401).
+   *
+   * Ojo: el `secure_url` que devuelve Cloudinary para estos archivos ya viene
+   * firmado y no vence. Por eso no se devuelve ni se guarda: solo el
+   * `public_id`, y las descargas se hacen con enlaces que expiran.
+   */
+  uploadPrivateDocument(
+    buffer: Buffer,
+    publicId: string,
+  ): Promise<{ publicId: string; bytes: number }> {
+    return new Promise((resolve, reject) => {
+      cloudinary.uploader
+        .upload_stream(
+          {
+            resource_type: "raw",
+            type: "authenticated",
+            public_id: publicId,
+            overwrite: false,
+          },
+          (
+            error: UploadApiErrorResponse | undefined,
+            result: UploadApiResponse | undefined,
+          ) => {
+            if (error) {
+              reject(
+                new Error(
+                  typeof error.message === "string" && error.message
+                    ? error.message
+                    : "Cloudinary upload failed",
+                ),
+              );
+            } else if (result) {
+              resolve({ publicId: result.public_id, bytes: result.bytes });
+            } else {
+              reject(new Error("Cloudinary upload returned no result"));
+            }
+          },
+        )
+        .end(buffer);
+    });
+  }
+
+  /** Enlace temporal para descargar un documento privado. */
+  privateDownloadUrl(
+    publicId: string,
+    ttlSeconds = 300,
+  ): { url: string; expiresAt: Date } {
+    const expiresAtSeconds = Math.floor(Date.now() / 1000) + ttlSeconds;
+    const url = cloudinary.utils.private_download_url(publicId, "", {
+      resource_type: "raw",
+      type: "authenticated",
+      expires_at: expiresAtSeconds,
+    });
+    return { url, expiresAt: new Date(expiresAtSeconds * 1000) };
+  }
+
+  async deletePrivateDocument(publicId: string): Promise<void> {
+    try {
+      await cloudinary.uploader.destroy(publicId, {
+        resource_type: "raw",
+        type: "authenticated",
+      });
+    } catch (error) {
+      this.logger.warn(
+        `Failed to delete private document ${publicId}: ${String(error)}`,
+      );
+    }
+  }
+
   async delete(
     publicId: string,
     resourceType: "image" | "video" | "raw" = "image",
