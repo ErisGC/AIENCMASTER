@@ -1,4 +1,4 @@
-import { API_BASE_URL } from './api';
+import { adminFetch, motivoDelServidor } from './api';
 import { manejarSesionExpirada } from './admin-session-expired';
 
 export interface ChurchAnnouncementAttachment {
@@ -35,7 +35,7 @@ async function caRequest<T>(path: string, init?: RequestInit): Promise<T> {
     headers['Content-Type'] = 'application/json';
   }
 
-  const res = await fetch(`${API_BASE_URL}${path}`, {
+  const res = await adminFetch(path, {
     ...init,
     headers,
     credentials: 'include',
@@ -57,8 +57,11 @@ async function caRequest<T>(path: string, init?: RequestInit): Promise<T> {
         text,
       );
     }
+    const motivo =
+      res.status === 400 || res.status === 413 ? motivoDelServidor(text) : null;
     const friendly =
-      res.status === 401
+      motivo ??
+      (res.status === 401
         ? 'Sesión no válida.'
         : res.status === 403
           ? 'No tienes permisos sobre esta iglesia.'
@@ -70,7 +73,7 @@ async function caRequest<T>(path: string, init?: RequestInit): Promise<T> {
                 ? 'Datos inválidos.'
                 : res.status >= 500
                   ? 'Error del servidor. Intenta más tarde.'
-                  : 'No se pudo completar la solicitud.';
+                  : 'No se pudo completar la solicitud.');
     throw new Error(friendly);
   }
 
@@ -111,7 +114,9 @@ export function adminCreateChurchAnnouncement(
 export function adminUpdateChurchAnnouncement(
   churchId: string,
   id: string,
-  data: Partial<Pick<ChurchAnnouncementSummary, 'title' | 'description' | 'author'>>,
+  data: Partial<
+    Pick<ChurchAnnouncementSummary, 'title' | 'description' | 'author'>
+  >,
 ) {
   return caRequest<ChurchAnnouncementSummary>(
     `/admin/churches/${churchId}/announcements/${id}`,

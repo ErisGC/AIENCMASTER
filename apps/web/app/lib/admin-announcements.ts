@@ -1,4 +1,4 @@
-import { API_BASE_URL } from './api';
+import { adminFetch, motivoDelServidor } from './api';
 import type { Announcement, AnnouncementDetail } from './announcements';
 import { manejarSesionExpirada } from './admin-session-expired';
 
@@ -6,7 +6,7 @@ async function adminAnnouncementsReq<T>(
   path: string,
   init?: RequestInit,
 ): Promise<T> {
-  const res = await fetch(`${API_BASE_URL}${path}`, {
+  const res = await adminFetch(path, {
     ...init,
     credentials: 'include',
     cache: 'no-store',
@@ -19,10 +19,19 @@ async function adminAnnouncementsReq<T>(
     const text = await res.text().catch(() => '');
     if (typeof window !== 'undefined') {
       const log = res.status >= 500 ? console.error : console.debug;
-      log('[admin-announcements]', init?.method ?? 'GET', path, res.status, text);
+      log(
+        '[admin-announcements]',
+        init?.method ?? 'GET',
+        path,
+        res.status,
+        text,
+      );
     }
+    const motivo =
+      res.status === 400 || res.status === 413 ? motivoDelServidor(text) : null;
     const friendly =
-      res.status === 401
+      motivo ??
+      (res.status === 401
         ? 'Sesión no válida.'
         : res.status === 403
           ? 'No tienes permisos para esta acción.'
@@ -34,7 +43,7 @@ async function adminAnnouncementsReq<T>(
                 ? 'Datos inválidos.'
                 : res.status >= 500
                   ? 'Error del servidor. Intenta más tarde.'
-                  : 'No se pudo completar la solicitud.';
+                  : 'No se pudo completar la solicitud.');
     throw new Error(friendly);
   }
 
@@ -71,11 +80,14 @@ export function adminUpdateAnnouncement(
   id: string,
   dto: Pick<Announcement, 'title' | 'description' | 'author'>,
 ) {
-  return adminAnnouncementsReq<AnnouncementDetail>(`/admin/announcements/${id}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(dto),
-  });
+  return adminAnnouncementsReq<AnnouncementDetail>(
+    `/admin/announcements/${id}`,
+    {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(dto),
+    },
+  );
 }
 
 export function adminDeleteAnnouncement(id: string) {

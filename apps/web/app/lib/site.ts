@@ -1,4 +1,4 @@
-import { API_BASE_URL } from './api';
+import { adminFetch } from './api';
 import { manejarSesionExpirada } from './admin-session-expired';
 
 export interface PublicBackground {
@@ -43,7 +43,7 @@ async function siteRequest<T>(path: string, init?: RequestInit): Promise<T> {
     headers['Content-Type'] = 'application/json';
   }
 
-  const res = await fetch(`${API_BASE_URL}${path}`, {
+  const res = await adminFetch(path, {
     ...init,
     headers,
     credentials: 'include',

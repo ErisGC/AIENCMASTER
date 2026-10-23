@@ -58,9 +58,13 @@ export function NewAnnouncementPageClient() {
       await adminCreateAnnouncement(form);
       router.push('/admin/announcements');
       router.refresh();
-    } catch {
+    } catch (err) {
       setSubmitting(false);
-      alert('Error creando el anuncio');
+      alert(
+        err instanceof Error && err.message
+          ? `No se pudo crear el anuncio. ${err.message}`
+          : 'Error creando el anuncio',
+      );
     }
   }
 

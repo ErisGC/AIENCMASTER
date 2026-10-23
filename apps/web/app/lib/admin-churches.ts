@@ -1,4 +1,4 @@
-import { API_BASE_URL } from './api';
+import { adminFetch, motivoDelServidor } from './api';
 import { manejarSesionExpirada } from './admin-session-expired';
 
 export type Church = {
@@ -43,7 +43,7 @@ async function apiReq<T>(path: string, init?: RequestInit): Promise<T> {
     headers['Content-Type'] = 'application/json';
   }
 
-  const res = await fetch(`${API_BASE_URL}${path}`, {
+  const res = await adminFetch(path, {
     ...init,
     headers,
     credentials: 'include',
@@ -59,8 +59,11 @@ async function apiReq<T>(path: string, init?: RequestInit): Promise<T> {
       const log = res.status >= 500 ? console.error : console.debug;
       log('[admin-churches]', init?.method ?? 'GET', path, res.status, text);
     }
+    const motivo =
+      res.status === 400 || res.status === 413 ? motivoDelServidor(text) : null;
     const friendly =
-      res.status === 401
+      motivo ??
+      (res.status === 401
         ? 'Sesión no válida.'
         : res.status === 403
           ? 'No tienes permisos para esta acción.'
@@ -72,7 +75,7 @@ async function apiReq<T>(path: string, init?: RequestInit): Promise<T> {
                 ? 'Datos inválidos.'
                 : res.status >= 500
                   ? 'Error del servidor. Intenta más tarde.'
-                  : 'No se pudo completar la solicitud.';
+                  : 'No se pudo completar la solicitud.');
     throw new Error(friendly);
   }
 

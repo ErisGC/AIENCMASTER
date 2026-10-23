@@ -1,4 +1,4 @@
-import { API_BASE_URL } from './api';
+import { adminFetch } from './api';
 import { manejarSesionExpirada } from './admin-session-expired';
 
 export interface PublicDirector {
@@ -34,7 +34,7 @@ async function directorsRequest<T>(
   if (body !== undefined && body !== null && !(body instanceof FormData)) {
     headers['Content-Type'] = 'application/json';
   }
-  const res = await fetch(`${API_BASE_URL}${path}`, {
+  const res = await adminFetch(path, {
     ...init,
     headers,
     credentials: 'include',

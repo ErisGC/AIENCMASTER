@@ -190,7 +190,11 @@ export function EditChurchClient({ initialChurch }: { initialChurch: Church }) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (e: any) {
       console.error(e);
-      alert('No se pudieron guardar los cambios.');
+      alert(
+        e instanceof Error && e.message
+          ? `No se pudieron guardar los cambios. ${e.message}`
+          : 'No se pudieron guardar los cambios.',
+      );
     } finally {
       setSaving(false);
     }

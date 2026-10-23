@@ -1,4 +1,4 @@
-import { API_BASE_URL } from './api';
+import { adminFetch } from './api';
 import { manejarSesionExpirada } from './admin-session-expired';
 
 export interface AdminProfile {
@@ -15,7 +15,7 @@ async function profileRequest<T>(
   path: string,
   init?: RequestInit,
 ): Promise<T> {
-  const res = await fetch(`${API_BASE_URL}${path}`, {
+  const res = await adminFetch(path, {
     ...init,
     credentials: 'include',
     cache: 'no-store',

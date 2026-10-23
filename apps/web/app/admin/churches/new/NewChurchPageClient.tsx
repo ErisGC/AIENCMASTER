@@ -124,9 +124,13 @@ export function NewChurchPageClient() {
       if (created?.id) router.push(`/admin/churches/${created.id}`);
       else router.push('/admin/churches');
       router.refresh();
-    } catch {
+    } catch (err) {
       setSubmitting(false);
-      alert('Error creando la iglesia');
+      alert(
+        err instanceof Error && err.message
+          ? `No se pudo crear la iglesia. ${err.message}`
+          : 'Error creando la iglesia',
+      );
     }
   }
 

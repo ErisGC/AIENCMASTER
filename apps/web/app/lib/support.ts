@@ -1,4 +1,4 @@
-import { API_BASE_URL } from './api';
+import { adminFetch, publicUploadFetch } from './api';
 
 export type SupportMessage = {
   id: string;
@@ -39,11 +39,17 @@ export function saveGuestToken(token: string) {
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
   let res: Response;
   try {
-    res = await fetch(`${API_BASE_URL}${path}`, {
-      ...init,
-      credentials: 'include',
-      cache: 'no-store',
-    });
+    // Los envíos del visitante con imágenes o notas de voz van directo a la
+    // API (no usan cookies); los del panel con archivos piden su permiso.
+    const visitanteConArchivos =
+      path.startsWith('/support/guest/') && init?.body instanceof FormData;
+    res = visitanteConArchivos
+      ? await publicUploadFetch(path, init)
+      : await adminFetch(path, {
+          ...init,
+          credentials: 'include',
+          cache: 'no-store',
+        });
   } catch {
     throw new Error('No se pudo contactar el servidor. Revisa tu conexión.');
   }
