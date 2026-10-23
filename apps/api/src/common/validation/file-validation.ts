@@ -6,7 +6,9 @@ import { BadRequestException } from "@nestjs/common";
  */
 export const MAX_IMAGE_BYTES = 10 * 1024 * 1024; // 10 MB
 export const MAX_VIDEO_BYTES = 50 * 1024 * 1024; // 50 MB
-export const MAX_PDF_BYTES = 15 * 1024 * 1024; // 15 MB
+// Cloudinary guarda los PDF como imagen, y su plan gratuito no admite imágenes
+// de más de 10 MB: por encima la subida fallaba allá con un error genérico.
+export const MAX_PDF_BYTES = 10 * 1024 * 1024; // 10 MB
 // Estudios en audio: tope prudente que cabe en el límite global de multipart
 // (50 MB) y no satura la RAM del servidor. Para archivos más grandes se debe
 // migrar a subida directa firmada a Cloudinary (ver church-studies.service).
@@ -135,7 +137,7 @@ export function validateUploadedFile(file: ValidatableFile): void {
   }
   if (kind === "pdf" && size > MAX_PDF_BYTES) {
     throw new BadRequestException(
-      `El PDF ${file.filename} excede el tamaño máximo (15 MB).`,
+      `El PDF ${file.filename} excede el tamaño máximo (10 MB).`,
     );
   }
 

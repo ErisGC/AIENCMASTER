@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   UnauthorizedException,
@@ -6,7 +7,7 @@ import {
 import { JwtService } from "@nestjs/jwt";
 import { compare, hash } from "bcryptjs";
 import type { FastifyReply } from "fastify";
-import { createHash, randomBytes } from "node:crypto";
+import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 
@@ -25,6 +26,7 @@ import {
   AdminSessionState,
   AuthenticatedAdminContext,
 } from "./admin-security.types";
+import { rutaDeSubidaDirecta } from "./direct-upload-routes";
 import { AdminAccessRequestStatus } from "./enums/admin-access-request-status.enum";
 import { AdminDeviceScope } from "./enums/admin-device-scope.enum";
 import { AdminDeviceStatus } from "./enums/admin-device-status.enum";
@@ -842,11 +844,116 @@ export class AdminSessionService {
     ticket: string | undefined,
     scope: string,
   ): Promise<{ account: AdminAccount; device: AdminDevice }> {
+    const { account, device } = await this.verifyUploadTicket(ticket, scope);
+    return { account, device };
+  }
+
+  /* ── Permiso de subida directa por ruta ─────────────────────────────────
+   *
+   * Mismo mecanismo, para las demás subidas del panel (anuncios, iglesias,
+   * directivos, estudios en audio, fondos, foto de perfil y soporte). El
+   * permiso queda atado a una ruta exacta de `direct-upload-routes.ts` y se
+   * presenta en lugar de la cookie de sesión: la guarda de sesión lo convierte
+   * en el mismo contexto de administrador, así que los permisos por iglesia,
+   * el rol y el dispositivo principal se revisan igual que siempre.
+   *
+   * Sirve una sola vez. Cada subida pide el suyo, de modo que un permiso que
+   * se filtre no permite repetir la operación.
+   */
+
+  private readonly usedRouteTickets = new Map<string, number>();
+
+  async issueRouteUploadTicket(
+    ctx: AuthenticatedAdminContext,
+    method: string,
+    path: string,
+    ttlSeconds = 600,
+  ): Promise<{ ticket: string; expiresAt: Date }> {
+    const ruta = rutaDeSubidaDirecta(method, path);
+    if (!ruta) {
+      throw new BadRequestException("Esta ruta no admite subida directa.");
+    }
+    const ticket = await this.jwtService.signAsync(
+      {
+        sub: ctx.account.id,
+        dev: ctx.device.deviceId,
+        tv: ctx.account.tokenVersion,
+        scope: `route:${ruta}`,
+        jti: randomUUID(),
+      },
+      {
+        secret: this.uploadTicketSecret,
+        expiresIn: ttlSeconds,
+        audience: "aienc-upload",
+      },
+    );
+    return { ticket, expiresAt: new Date(Date.now() + ttlSeconds * 1000) };
+  }
+
+  async validateRouteUploadTicket(
+    req: AdminRequest,
+    ticket: string,
+  ): Promise<AuthenticatedAdminContext> {
+    const ruta = rutaDeSubidaDirecta(req.method, req.url);
+    if (!ruta) {
+      throw new ForbiddenException("Upload ticket does not match this upload");
+    }
+    const { account, device, payload } = await this.verifyUploadTicket(
+      ticket,
+      `route:${ruta}`,
+    );
+    this.consumeRouteTicket(payload);
+    return {
+      account,
+      device,
+      session: {
+        kind: ADMIN_SESSION_KIND,
+        accountId: account.id,
+        deviceId: device.deviceId,
+        role: account.role,
+        tokenVersion: account.tokenVersion,
+        state: "ACTIVE",
+      },
+    };
+  }
+
+  private consumeRouteTicket(payload: { jti?: string; exp?: number }) {
+    if (!payload.jti) {
+      throw new UnauthorizedException("Upload ticket is invalid or expired");
+    }
+    const ahora = Date.now();
+    for (const [jti, vence] of this.usedRouteTickets) {
+      if (vence <= ahora) this.usedRouteTickets.delete(jti);
+    }
+    if (this.usedRouteTickets.has(payload.jti)) {
+      throw new UnauthorizedException("Upload ticket was already used");
+    }
+    this.usedRouteTickets.set(
+      payload.jti,
+      payload.exp ? payload.exp * 1000 : ahora + 600_000,
+    );
+  }
+
+  private async verifyUploadTicket(
+    ticket: string | undefined,
+    scope: string,
+  ): Promise<{
+    account: AdminAccount;
+    device: AdminDevice;
+    payload: { jti?: string; exp?: number };
+  }> {
     if (!ticket) {
       throw new UnauthorizedException("Upload ticket required");
     }
 
-    let payload: { sub: string; dev: string; tv: number; scope: string };
+    let payload: {
+      sub: string;
+      dev: string;
+      tv: number;
+      scope: string;
+      jti?: string;
+      exp?: number;
+    };
     try {
       payload = await this.jwtService.verifyAsync(ticket, {
         secret: this.uploadTicketSecret,
@@ -878,6 +985,6 @@ export class AdminSessionService {
       throw new ForbiddenException("Device is not approved");
     }
 
-    return { account, device };
+    return { account, device, payload };
   }
 }

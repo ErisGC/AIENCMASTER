@@ -6,6 +6,7 @@ import { Church } from "../churches/church.entity";
 import { CloudinaryModule } from "../cloudinary/cloudinary.module";
 import { AdminAccount } from "./admin-account.entity";
 import { AdminProfileController } from "./admin-profile.controller";
+import { AdminUploadTicketsController } from "./admin-upload-tickets.controller";
 import { AdminAccessRequest } from "./admin-access-request.entity";
 import { AdminActionLog } from "./admin-action-log.entity";
 import { AdminAuthController } from "./admin-auth.controller";
@@ -52,6 +53,7 @@ import { PermissionsService } from "./permissions/permissions.service";
     AdminInvitationsController,
     PublicInvitationsController,
     AdminProfileController,
+    AdminUploadTicketsController,
   ],
   providers: [
     AdminAuthService,
