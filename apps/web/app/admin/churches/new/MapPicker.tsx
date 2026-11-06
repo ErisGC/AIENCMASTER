@@ -7,20 +7,19 @@ import L from 'leaflet';
 // OpenStreetMap, sin la librería). Cargarlo globalmente lo enviaba a cada
 // visitante del portal, que nunca lo necesita.
 import 'leaflet/dist/leaflet.css';
-// Las imágenes del marcador vienen del propio paquete. Antes se pedían a un CDN
-// externo en cada uso: si estaba caído o bloqueado, el marcador desaparecía y
-// no había forma de ver el punto elegido.
-import iconoUrl from 'leaflet/dist/images/marker-icon.png';
-import iconoRetinaUrl from 'leaflet/dist/images/marker-icon-2x.png';
-import sombraUrl from 'leaflet/dist/images/marker-shadow.png';
 import styles from './page.module.css';
 
 type Point = { lat: number; lng: number };
 
+// Las imágenes del marcador se sirven desde public/leaflet (copiadas del
+// paquete leaflet). Antes se importaban como módulos y se leía `.src`, pero
+// con Turbopack esa importación no trae `.src`: el ícono quedaba sin URL y
+// Leaflet lanzaba "iconUrl not set", lo que tumbaba la página al editar una
+// iglesia con ubicación o al marcar un punto en el mapa.
 const markerIcon = new L.Icon({
-  iconUrl: iconoUrl.src,
-  iconRetinaUrl: iconoRetinaUrl.src,
-  shadowUrl: sombraUrl.src,
+  iconUrl: '/leaflet/marker-icon.png',
+  iconRetinaUrl: '/leaflet/marker-icon-2x.png',
+  shadowUrl: '/leaflet/marker-shadow.png',
   iconSize: [25, 41],
   iconAnchor: [12, 41],
 });
