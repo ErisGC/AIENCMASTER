@@ -1,4 +1,11 @@
-import { IsNotEmpty, IsString, MaxLength, MinLength } from "class-validator";
+import {
+  IsBoolean,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  MaxLength,
+  MinLength,
+} from "class-validator";
 
 export class AdminLoginDto {
   @IsString()
@@ -28,4 +35,12 @@ export class AdminLoginDto {
   @IsString()
   @MaxLength(100)
   browser!: string;
+
+  /**
+   * Ventana privada o equipo compartido: al cerrar la ventana la sesión se
+   * da por cerrada y el navegador deja de estar aprobado.
+   */
+  @IsOptional()
+  @IsBoolean()
+  ephemeral?: boolean;
 }

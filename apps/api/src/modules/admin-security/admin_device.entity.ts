@@ -103,6 +103,40 @@ export class AdminDevice {
   @Column({ type: "timestamptz", nullable: true })
   lastSeenAt!: Date | null;
 
+  /**
+   * "APP" para la app del teléfono (la llave que aprueba los ingresos web) y
+   * "WEB" para navegadores. Se decide en el login según el origen de la
+   * petición.
+   */
+  @Column({ type: "text", default: "WEB" })
+  clientKind!: "WEB" | "APP";
+
+  /** Cómo se aprobó: "APP" (desde la app de la cuenta) o "PANEL". */
+  @Column({ type: "text", nullable: true })
+  approvedVia!: string | null;
+
+  /**
+   * Ventana privada o equipo compartido: cerrar la ventana cuenta como cerrar
+   * la sesión (ver windowClosedAt).
+   */
+  @Column({ type: "boolean", default: false })
+  ephemeral!: boolean;
+
+  /** Última vez que el navegador avisó que se cerró la ventana del panel. */
+  @Column({ type: "timestamptz", nullable: true })
+  windowClosedAt!: Date | null;
+
+  @Column({ type: "timestamptz", nullable: true })
+  signedOutAt!: Date | null;
+
+  /** Pausada desde la app: no puede usarse hasta que se reactive. */
+  @Column({ type: "timestamptz", nullable: true })
+  pausedAt!: Date | null;
+
+  /** Nombre que le pone la persona desde la app para reconocerla. */
+  @Column({ type: "text", nullable: true })
+  customName!: string | null;
+
   @CreateDateColumn({ type: "timestamptz" })
   createdAt!: Date;
 

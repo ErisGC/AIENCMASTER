@@ -14,6 +14,7 @@ import { AdminSessionService } from "./admin-session.service";
 import { AdminLoginDto } from "./dto/admin-login.dto";
 import { BootstrapRootDto } from "./dto/bootstrap-root.dto";
 import { RecoverRootDeviceDto } from "./dto/recover-root-device.dto";
+import { AdminAuthGuard } from "./guards/admin-auth.guard";
 import { AdminOriginGuard } from "./guards/admin-origin.guard";
 import type { AdminRequest } from "./admin-security.types";
 
@@ -71,6 +72,23 @@ export class AdminAuthController {
     @Res({ passthrough: true }) reply: FastifyReply,
   ) {
     return this.authService.logout(req, reply);
+  }
+
+  /**
+   * Señal de vida del panel abierto (cada minuto mientras se ve). El guard
+   * valida la sesión y actualiza la última actividad del dispositivo; la app
+   * la usa para mostrar si la sesión está en uso.
+   */
+  @Post("ping")
+  @UseGuards(AdminAuthGuard)
+  ping() {
+    return { ok: true };
+  }
+
+  /** El navegador avisa que se cerró la ventana del panel. */
+  @Post("window-closed")
+  windowClosed(@Req() req: AdminRequest) {
+    return this.sessionService.markWindowClosed(req);
   }
 
   @Get("session")

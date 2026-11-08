@@ -38,6 +38,7 @@ export type AdminSessionResponse = {
     | "REJECTED"
     | "REVOKED"
     | "INACTIVE_ACCOUNT"
+    | "PAUSED"
     | "ACTIVE";
   bootstrapAvailable: boolean;
   account?: {
@@ -55,12 +56,17 @@ export type AdminSessionResponse = {
     roleScope: AdminDeviceScope;
     status: AdminDeviceStatus;
     lastSeenAt: string | null;
+    clientKind: "WEB" | "APP";
+    /** Tiene los poderes del administrador principal (ver linked-devices.rules). */
+    principal: boolean;
   };
   accessRequest?: {
     id: string;
     status: string;
     requestedAt: string;
     resolvedAt: string | null;
+    approvalChannel: string;
+    confirmCode: string | null;
   };
 };
 

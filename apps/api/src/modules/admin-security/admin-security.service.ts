@@ -102,6 +102,10 @@ export class AdminSecurityService {
       ipLastSeen: device.ipLastSeen,
       roleScope: device.roleScope,
       status: device.status,
+      clientKind: device.clientKind ?? "WEB",
+      customName: device.customName,
+      paused: Boolean(device.pausedAt),
+      approvedVia: device.approvedVia,
       approvedAt: device.approvedAt?.toISOString() ?? null,
       revokedAt: device.revokedAt?.toISOString() ?? null,
       lastSeenAt: device.lastSeenAt?.toISOString() ?? null,
@@ -291,6 +295,10 @@ export class AdminSecurityService {
       device.revokedAt = null;
       device.trustedTokenHash = null;
       device.approvedByDeviceId = actor.device.id;
+      device.approvedVia = "PANEL";
+      device.signedOutAt = null;
+      device.pausedAt = null;
+      device.windowClosedAt = null;
       await deviceRepo.save(device);
 
       await this.auditService.log(

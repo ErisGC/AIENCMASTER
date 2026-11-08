@@ -91,4 +91,16 @@ export class AdminAccessRequest {
 
   @Column({ type: "text", nullable: true })
   notes!: string | null;
+
+  /**
+   * Número de dos cifras que la web muestra y que hay que elegir en la app
+   * para aprobar (evita aprobar por error un ingreso ajeno). Solo existe
+   * cuando la solicitud se aprueba desde la app ("APP").
+   */
+  @Column({ type: "text", nullable: true })
+  confirmCode!: string | null;
+
+  /** Por dónde se aprueba: "APP" (la app de la cuenta) o "PANEL". */
+  @Column({ type: "text", nullable: true })
+  approvalChannel!: string | null;
 }

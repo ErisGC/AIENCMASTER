@@ -26,6 +26,7 @@ import { AdminDeviceScope } from "./enums/admin-device-scope.enum";
 import { AdminDeviceStatus } from "./enums/admin-device-status.enum";
 import { AdminRole } from "./enums/admin-role.enum";
 import { AdminRequest } from "./admin-security.types";
+import { generateConfirmCode, isActiveKey } from "./linked-devices.rules";
 
 type DeviceInput = {
   deviceId: string;
@@ -623,6 +624,11 @@ export class AdminAuthService {
       browser: dto.browser,
     };
 
+    // La app del teléfono se reconoce por su origen (el guard de origen ya
+    // validó que sea uno permitido). Todo lo demás es un navegador.
+    const clientKind: "WEB" | "APP" = this.isAppRequest(req) ? "APP" : "WEB";
+    const ephemeral = clientKind === "WEB" && dto.ephemeral === true;
+
     const existingDevice = await this.deviceRepo.findOne({
       where: { deviceId: dto.deviceId },
     });
@@ -723,8 +729,29 @@ export class AdminAuthService {
     if (
       existingDevice &&
       existingDevice.adminAccountId === account.id &&
+      existingDevice.status === AdminDeviceStatus.APPROVED &&
+      existingDevice.pausedAt
+    ) {
+      // Pausado desde la app: la contraseña no basta, hay que reactivarlo
+      // desde allá.
+      this.resetRateLimit("admin-login", req, username);
+      return {
+        status: "PAUSED",
+        account: this.sessionService.serializeAccount(account),
+        device: this.sessionService.serializeDevice(existingDevice, account),
+      };
+    }
+
+    if (
+      existingDevice &&
+      existingDevice.adminAccountId === account.id &&
       existingDevice.status === AdminDeviceStatus.APPROVED
     ) {
+      if (existingDevice.clientKind !== "APP") {
+        existingDevice.clientKind = clientKind;
+      }
+      existingDevice.ephemeral = ephemeral;
+      existingDevice.windowClosedAt = null;
       existingDevice.deviceName = deviceInput.deviceName;
       existingDevice.platform = deviceInput.platform;
       existingDevice.browser = deviceInput.browser;
@@ -757,7 +784,7 @@ export class AdminAuthService {
       return {
         status: "ACTIVE",
         account: this.sessionService.serializeAccount(account),
-        device: this.sessionService.serializeDevice(existingDevice),
+        device: this.sessionService.serializeDevice(existingDevice, account),
       };
     }
 
@@ -836,6 +863,19 @@ export class AdminAuthService {
     );
 
     if (pendingRequest) {
+      // Solicitud creada cuando la cuenta aún no tenía su app como llave (o
+      // antes de existir este mecanismo): si ahora la tiene, pasa a aprobarse
+      // desde la app con su número, en vez de esperar a la principal.
+      if (
+        pendingRequest.approvalChannel !== "APP" &&
+        clientKind === "WEB" &&
+        (await this.hasActiveKey(account.id, deviceInput.deviceId))
+      ) {
+        pendingRequest.approvalChannel = "APP";
+        pendingRequest.confirmCode = generateConfirmCode();
+        await this.accessRequestRepo.save(pendingRequest);
+      }
+
       await this.sessionService.issuePendingSession(
         reply,
         account,
@@ -851,16 +891,14 @@ export class AdminAuthService {
           existingDevice && existingDevice.adminAccountId === account.id
             ? this.sessionService.serializeDevice(existingDevice)
             : undefined,
-        accessRequest: {
-          id: pendingRequest.id,
-          status: pendingRequest.status,
-          requestedAt: pendingRequest.requestedAt,
-          resolvedAt: pendingRequest.resolvedAt,
-        },
+        accessRequest: this.pendingInfo(pendingRequest),
       };
     }
 
-    const device = await this.upsertPendingDevice(account, deviceInput, req);
+    const device = await this.upsertPendingDevice(account, deviceInput, req, {
+      clientKind,
+      ephemeral,
+    });
     const accessRequest = await this.createPendingAccessRequest(
       account,
       device,
@@ -894,13 +932,47 @@ export class AdminAuthService {
       status: "PENDING",
       account: this.sessionService.serializeAccount(account),
       device: this.sessionService.serializeDevice(device),
-      accessRequest: {
-        id: accessRequest.id,
-        status: accessRequest.status,
-        requestedAt: accessRequest.requestedAt,
-        resolvedAt: accessRequest.resolvedAt,
-      },
+      accessRequest: this.pendingInfo(accessRequest),
     };
+  }
+
+  /**
+   * Datos de la solicitud pendiente para quien la hizo: incluye el número que
+   * hay que elegir en la app cuando se aprueba por ahí.
+   */
+  private pendingInfo(request: AdminAccessRequest) {
+    return {
+      id: request.id,
+      status: request.status,
+      requestedAt: request.requestedAt,
+      resolvedAt: request.resolvedAt,
+      approvalChannel: request.approvalChannel ?? "PANEL",
+      confirmCode: request.confirmCode ?? null,
+    };
+  }
+
+  private isAppRequest(req: AdminRequest) {
+    const norm = (v: string | undefined) =>
+      (v ?? "").trim().toLowerCase().replace(/\/+$/, "");
+    const mobile = norm(process.env.MOBILE_APP_ORIGIN);
+    const origin = req.headers.origin;
+    return (
+      mobile.length > 0 && typeof origin === "string" && norm(origin) === mobile
+    );
+  }
+
+  /** ¿La cuenta tiene una app aprobada (distinta de este dispositivo)? */
+  private async hasActiveKey(accountId: string, exceptDeviceId?: string) {
+    const apps = await this.deviceRepo.find({
+      where: {
+        adminAccountId: accountId,
+        clientKind: "APP",
+        status: AdminDeviceStatus.APPROVED,
+      },
+    });
+    return (apps ?? []).some(
+      (d) => isActiveKey(d) && d.deviceId !== (exceptDeviceId ?? ""),
+    );
   }
 
   async logout(req: AdminRequest, reply: FastifyReply) {
@@ -914,7 +986,26 @@ export class AdminAuthService {
         },
       });
 
-      if (device?.trustedTokenHash) {
+      // Navegador de una cuenta que tiene su app como llave: cerrar sesión lo
+      // desaprueba y para volver a entrar se aprueba otra vez desde la app.
+      // Sin llave (cuentas que no usan la app) se conserva el comportamiento
+      // de siempre para no obligar a pedir aprobación en cada ingreso.
+      const desaprobar =
+        device?.clientKind === "WEB" &&
+        device.status === AdminDeviceStatus.APPROVED &&
+        (await this.hasActiveKey(payload.accountId, device.deviceId));
+
+      if (device && desaprobar) {
+        device.status = AdminDeviceStatus.SIGNED_OUT;
+        device.signedOutAt = new Date();
+        device.trustedTokenHash = null;
+        device.windowClosedAt = null;
+        if (device.roleScope === AdminDeviceScope.ROOT_DEVICE) {
+          // Sus poderes de principal vuelven al aprobarlo con la app.
+          device.roleScope = AdminDeviceScope.APPROVED_DEVICE;
+        }
+        await this.deviceRepo.save(device);
+      } else if (device?.trustedTokenHash) {
         device.trustedTokenHash = null;
         await this.deviceRepo.save(device);
       }
@@ -922,7 +1013,7 @@ export class AdminAuthService {
       await this.auditService.log({
         actorAdminAccountId: payload.accountId,
         actorDeviceId: device?.id ?? null,
-        actionType: "LOGOUT",
+        actionType: desaprobar ? "LOGOUT_DEVICE_SIGNED_OUT" : "LOGOUT",
         targetType: "ADMIN_ACCOUNT",
         targetId: payload.accountId,
         description: "Cierre de sesión administrativo",
@@ -970,6 +1061,10 @@ export class AdminAuthService {
     account: AdminAccount,
     deviceInput: DeviceInput,
     req: AdminRequest,
+    cliente: { clientKind: "WEB" | "APP"; ephemeral: boolean } = {
+      clientKind: "WEB",
+      ephemeral: false,
+    },
   ) {
     const device =
       (await this.deviceRepo.findOne({
@@ -992,6 +1087,12 @@ export class AdminAuthService {
     device.approvedAt = null;
     device.revokedAt = null;
     device.lastSeenAt = new Date();
+    device.clientKind = cliente.clientKind;
+    device.ephemeral = cliente.ephemeral;
+    device.approvedVia = null;
+    device.windowClosedAt = null;
+    device.signedOutAt = null;
+    device.pausedAt = null;
 
     return this.deviceRepo.save(device);
   }
@@ -1001,6 +1102,12 @@ export class AdminAuthService {
     device: AdminDevice,
     req: AdminRequest,
   ) {
+    // Un navegador de una cuenta con su app como llave se aprueba desde esa
+    // app, confirmando el número que muestra la web. Si no hay llave, lo
+    // aprueba la administración principal como siempre.
+    const porApp =
+      device.clientKind === "WEB" &&
+      (await this.hasActiveKey(account.id, device.deviceId));
     return this.accessRequestRepo.save(
       this.accessRequestRepo.create({
         requestedUsername: account.username,
@@ -1012,6 +1119,8 @@ export class AdminAuthService {
         userAgent: device.userAgent,
         ip: this.sessionService.getRequestIp(req),
         status: AdminAccessRequestStatus.PENDING,
+        approvalChannel: porApp ? "APP" : "PANEL",
+        confirmCode: porApp ? generateConfirmCode() : null,
       }),
     );
   }

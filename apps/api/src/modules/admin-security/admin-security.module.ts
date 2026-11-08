@@ -10,6 +10,8 @@ import { AdminUploadTicketsController } from "./admin-upload-tickets.controller"
 import { AdminAccessRequest } from "./admin-access-request.entity";
 import { AdminActionLog } from "./admin-action-log.entity";
 import { AdminAuthController } from "./admin-auth.controller";
+import { AdminLinkedDevicesController } from "./admin-linked-devices.controller";
+import { AdminLinkedDevicesService } from "./admin-linked-devices.service";
 import { AdminAuthService } from "./admin-auth.service";
 import { AdminAssignmentsMigratorService } from "./admin-assignments-migrator.service";
 import { AdminAuditService } from "./admin-audit.service";
@@ -54,9 +56,11 @@ import { PermissionsService } from "./permissions/permissions.service";
     PublicInvitationsController,
     AdminProfileController,
     AdminUploadTicketsController,
+    AdminLinkedDevicesController,
   ],
   providers: [
     AdminAuthService,
+    AdminLinkedDevicesService,
     AdminAuditService,
     AdminInvitationsService,
     AdminRateLimitService,

@@ -27,6 +27,7 @@ import {
   AuthenticatedAdminContext,
 } from "./admin-security.types";
 import { rutaDeSubidaDirecta } from "./direct-upload-routes";
+import { isEphemeralClosed, isPrincipalDevice } from "./linked-devices.rules";
 import { AdminAccessRequestStatus } from "./enums/admin-access-request-status.enum";
 import { AdminDeviceScope } from "./enums/admin-device-scope.enum";
 import { AdminDeviceStatus } from "./enums/admin-device-status.enum";
@@ -438,7 +439,7 @@ export class AdminSessionService {
     };
   }
 
-  serializeDevice(device: AdminDevice) {
+  serializeDevice(device: AdminDevice, account?: AdminAccount) {
     return {
       id: device.id,
       deviceId: device.deviceId,
@@ -446,6 +447,8 @@ export class AdminSessionService {
       roleScope: device.roleScope,
       status: device.status,
       lastSeenAt: device.lastSeenAt?.toISOString() ?? null,
+      clientKind: device.clientKind ?? "WEB",
+      principal: account ? isPrincipalDevice(account, device) : false,
     };
   }
 
@@ -455,7 +458,44 @@ export class AdminSessionService {
       status: request.status,
       requestedAt: request.requestedAt.toISOString(),
       resolvedAt: request.resolvedAt?.toISOString() ?? null,
+      approvalChannel: request.approvalChannel ?? "PANEL",
+      confirmCode: request.confirmCode ?? null,
     };
+  }
+
+  /** Ventana privada cerrada: el navegador deja de estar aprobado. */
+  private async signOutClosedEphemeral(device: AdminDevice) {
+    device.status = AdminDeviceStatus.SIGNED_OUT;
+    device.signedOutAt = new Date();
+    device.trustedTokenHash = null;
+    if (device.roleScope === AdminDeviceScope.ROOT_DEVICE) {
+      device.roleScope = AdminDeviceScope.APPROVED_DEVICE;
+    }
+    await this.deviceRepo.save(device);
+  }
+
+  /**
+   * El navegador avisa que se cerró la ventana del panel. Cerrar la página no
+   * cierra la sesión; solo se anota para mostrarlo en la app y, en ventanas
+   * privadas, para darla por cerrada si no vuelve (ver isEphemeralClosed).
+   */
+  async markWindowClosed(req: AdminRequest) {
+    const payload = await this.readSession(req);
+    if (!payload || payload.state !== "ACTIVE") return { ok: true };
+    const device = await this.deviceRepo.findOne({
+      where: { deviceId: payload.deviceId, adminAccountId: payload.accountId },
+    });
+    const trustedToken = req.cookies?.[ADMIN_TRUSTED_DEVICE_COOKIE];
+    if (
+      device &&
+      device.trustedTokenHash &&
+      trustedToken &&
+      this.hashTrustedToken(trustedToken) === device.trustedTokenHash
+    ) {
+      device.windowClosedAt = new Date();
+      await this.deviceRepo.save(device);
+    }
+    return { ok: true };
   }
 
   private async markRequestExpired(request: AdminAccessRequest) {
@@ -575,6 +615,20 @@ export class AdminSessionService {
       };
     }
 
+    // Solicitud cancelada mientras la web esperaba (por ejemplo, se eligió un
+    // número equivocado en la app): la espera termina y se vuelve al ingreso.
+    if (
+      payload.state === "PENDING" &&
+      accessRequest?.status === AdminAccessRequestStatus.EXPIRED &&
+      device?.status === AdminDeviceStatus.PENDING
+    ) {
+      this.clearAuthCookies(reply);
+      return {
+        status: "UNAUTHENTICATED",
+        bootstrapAvailable,
+      };
+    }
+
     if (payload.state === "ACTIVE") {
       if (!device || device.adminAccountId !== account.id) {
         this.clearAuthCookies(reply);
@@ -595,7 +649,7 @@ export class AdminSessionService {
           status: "REVOKED",
           bootstrapAvailable,
           account: this.serializeAccount(account),
-          device: this.serializeDevice(device),
+          device: this.serializeDevice(device, account),
         };
       }
 
@@ -610,7 +664,7 @@ export class AdminSessionService {
           status: "REJECTED",
           bootstrapAvailable,
           account: this.serializeAccount(account),
-          device: this.serializeDevice(device),
+          device: this.serializeDevice(device, account),
           accessRequest: accessRequest
             ? this.serializeAccessRequest(accessRequest)
             : undefined,
@@ -628,11 +682,30 @@ export class AdminSessionService {
             status: "PENDING",
             bootstrapAvailable,
             account: this.serializeAccount(account),
-            device: this.serializeDevice(device),
+            device: this.serializeDevice(device, account),
             accessRequest: this.serializeAccessRequest(accessRequest),
           };
         }
 
+        this.clearAuthCookies(reply);
+        return {
+          status: "UNAUTHENTICATED",
+          bootstrapAvailable,
+        };
+      }
+
+      if (device.pausedAt) {
+        // Se conserva la sesión: al reactivarla desde la app sigue igual.
+        return {
+          status: "PAUSED",
+          bootstrapAvailable,
+          account: this.serializeAccount(account),
+          device: this.serializeDevice(device, account),
+        };
+      }
+
+      if (isEphemeralClosed(device)) {
+        await this.signOutClosedEphemeral(device);
         this.clearAuthCookies(reply);
         return {
           status: "UNAUTHENTICATED",
@@ -653,6 +726,11 @@ export class AdminSessionService {
         };
       }
 
+      // La sesión sigue viva (una recarga, por ejemplo): ya no cuenta como
+      // ventana cerrada.
+      device.lastSeenAt = new Date();
+      await this.deviceRepo.save(device);
+
       // Renovación deslizante: esta rama (dispositivo ROOT) devolvía ACTIVE
       // sin refrescar las cookies, así que la sesión caducaba por antigüedad
       // aunque el admin siguiera usando la app. Reescribimos ambas cookies con
@@ -670,7 +748,21 @@ export class AdminSessionService {
         status: "ACTIVE",
         bootstrapAvailable,
         account: this.serializeAccount(account),
-        device: this.serializeDevice(device),
+        device: this.serializeDevice(device, account),
+      };
+    }
+
+    if (
+      device &&
+      device.adminAccountId === account.id &&
+      device.status === AdminDeviceStatus.APPROVED &&
+      device.pausedAt
+    ) {
+      return {
+        status: "PAUSED",
+        bootstrapAvailable,
+        account: this.serializeAccount(account),
+        device: this.serializeDevice(device, account),
       };
     }
 
@@ -687,7 +779,7 @@ export class AdminSessionService {
         status: "ACTIVE",
         bootstrapAvailable,
         account: this.serializeAccount(account),
-        device: this.serializeDevice(device),
+        device: this.serializeDevice(device, account),
       };
     }
 
@@ -705,7 +797,7 @@ export class AdminSessionService {
         status: "REVOKED",
         bootstrapAvailable,
         account: this.serializeAccount(account),
-        device: this.serializeDevice(device),
+        device: this.serializeDevice(device, account),
       };
     }
 
@@ -780,6 +872,15 @@ export class AdminSessionService {
 
     if (device.status !== AdminDeviceStatus.APPROVED) {
       throw new ForbiddenException("Device is not approved");
+    }
+
+    if (device.pausedAt) {
+      throw new ForbiddenException("Esta sesión está pausada desde la app.");
+    }
+
+    if (isEphemeralClosed(device)) {
+      await this.signOutClosedEphemeral(device);
+      throw new UnauthorizedException("La ventana privada se cerró.");
     }
 
     const trustedToken = req.cookies?.[ADMIN_TRUSTED_DEVICE_COOKIE];
