@@ -11,18 +11,18 @@ import 'core/router.dart';
 import 'core/state/auth_state.dart';
 import 'core/state/locator.dart';
 import 'core/theme/app_theme.dart';
+import 'core/theme/gem_palette.dart';
+import 'core/theme/theme_controller.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  SystemChrome.setSystemUIOverlayStyle(
-    const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.light,
-      systemNavigationBarColor: Color(0xFF0B1220),
-    ),
-  );
   await initializeDateFormatting('es');
+  // Locator.init carga primero la tonalidad guardada y ajusta las barras del
+  // sistema (ver ThemeController), así la app no arranca con la otra.
   await Locator.init();
+  SystemChrome.setSystemUIOverlayStyle(
+    ThemeController.overlayStyleFor(GemPalette.current),
+  );
   await Locator.authState.bootstrap();
   runApp(const AdminApp());
 }
@@ -48,6 +48,8 @@ class _AdminAppState extends State<AdminApp> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    Locator.theme.addListener(_onThemeChanged);
+    Locator.authState.addListener(_onAuthChanged);
     _router = buildRouter();
     _appLinks = AppLinks();
 
@@ -64,6 +66,8 @@ class _AdminAppState extends State<AdminApp> with WidgetsBindingObserver {
   @override
   void dispose() {
     _linkSub?.cancel();
+    Locator.theme.removeListener(_onThemeChanged);
+    Locator.authState.removeListener(_onAuthChanged);
     Locator.authState.removeListener(_consumePendingLink);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
@@ -73,7 +77,10 @@ class _AdminAppState extends State<AdminApp> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.hidden) {
-      _pausedAt = DateTime.now();
+      // Se guarda solo la PRIMERA salida. Al volver, Android pasa otra vez
+      // por "hidden" justo antes de "resumed"; antes eso reiniciaba la hora
+      // y el bloqueo por inactividad nunca llegaba a activarse.
+      _pausedAt ??= DateTime.now();
     } else if (state == AppLifecycleState.resumed) {
       final pausedAt = _pausedAt;
       _pausedAt = null;
@@ -82,6 +89,22 @@ class _AdminAppState extends State<AdminApp> with WidgetsBindingObserver {
         // Volvió tras >2 min fuera: exigir re-autenticación local.
         Locator.authState.lockForInactivity();
       }
+    }
+  }
+
+  /// Si la pantalla de bloqueo "encima" ya está abierta.
+  bool _lockOverlayShown = false;
+
+  /// Bloqueo por inactividad: se abre la pantalla de bloqueo encima de lo que
+  /// esté abierto, en vez de reemplazar la navegación (antes se perdía el
+  /// formulario a medio llenar y se volvía a Métricas).
+  void _onAuthChanged() {
+    final locked = Locator.authState.lockedInPlace;
+    if (locked && !_lockOverlayShown) {
+      _lockOverlayShown = true;
+      _router.push('/locked');
+    } else if (!locked) {
+      _lockOverlayShown = false;
     }
   }
 
@@ -95,7 +118,10 @@ class _AdminAppState extends State<AdminApp> with WidgetsBindingObserver {
     // Si navegáramos ahora, el destino con el token se perdería y el invitado
     // acabaría en la pantalla inicial sin su invitación (que es justo lo que
     // pasaba). Guardamos el enlace y lo aplicamos al terminar el arranque.
-    if (Locator.authState.phase == AuthPhase.loading) {
+    // Tampoco se navega con la app bloqueada: el enlace cambiaría la pantalla
+    // de debajo y podría quitar el bloqueo de en medio. Se aplica al desbloquear.
+    final fase = Locator.authState.phase;
+    if (fase == AuthPhase.loading || fase == AuthPhase.locked) {
       _pendingLink = uri;
       Locator.authState.addListener(_consumePendingLink);
       return;
@@ -104,7 +130,8 @@ class _AdminAppState extends State<AdminApp> with WidgetsBindingObserver {
   }
 
   void _consumePendingLink() {
-    if (Locator.authState.phase == AuthPhase.loading) return;
+    final fase = Locator.authState.phase;
+    if (fase == AuthPhase.loading || fase == AuthPhase.locked) return;
     Locator.authState.removeListener(_consumePendingLink);
     final uri = _pendingLink;
     _pendingLink = null;
@@ -120,12 +147,31 @@ class _AdminAppState extends State<AdminApp> with WidgetsBindingObserver {
     }
   }
 
+  /// Cambio de tonalidad. Los colores de GemPalette no son constantes ni
+  /// dependen del Theme, así que se marca para reconstruir todo el árbol
+  /// (como hace un hot reload): cada pantalla se vuelve a pintar con la nueva
+  /// tonalidad sin perder su estado ni la navegación.
+  void _onThemeChanged() {
+    setState(() {});
+    void reconstruir(Element el) {
+      el.markNeedsBuild();
+      el.visitChildren(reconstruir);
+    }
+
+    (context as Element).visitChildren(reconstruir);
+  }
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp.router(
       title: 'AIENC Admin',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.build(),
+      theme: AppTheme.build(GemColors.light),
+      darkTheme: AppTheme.build(GemColors.dark),
+      themeMode: Locator.theme.mode,
+      // El cambio es inmediato: si el Theme se animara, una parte de la
+      // pantalla fundiría colores y otra (GemPalette) saltaría de golpe.
+      themeAnimationDuration: Duration.zero,
       routerConfig: _router,
       // Forzamos español-Colombia en TODA la UI del sistema (date pickers,
       // diálogos, tooltips de Material, mensajes de accesibilidad, etc.).

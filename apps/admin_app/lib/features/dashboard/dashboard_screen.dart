@@ -46,6 +46,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void initState() {
     super.initState();
     _load();
+    Locator.reports.cambios.addListener(_alCambiar);
+  }
+
+  @override
+  void dispose() {
+    Locator.reports.cambios.removeListener(_alCambiar);
+    super.dispose();
+  }
+
+  void _alCambiar() {
+    if (mounted) _load();
   }
 
   Future<void> _load() async {
@@ -66,6 +77,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
       if (mounted) setState(() => _loading = false);
     }
   }
+
+  /// Sin datos (cargando o con error) las cifras van como "—": un $0 se
+  /// confundía con un período sin ofrendas.
+  String _cifra(String Function() valor) => _metrics == null ? '—' : valor();
 
   @override
   Widget build(BuildContext context) {
@@ -102,34 +117,34 @@ class _DashboardScreenState extends State<DashboardScreen> {
             children: [
               KpiTile(
                 label: 'Ofrendas',
-                value: _formatCop(offerings),
+                value: _cifra(() => _formatCop(offerings)),
                 subtitle: 'Total del período',
                 borderGradient: GemPalette.sapphireEmeraldGradient,
                 icon: Icons.savings_outlined,
               ),
               KpiTile(
                 label: 'Egresos',
-                value: _formatCop(expenses),
+                value: _cifra(() => _formatCop(expenses)),
                 subtitle: 'Gastos reportados',
-                borderGradient: const LinearGradient(
+                borderGradient: LinearGradient(
                   colors: [GemPalette.ruby, GemPalette.topaz],
                 ),
                 icon: Icons.payments_outlined,
               ),
               KpiTile(
                 label: 'Balance',
-                value: _formatCop(net),
+                value: _cifra(() => _formatCop(net)),
                 subtitle: 'Ofrendas − egresos',
-                borderGradient: const LinearGradient(
+                borderGradient: LinearGradient(
                   colors: [GemPalette.topaz, GemPalette.emerald],
                 ),
                 icon: Icons.account_balance_wallet_outlined,
               ),
               KpiTile(
                 label: 'Asistencia',
-                value: NumberFormat.decimalPattern('es').format(attendance),
+                value: _cifra(() => NumberFormat.decimalPattern('es').format(attendance)),
                 subtitle: 'Suma del período',
-                borderGradient: const LinearGradient(
+                borderGradient: LinearGradient(
                   colors: [GemPalette.sapphire, GemPalette.amethyst],
                 ),
                 icon: Icons.group_outlined,
@@ -217,7 +232,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return header;
   }
 
-  Widget _emptyChart() => const Center(
+  Widget _emptyChart() => Center(
         child: Text(
           'Sin datos en este rango',
           style: TextStyle(color: GemPalette.textMuted),
@@ -263,7 +278,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             reservedSize: 44,
             getTitlesWidget: (v, _) => Text(
               _shortCop(v),
-              style: const TextStyle(
+              style: TextStyle(
                 color: GemPalette.textMuted,
                 fontSize: 10,
               ),
@@ -281,7 +296,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               if (idx < 0 || idx >= data.length) return const SizedBox();
               return Text(
                 _formatMonth(data[idx].month),
-                style: const TextStyle(
+                style: TextStyle(
                   color: GemPalette.textMuted,
                   fontSize: 10,
                 ),
@@ -338,7 +353,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             reservedSize: 30,
             getTitlesWidget: (v, _) => Text(
               v.toInt().toString(),
-              style: const TextStyle(
+              style: TextStyle(
                 color: GemPalette.textMuted,
                 fontSize: 10,
               ),
@@ -355,7 +370,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               final idx = v.toInt();
               if (idx < 0 || idx >= data.length) return const SizedBox();
               return Text(_formatMonth(data[idx].month),
-                  style: const TextStyle(
+                  style: TextStyle(
                       color: GemPalette.textMuted, fontSize: 10));
             },
           ),
@@ -392,7 +407,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       initialDateRange: DateTimeRange(start: _from, end: _to),
       builder: (ctx, child) => Theme(
         data: Theme.of(ctx).copyWith(
-          colorScheme: const ColorScheme.dark(
+          colorScheme: Theme.of(ctx).colorScheme.copyWith(
             primary: GemPalette.sapphire,
             onPrimary: Colors.white,
           ),

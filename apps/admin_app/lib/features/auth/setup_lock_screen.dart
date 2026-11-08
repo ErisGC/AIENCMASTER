@@ -7,6 +7,7 @@ import '../../core/services/local_auth_service.dart';
 import '../../core/state/locator.dart';
 import '../../core/theme/gem_palette.dart';
 import '../../core/widgets/gem_widgets.dart';
+import '../../core/widgets/theme_toggle.dart';
 
 /// Elección de cómo proteger la app. Es OPCIONAL y se pregunta UNA sola vez:
 /// la decisión queda guardada y en los siguientes ingresos se respeta.
@@ -129,7 +130,7 @@ class _SetupLockScreenState extends State<SetupLockScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Proteger la app')),
+      appBar: GemAppBar(title: const Text('Proteger la app')),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(20),
@@ -145,7 +146,7 @@ class _SetupLockScreenState extends State<SetupLockScreen> {
                       style: Theme.of(context).textTheme.headlineSmall,
                     ),
                     const SizedBox(height: 6),
-                    const Text(
+                    Text(
                       'Esto es opcional y solo se pregunta una vez. Puedes '
                       'cambiarlo después desde Seguridad. Pase lo que pase, '
                       'todo lo que hagas queda registrado en la auditoría.',
@@ -161,7 +162,7 @@ class _SetupLockScreenState extends State<SetupLockScreen> {
                         onPressed: _useBiometrics,
                       ),
                       const SizedBox(height: 8),
-                      const Text(
+                      Text(
                         'Recomendado: usa la huella o el rostro que ya tienes '
                         'configurado en el teléfono.',
                         style: TextStyle(
@@ -169,7 +170,7 @@ class _SetupLockScreenState extends State<SetupLockScreen> {
                       ),
                       const SizedBox(height: 16),
                     ] else ...[
-                      const Text(
+                      Text(
                         'Este teléfono no tiene huella o rostro configurado. '
                         'Puedes usar un PIN o entrar sin protección.',
                         style: TextStyle(

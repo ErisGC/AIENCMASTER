@@ -42,6 +42,10 @@ class LocalAuthService {
   static const _kPinFails = 'local_pin_fails';
   static const _kPinLockUntil = 'local_pin_lock_until';
   static const _kLastUser = 'local_last_user';
+
+  /// Nombre de pila para saludar en la pantalla de bloqueo ("Hola, Laura"),
+  /// incluso en un arranque en frío con PIN, cuando la cuenta aún no se lee.
+  static const _kLastName = 'local_last_name';
   static const _kBiometricEnabled = 'local_biometric_enabled';
   static const _kLockMode = 'local_lock_mode';
   static const _kLastPasswordAt = 'local_last_password_at';
@@ -261,6 +265,16 @@ class LocalAuthService {
     return p.getString(_kLastUser);
   }
 
+  Future<void> setLastName(String nombre) async {
+    final p = await _prefs;
+    await p.setString(_kLastName, nombre);
+  }
+
+  Future<String?> lastName() async {
+    final p = await _prefs;
+    return p.getString(_kLastName);
+  }
+
   /// Borra la protección local. Se usa al CERRAR SESIÓN explícitamente: en ese
   /// dispositivo puede entrar otro admin, así que su protección debe ser suya
   /// (y por eso también se olvida la elección previa).
@@ -271,6 +285,7 @@ class LocalAuthService {
     await p.remove(_kPinFails);
     await p.remove(_kPinLockUntil);
     await p.remove(_kLastUser);
+    await p.remove(_kLastName);
     await p.remove(_kBiometricEnabled);
     await p.remove(_kLockChoiceMade);
     await p.remove(_kLockMode);

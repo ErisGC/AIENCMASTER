@@ -18,6 +18,7 @@ import '../../core/widgets/gem_widgets.dart';
 import 'church_announcements_screen.dart';
 import 'directors_screen.dart';
 import 'studies_screen.dart';
+import '../../core/widgets/theme_toggle.dart';
 
 /// Edición de iglesia. La app cubre ya todo lo que necesita el admin desde
 /// el campo:
@@ -307,7 +308,7 @@ class _ChurchEditScreenState extends State<ChurchEditScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(_initial?.name ?? 'Editar iglesia')),
+      appBar: GemAppBar(title: Text(_initial?.name ?? 'Editar iglesia')),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : SafeArea(
@@ -365,7 +366,7 @@ class _ChurchEditScreenState extends State<ChurchEditScreen> {
             style: Theme.of(context).textTheme.titleMedium,
           ),
           const SizedBox(height: 4),
-          const Text(
+          Text(
             'Gestiona los representantes y los estudios en audio que aparecen '
             'en la página pública de esta iglesia.',
             style: TextStyle(
@@ -377,10 +378,7 @@ class _ChurchEditScreenState extends State<ChurchEditScreen> {
           const SizedBox(height: 6),
           ListTile(
             contentPadding: EdgeInsets.zero,
-            leading: const Icon(
-              Icons.groups_outlined,
-              color: GemPalette.sapphire,
-            ),
+            leading: Icon(Icons.groups_outlined, color: GemPalette.sapphire),
             title: const Text('Representantes'),
             subtitle: const Text('Nombre, cargo, celular, correo y foto'),
             trailing: const Icon(Icons.chevron_right),
@@ -396,10 +394,7 @@ class _ChurchEditScreenState extends State<ChurchEditScreen> {
           const Divider(height: 8),
           ListTile(
             contentPadding: EdgeInsets.zero,
-            leading: const Icon(
-              Icons.campaign_outlined,
-              color: GemPalette.emerald,
-            ),
+            leading: Icon(Icons.campaign_outlined, color: GemPalette.emerald),
             title: const Text('Anuncios de la iglesia'),
             subtitle: const Text('Publica y edita los anuncios locales'),
             trailing: const Icon(Icons.chevron_right),
@@ -415,7 +410,7 @@ class _ChurchEditScreenState extends State<ChurchEditScreen> {
           const Divider(height: 8),
           ListTile(
             contentPadding: EdgeInsets.zero,
-            leading: const Icon(
+            leading: Icon(
               Icons.audiotrack_outlined,
               color: GemPalette.amethyst,
             ),
@@ -476,7 +471,7 @@ class _ChurchEditScreenState extends State<ChurchEditScreen> {
             value: _isActive,
             onChanged: (v) => setState(() => _isActive = v),
             title: const Text('Iglesia activa'),
-            subtitle: const Text(
+            subtitle: Text(
               'Si está inactiva no aparece en el listado público.',
               style: TextStyle(color: GemPalette.textMuted, fontSize: 12),
             ),
@@ -493,7 +488,7 @@ class _ChurchEditScreenState extends State<ChurchEditScreen> {
         children: [
           Text('Imágenes', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 4),
-          const Text(
+          Text(
             'Se suben a Cloudinary al guardar los cambios. Toca el botón '
             'para reemplazar la imagen actual.',
             style: TextStyle(
@@ -549,7 +544,7 @@ class _ChurchEditScreenState extends State<ChurchEditScreen> {
             ],
           ),
           const SizedBox(height: 6),
-          const Text(
+          Text(
             'Toca el mapa para fijar la ubicación de la iglesia, o usa '
             'el botón de tu ubicación actual.',
             style: TextStyle(
@@ -586,7 +581,7 @@ class _ChurchEditScreenState extends State<ChurchEditScreen> {
                           point: _point!,
                           width: 44,
                           height: 44,
-                          child: const Icon(
+                          child: Icon(
                             Icons.location_on,
                             color: GemPalette.emerald,
                             size: 44,
@@ -633,18 +628,14 @@ class _ChurchEditScreenState extends State<ChurchEditScreen> {
               const SizedBox(width: 10),
               if (_point != null)
                 OutlinedButton.icon(
-                  icon: const Icon(
-                    Icons.close,
-                    size: 18,
-                    color: GemPalette.danger,
-                  ),
-                  label: const Text(
+                  icon: Icon(Icons.close, size: 18, color: GemPalette.danger),
+                  label: Text(
                     'Quitar',
                     style: TextStyle(color: GemPalette.danger),
                   ),
                   onPressed: _clearLocation,
                   style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: GemPalette.danger),
+                    side: BorderSide(color: GemPalette.danger),
                   ),
                 ),
             ],
@@ -653,7 +644,7 @@ class _ChurchEditScreenState extends State<ChurchEditScreen> {
             const SizedBox(height: 8),
             Text(
               'Lat ${_point!.latitude}  ·  Lng ${_point!.longitude}',
-              style: const TextStyle(
+              style: TextStyle(
                 color: GemPalette.textMuted,
                 fontSize: 12,
                 fontFamily: 'monospace',
@@ -688,7 +679,7 @@ class _ImageSlot extends StatelessWidget {
       children: [
         Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 12.5,
             fontWeight: FontWeight.w700,
             color: GemPalette.textMuted,
@@ -707,7 +698,7 @@ class _ImageSlot extends StatelessWidget {
           ),
           alignment: Alignment.center,
           child: _imageProvider() == null
-              ? const Icon(
+              ? Icon(
                   Icons.image_outlined,
                   color: GemPalette.textMuted,
                   size: 32,

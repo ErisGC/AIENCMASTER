@@ -8,6 +8,7 @@ import '../../core/models/domain.dart';
 import '../../core/state/locator.dart';
 import '../../core/theme/gem_palette.dart';
 import '../../core/widgets/gem_widgets.dart';
+import '../../core/widgets/theme_toggle.dart';
 
 /// Editor de anuncios. Sirve para crear o editar:
 ///   - Si `existing` es null: crea (modo nuevo).
@@ -30,6 +31,17 @@ class AnnouncementEditScreen extends StatefulWidget {
 }
 
 class _AnnouncementEditScreenState extends State<AnnouncementEditScreen> {
+  /// Ya se escribió algo: "atrás" pregunta antes de descartar.
+  bool _tocado = false;
+
+  void _vigilarCambios() {
+    for (final c in [_title, _description, _author]) {
+      c.addListener(() {
+        if (!_tocado && mounted) setState(() => _tocado = true);
+      });
+    }
+  }
+
   late final TextEditingController _title;
   late final TextEditingController _description;
   late final TextEditingController _author;
@@ -50,6 +62,7 @@ class _AnnouncementEditScreenState extends State<AnnouncementEditScreen> {
     _title = TextEditingController(text: ex?.title ?? '');
     _description = TextEditingController(text: ex?.description ?? '');
     _author = TextEditingController(text: ex?.author ?? '');
+    _vigilarCambios();
   }
 
   @override
@@ -166,8 +179,10 @@ class _AnnouncementEditScreenState extends State<AnnouncementEditScreen> {
         : _isGlobal
             ? 'Nuevo anuncio global'
             : 'Nuevo anuncio de iglesia';
-    return Scaffold(
-      appBar: AppBar(title: Text(title)),
+    return DiscardGuard(
+      dirty: _tocado,
+      child: Scaffold(
+      appBar: GemAppBar(title: Text(title)),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
@@ -176,14 +191,14 @@ class _AnnouncementEditScreenState extends State<AnnouncementEditScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 if (_isGlobal)
-                  const Text(
+                  Text(
                     'Este anuncio se publicará a todos los usuarios del '
                     'sitio público.',
                     style:
                         TextStyle(color: GemPalette.textMuted, height: 1.45),
                   )
                 else
-                  const Text(
+                  Text(
                     'Este anuncio se publicará en la página pública de la '
                     'iglesia activa.',
                     style:
@@ -228,7 +243,7 @@ class _AnnouncementEditScreenState extends State<AnnouncementEditScreen> {
                     ],
                   ),
                   if (_pendingFiles.isEmpty)
-                    const Padding(
+                    Padding(
                       padding: EdgeInsets.symmetric(vertical: 6),
                       child: Text(
                         'Imágenes (jpg, png, webp) o documentos (pdf, doc). '
@@ -268,7 +283,7 @@ class _AnnouncementEditScreenState extends State<AnnouncementEditScreen> {
                             ),
                             child: Text(
                               '📎 ${a.name.isNotEmpty ? a.name : a.format.toUpperCase()}',
-                              style: const TextStyle(
+                              style: TextStyle(
                                   color: GemPalette.emerald, fontSize: 12),
                             ),
                           ),
@@ -276,7 +291,7 @@ class _AnnouncementEditScreenState extends State<AnnouncementEditScreen> {
                     ),
                     const SizedBox(height: 8),
                   ],
-                  const Text(
+                  Text(
                     'Para añadir o quitar adjuntos, abre este anuncio desde '
                     'el panel web — la app sólo permite editar el texto.',
                     style:
@@ -298,6 +313,7 @@ class _AnnouncementEditScreenState extends State<AnnouncementEditScreen> {
           ),
         ),
       ),
+    ),
     );
   }
 }
@@ -353,7 +369,7 @@ class _PendingFileTile extends StatelessWidget {
                       fontSize: 13, fontWeight: FontWeight.w600),
                 ),
                 Text(_sizeLabel(),
-                    style: const TextStyle(
+                    style: TextStyle(
                         color: GemPalette.textMuted, fontSize: 11)),
               ],
             ),

@@ -49,6 +49,17 @@ class _ReportsScreenState extends State<ReportsScreen> {
           .catchError((_) {});
     }
     _load();
+    Locator.reports.cambios.addListener(_alCambiar);
+  }
+
+  @override
+  void dispose() {
+    Locator.reports.cambios.removeListener(_alCambiar);
+    super.dispose();
+  }
+
+  void _alCambiar() {
+    if (mounted) _load();
   }
 
   String? get _churchQuery =>
@@ -187,20 +198,13 @@ class _ReportsScreenState extends State<ReportsScreen> {
           child: _loading
               ? const Center(child: CircularProgressIndicator())
               : _error != null && _items.isEmpty
-              ? Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: GemErrorBanner(message: _error!),
-                )
+              ? GemListMessage(message: _error!, isError: true, onRetry: _load)
               : _items.isEmpty
-              ? const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(24),
-                    child: Text(
+              ? GemListMessage(
+                  icon: Icons.assignment_outlined,
+                  onRetry: _load,
+                  message:
                       'No hay informes para este filtro. Usa el botón "Nuevo informe" para crear el primero.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: GemPalette.textMuted),
-                    ),
-                  ),
                 )
               : RefreshIndicator(
                   onRefresh: _load,
@@ -234,7 +238,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                           ),
                           child: Text(
                             fila,
-                            style: const TextStyle(
+                            style: TextStyle(
                               color: GemPalette.textPrimary,
                               fontWeight: FontWeight.w800,
                               fontSize: 15,
@@ -364,7 +368,7 @@ class _ReportTile extends StatelessWidget {
                   color: GemPalette.textPrimary,
                 ),
               if (report.documentOnly)
-                const GemBadge(
+                GemBadge(
                   label: 'Documento',
                   color: GemPalette.sapphire,
                   icon: Icons.description_outlined,
@@ -382,7 +386,7 @@ class _ReportTile extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               resumen,
-              style: const TextStyle(
+              style: TextStyle(
                 color: GemPalette.textMuted,
                 fontSize: 13,
                 height: 1.4,
@@ -392,21 +396,17 @@ class _ReportTile extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             formatPeriodoInforme(report.periodStart, report.periodEnd),
-            style: const TextStyle(color: GemPalette.textMuted, fontSize: 12),
+            style: TextStyle(color: GemPalette.textMuted, fontSize: 12),
           ),
           if (docs > 0) ...[
             const SizedBox(height: 6),
             Row(
               children: [
-                const Icon(
-                  Icons.attach_file,
-                  size: 15,
-                  color: GemPalette.emerald,
-                ),
+                Icon(Icons.attach_file, size: 15, color: GemPalette.emerald),
                 const SizedBox(width: 4),
                 Text(
                   docs == 1 ? '1 documento' : '$docs documentos',
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: GemPalette.emerald,
                     fontWeight: FontWeight.w600,
                     fontSize: 12,
@@ -472,10 +472,7 @@ class _ReportDetailSheetState extends State<_ReportDetailSheet> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text(
-              'Quitar',
-              style: TextStyle(color: GemPalette.danger),
-            ),
+            child: Text('Quitar', style: TextStyle(color: GemPalette.danger)),
           ),
         ],
       ),
@@ -531,7 +528,7 @@ class _ReportDetailSheetState extends State<_ReportDetailSheet> {
                         color: GemPalette.textPrimary,
                       ),
                     if (r.documentOnly)
-                      const GemBadge(
+                      GemBadge(
                         label: 'Entregado como documento',
                         color: GemPalette.sapphire,
                       ),
@@ -542,11 +539,11 @@ class _ReportDetailSheetState extends State<_ReportDetailSheet> {
                 const SizedBox(height: 6),
                 Text(
                   'Período: ${formatPeriodoInforme(r.periodStart, r.periodEnd)}',
-                  style: const TextStyle(color: GemPalette.textMuted),
+                  style: TextStyle(color: GemPalette.textMuted),
                 ),
                 Text(
                   'Creado por ${r.createdByDisplayName}',
-                  style: const TextStyle(color: GemPalette.textMuted),
+                  style: TextStyle(color: GemPalette.textMuted),
                 ),
                 if (resumen != null && resumen.isNotEmpty) ...[
                   const SizedBox(height: 8),
@@ -554,10 +551,7 @@ class _ReportDetailSheetState extends State<_ReportDetailSheet> {
                 ],
                 if (r.notes.isNotEmpty) ...[
                   const SizedBox(height: 8),
-                  Text(
-                    r.notes,
-                    style: const TextStyle(color: GemPalette.textMuted),
-                  ),
+                  Text(r.notes, style: TextStyle(color: GemPalette.textMuted)),
                 ],
                 const SizedBox(height: 16),
                 Text(
@@ -565,7 +559,7 @@ class _ReportDetailSheetState extends State<_ReportDetailSheet> {
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
                 const SizedBox(height: 4),
-                const Text(
+                Text(
                   'Solo los ven el administrador principal y quien los subió.',
                   style: TextStyle(color: GemPalette.textMuted, fontSize: 12),
                 ),
@@ -598,7 +592,7 @@ class _ReportDetailSheetState extends State<_ReportDetailSheet> {
                               Text(
                                 '${formatBytes(d.sizeBytes)} · ${d.uploadedByDisplayName}, '
                                 '${DateFormat('d MMM yyyy', 'es').format(d.createdAt)}',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   color: GemPalette.textMuted,
                                   fontSize: 11.5,
                                 ),
@@ -623,7 +617,7 @@ class _ReportDetailSheetState extends State<_ReportDetailSheet> {
                           ),
                           IconButton(
                             tooltip: 'Quitar',
-                            icon: const Icon(
+                            icon: Icon(
                               Icons.delete_outline,
                               size: 20,
                               color: GemPalette.danger,

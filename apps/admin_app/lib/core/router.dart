@@ -64,8 +64,11 @@ GoRouter buildRouter() {
         return '/welcome';
       }
 
-      // Locked: forzar /lock.
+      // Locked: forzar /lock. Si se bloqueó por inactividad con todo abierto,
+      // la pantalla de bloqueo (/locked) va encima sin tocar lo de abajo:
+      // main.dart la abre y ella misma se quita al desbloquear.
       if (phase == AuthPhase.locked) {
+        if (Locator.authState.lockedInPlace) return null;
         if (loc == '/lock') return null;
         return '/lock';
       }
@@ -111,6 +114,11 @@ GoRouter buildRouter() {
       GoRoute(
         path: '/lock',
         pageBuilder: (_, state) => _page(state, const LockScreen()),
+      ),
+      GoRoute(
+        path: '/locked',
+        pageBuilder: (_, state) =>
+            _page(state, const LockScreen(inPlace: true)),
       ),
       GoRoute(
         path: '/reauth',
@@ -176,7 +184,7 @@ class _Splash extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 28),
-            const SizedBox(
+            SizedBox(
               width: 22,
               height: 22,
               child: CircularProgressIndicator(

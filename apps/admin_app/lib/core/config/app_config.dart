@@ -21,6 +21,15 @@ class AppConfig {
     defaultValue: 'aiencadmin://app',
   );
 
+  /// Dirección pública del portal. Con ella se arma el enlace de invitación
+  /// que se comparte: en un celular abre la app y en un computador el panel
+  /// web (un enlace aiencadmin:// no se puede tocar en WhatsApp ni abre en un
+  /// computador).
+  static const String webBaseUrl = String.fromEnvironment(
+    'AIENC_WEB_BASE_URL',
+    defaultValue: 'https://aienc.org',
+  );
+
   /// Identificador que enviamos como user-agent para que el backend pueda
   /// distinguir la app de un navegador.
   ///

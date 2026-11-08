@@ -9,6 +9,7 @@ import '../../core/models/domain.dart';
 import '../../core/state/locator.dart';
 import '../../core/theme/gem_palette.dart';
 import '../../core/widgets/gem_widgets.dart';
+import '../../core/widgets/theme_toggle.dart';
 
 const _maxAudioBytes = 25 * 1024 * 1024;
 
@@ -164,7 +165,7 @@ class _StudiesScreenState extends State<StudiesScreen> {
   Widget build(BuildContext context) {
     final df = DateFormat('d MMM yyyy', 'es');
     return Scaffold(
-      appBar: AppBar(title: const Text('Estudios en audio')),
+      appBar: GemAppBar(title: const Text('Estudios en audio')),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : SafeArea(
@@ -175,7 +176,7 @@ class _StudiesScreenState extends State<StudiesScreen> {
                   children: [
                     Text(
                       widget.churchName,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: GemPalette.textMuted,
                         fontSize: 12.5,
                       ),
@@ -191,7 +192,7 @@ class _StudiesScreenState extends State<StudiesScreen> {
                         style: Theme.of(context).textTheme.titleMedium),
                     const SizedBox(height: 8),
                     if (_items.isEmpty)
-                      const Padding(
+                      Padding(
                         padding: EdgeInsets.symmetric(vertical: 18),
                         child: Text(
                           'Aún no hay estudios. Sube el primero arriba.',
@@ -254,7 +255,7 @@ class _StudiesScreenState extends State<StudiesScreen> {
               padding: const EdgeInsets.only(top: 6),
               child: Text(
                 '${_audio!.name}  ·  ${(_audio!.size / (1024 * 1024)).toStringAsFixed(1)} MB',
-                style: const TextStyle(
+                style: TextStyle(
                     color: GemPalette.emerald, fontSize: 12),
               ),
             ),
@@ -284,7 +285,7 @@ class _StudiesScreenState extends State<StudiesScreen> {
               s.teacherName +
                   (s.createdAt != null ? '  ·  ${df.format(s.createdAt!)}' : ''),
               style:
-                  const TextStyle(color: GemPalette.textMuted, fontSize: 12),
+                  TextStyle(color: GemPalette.textMuted, fontSize: 12),
             ),
             if (s.outline != null && s.outline!.trim().isNotEmpty) ...[
               const SizedBox(height: 8),
@@ -305,9 +306,9 @@ class _StudiesScreenState extends State<StudiesScreen> {
                 ),
                 const Spacer(),
                 TextButton.icon(
-                  icon: const Icon(Icons.delete_outline,
+                  icon: Icon(Icons.delete_outline,
                       size: 18, color: GemPalette.danger),
-                  label: const Text('Eliminar',
+                  label: Text('Eliminar',
                       style: TextStyle(color: GemPalette.danger)),
                   onPressed: () => _delete(s),
                 ),

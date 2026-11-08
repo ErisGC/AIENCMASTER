@@ -10,6 +10,8 @@ import '../../core/widgets/gem_widgets.dart';
 import 'account_permissions_screen.dart';
 import 'invitations_screen.dart';
 import '../support/support_screen.dart';
+import '../../core/widgets/theme_toggle.dart';
+import 'linked_devices_screen.dart';
 
 class SecurityScreen extends StatefulWidget {
   const SecurityScreen({
@@ -170,7 +172,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
                                         context,
                                       ).textTheme.titleMedium,
                                     ),
-                                    const Text(
+                                    Text(
                                       'Generar enlaces para nuevos administradores y revocar los pendientes',
                                       style: TextStyle(
                                         color: GemPalette.textMuted,
@@ -181,7 +183,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
                                   ],
                                 ),
                               ),
-                              const Icon(
+                              Icon(
                                 Icons.chevron_right,
                                 color: GemPalette.textMuted,
                               ),
@@ -205,7 +207,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
                               height: 44,
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(12),
-                                gradient: const LinearGradient(
+                                gradient: LinearGradient(
                                   colors: [
                                     GemPalette.amethyst,
                                     GemPalette.sapphire,
@@ -262,7 +264,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
                                     _esPrincipal
                                         ? 'Reportes y sugerencias que te han enviado'
                                         : 'Escríbele al administrador principal: fallos, faltantes o sugerencias',
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       color: GemPalette.textMuted,
                                       fontSize: 12.5,
                                       height: 1.35,
@@ -271,7 +273,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
                                 ],
                               ),
                             ),
-                            const Icon(
+                            Icon(
                               Icons.chevron_right,
                               color: GemPalette.textMuted,
                             ),
@@ -288,7 +290,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
                               height: 44,
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(12),
-                                gradient: const LinearGradient(
+                                gradient: LinearGradient(
                                   colors: [
                                     GemPalette.emerald,
                                     GemPalette.sapphire,
@@ -312,7 +314,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
                                       context,
                                     ).textTheme.titleMedium,
                                   ),
-                                  const Text(
+                                  Text(
                                     'Entra con tu huella, con un PIN, o sin clave. Puedes cambiarlo cuando quieras',
                                     style: TextStyle(
                                       color: GemPalette.textMuted,
@@ -323,7 +325,63 @@ class _SecurityScreenState extends State<SecurityScreen> {
                                 ],
                               ),
                             ),
-                            const Icon(
+                            Icon(
+                              Icons.chevron_right,
+                              color: GemPalette.textMuted,
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      GemCard(
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const LinkedDevicesScreen(),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 44,
+                              height: 44,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(12),
+                                gradient: LinearGradient(
+                                  colors: [
+                                    GemPalette.sapphire,
+                                    GemPalette.amethyst,
+                                  ],
+                                ),
+                              ),
+                              alignment: Alignment.center,
+                              child: const Icon(
+                                Icons.devices_outlined,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Sesiones y dispositivos',
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.titleMedium,
+                                  ),
+                                  Text(
+                                    'Aprueba los ingresos al panel web y ve, pausa o cierra cada sesión',
+                                    style: TextStyle(
+                                      color: GemPalette.textMuted,
+                                      fontSize: 12.5,
+                                      height: 1.35,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Icon(
                               Icons.chevron_right,
                               color: GemPalette.textMuted,
                             ),
@@ -347,7 +405,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
                                 height: 44,
                                 decoration: BoxDecoration(
                                   borderRadius: BorderRadius.circular(12),
-                                  gradient: const LinearGradient(
+                                  gradient: LinearGradient(
                                     colors: [
                                       GemPalette.amethyst,
                                       GemPalette.sapphire,
@@ -371,7 +429,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
                                         context,
                                       ).textTheme.titleMedium,
                                     ),
-                                    const Text(
+                                    Text(
                                       'Registro de todas las acciones del sistema, con su autor y fecha',
                                       style: TextStyle(
                                         color: GemPalette.textMuted,
@@ -382,7 +440,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
                                   ],
                                 ),
                               ),
-                              const Icon(
+                              Icon(
                                 Icons.chevron_right,
                                 color: GemPalette.textMuted,
                               ),
@@ -429,9 +487,9 @@ class _SecurityScreenState extends State<SecurityScreen> {
               color: GemPalette.topaz.withValues(alpha: 0.2),
             ),
             alignment: Alignment.center,
-            child: const Icon(
+            child: Icon(
               Icons.devices_other_outlined,
-              color: GemPalette.topaz,
+              color: GemPalette.topazText,
             ),
           ),
           const SizedBox(width: 12),
@@ -444,7 +502,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
                 const SizedBox(height: 4),
-                const Text(
+                Text(
                   'Por seguridad, la gestión de administradores, permisos, '
                   'dispositivos e historial solo se abre desde el dispositivo '
                   'principal: el navegador donde se creó la cuenta principal, '
@@ -479,7 +537,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
                 a.displayName.isNotEmpty
                     ? a.displayName.substring(0, 1).toUpperCase()
                     : '?',
-                style: const TextStyle(
+                style: TextStyle(
                   color: GemPalette.textPrimary,
                   fontWeight: FontWeight.w800,
                 ),
@@ -496,10 +554,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
                   ),
                   Text(
                     '@${a.username}',
-                    style: const TextStyle(
-                      color: GemPalette.textMuted,
-                      fontSize: 12,
-                    ),
+                    style: TextStyle(color: GemPalette.textMuted, fontSize: 12),
                   ),
                   const SizedBox(height: 4),
                   Wrap(
@@ -513,16 +568,13 @@ class _SecurityScreenState extends State<SecurityScreen> {
                             : GemPalette.sapphire,
                       ),
                       if (!a.isActive)
-                        const GemBadge(
-                          label: 'Inactiva',
-                          color: GemPalette.danger,
-                        ),
+                        GemBadge(label: 'Inactiva', color: GemPalette.danger),
                     ],
                   ),
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right, color: GemPalette.textMuted),
+            Icon(Icons.chevron_right, color: GemPalette.textMuted),
           ],
         ),
       ),
@@ -617,7 +669,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
                 height: 44,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(12),
-                  gradient: const LinearGradient(
+                  gradient: LinearGradient(
                     colors: [GemPalette.topaz, GemPalette.amethyst],
                   ),
                 ),
@@ -637,7 +689,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
                       puedeContinuar
                           ? 'Lo dejaste en el paso $paso de $total'
                           : 'Un recorrido corto por las secciones de la app',
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: GemPalette.textMuted,
                         fontSize: 12.5,
                         height: 1.35,
@@ -707,7 +759,7 @@ class _AccountHistoryScreenState extends State<_AccountHistoryScreen> {
   Widget build(BuildContext context) {
     final d = _data;
     return Scaffold(
-      appBar: AppBar(title: const Text('Historial')),
+      appBar: GemAppBar(title: const Text('Historial')),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
@@ -728,7 +780,7 @@ class _AccountHistoryScreenState extends State<_AccountHistoryScreen> {
                     children: [
                       Text(
                         actionTypeLabel(a.actionType),
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: GemPalette.emerald,
                           fontWeight: FontWeight.w700,
                           fontSize: 12,
@@ -743,7 +795,7 @@ class _AccountHistoryScreenState extends State<_AccountHistoryScreen> {
                           "d 'de' MMMM yyyy, HH:mm",
                           'es',
                         ).format(a.createdAt.toLocal()),
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: GemPalette.textMuted,
                           fontSize: 11,
                         ),
@@ -806,7 +858,7 @@ class _GlobalAuditScreenState extends State<_GlobalAuditScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Historial de auditoría')),
+      appBar: GemAppBar(title: const Text('Historial de auditoría')),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
@@ -815,7 +867,7 @@ class _GlobalAuditScreenState extends State<_GlobalAuditScreen> {
               child: GemErrorBanner(message: _error!),
             )
           : _items.isEmpty
-          ? const Center(
+          ? Center(
               child: Padding(
                 padding: EdgeInsets.all(24),
                 child: Text(
@@ -834,7 +886,7 @@ class _GlobalAuditScreenState extends State<_GlobalAuditScreen> {
                       padding: const EdgeInsets.fromLTRB(4, 8, 4, 8),
                       child: Text(
                         entry.key,
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: GemPalette.textMuted,
                           fontWeight: FontWeight.w700,
                           fontSize: 12,
@@ -850,7 +902,7 @@ class _GlobalAuditScreenState extends State<_GlobalAuditScreen> {
                           children: [
                             Text(
                               actionTypeLabel(a.actionType),
-                              style: const TextStyle(
+                              style: TextStyle(
                                 color: GemPalette.emerald,
                                 fontWeight: FontWeight.w700,
                                 fontSize: 12,
@@ -862,7 +914,7 @@ class _GlobalAuditScreenState extends State<_GlobalAuditScreen> {
                             const SizedBox(height: 6),
                             Row(
                               children: [
-                                const Icon(
+                                Icon(
                                   Icons.person_outline,
                                   size: 13,
                                   color: GemPalette.textMuted,
@@ -871,7 +923,7 @@ class _GlobalAuditScreenState extends State<_GlobalAuditScreen> {
                                 Expanded(
                                   child: Text(
                                     a.actorName ?? 'Sistema',
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       color: GemPalette.textMuted,
                                       fontSize: 11.5,
                                     ),
@@ -882,7 +934,7 @@ class _GlobalAuditScreenState extends State<_GlobalAuditScreen> {
                                     'HH:mm',
                                     'es',
                                   ).format(a.createdAt.toLocal()),
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     color: GemPalette.textMuted,
                                     fontSize: 11.5,
                                   ),

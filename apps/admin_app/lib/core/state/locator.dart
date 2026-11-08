@@ -5,7 +5,9 @@ import '../config/app_config.dart';
 import '../services/auth_service.dart';
 import '../services/data_services.dart';
 import '../services/device_identity_service.dart';
+import '../services/linked_devices_service.dart';
 import '../services/local_auth_service.dart';
+import '../theme/theme_controller.dart';
 import 'auth_state.dart';
 
 /// Locator manual. Suficiente para un MVP — evita añadir get_it/riverpod.
@@ -24,7 +26,12 @@ class Locator {
   static late final InvitationService invitations;
   static late final SupportService support;
   static late final EventService events;
+  static late final LinkedDevicesService linkedDevices;
   static late final AuthState authState;
+
+  /// Tonalidad clara u oscura. Se crea y carga antes que todo lo demás para
+  /// que la primera pantalla ya salga con la tonalidad guardada.
+  static final ThemeController theme = ThemeController();
 
   static Future<void> init() async {
     // La versión real se resuelve ANTES de crear el cliente HTTP, que la usa
@@ -40,6 +47,8 @@ class Locator {
       // Sin versión legible: no es motivo para impedir el arranque.
     }
 
+    await theme.load();
+
     await ApiClient.init();
     device = DeviceIdentityService();
     auth = AuthService(ApiClient.I, device);
@@ -53,6 +62,8 @@ class Locator {
     invitations = InvitationService(ApiClient.I);
     support = SupportService(ApiClient.I);
     events = EventService(ApiClient.I);
+    linkedDevices = LinkedDevicesService(ApiClient.I);
     authState = AuthState(auth: auth, localAuth: localAuth);
+    onAdminSessionExpired = () => authState.sessionExpired();
   }
 }

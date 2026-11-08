@@ -110,8 +110,8 @@ class _CoachCardState extends State<CoachCard> {
                       children: [
                         Text(
                           widget.step,
-                          style: const TextStyle(
-                            color: GemPalette.topaz,
+                          style: TextStyle(
+                            color: GemPalette.topazText,
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
                             letterSpacing: 1.4,
@@ -120,7 +120,7 @@ class _CoachCardState extends State<CoachCard> {
                         const SizedBox(height: 6),
                         Text(
                           widget.title,
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: GemPalette.textPrimary,
                             fontSize: 17,
                             fontWeight: FontWeight.w700,
@@ -129,7 +129,7 @@ class _CoachCardState extends State<CoachCard> {
                         const SizedBox(height: 8),
                         Text(
                           widget.body,
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: GemPalette.textMuted,
                             height: 1.42,
                             fontSize: 13,

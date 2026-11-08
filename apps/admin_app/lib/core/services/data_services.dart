@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 
 import '../api/api_client.dart';
@@ -308,6 +309,11 @@ class StudyService {
 class ReportService {
   ReportService(this._api);
   final ApiClient _api;
+
+  /// Sube cada vez que se crea, edita o elimina un informe desde la app. La
+  /// lista de Informes y las Métricas lo escuchan para ponerse al día solas
+  /// (antes seguían mostrando lo viejo hasta reiniciar la app).
+  final ValueNotifier<int> cambios = ValueNotifier<int>(0);
 
   Future<ReportListResponse> list({
     String? churchId,

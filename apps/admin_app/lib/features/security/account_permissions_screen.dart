@@ -5,6 +5,7 @@ import '../../core/models/domain.dart';
 import '../../core/state/locator.dart';
 import '../../core/theme/gem_palette.dart';
 import '../../core/widgets/gem_widgets.dart';
+import '../../core/widgets/theme_toggle.dart';
 
 /// Panel para editar los permisos de una cuenta de administrador.
 ///
@@ -200,7 +201,7 @@ class _AccountPermissionsScreenState extends State<AccountPermissionsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Permisos')),
+      appBar: GemAppBar(title: const Text('Permisos')),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null && _account == null
@@ -227,7 +228,7 @@ class _AccountPermissionsScreenState extends State<AccountPermissionsScreen> {
                 Text(account.displayName,
                     style: Theme.of(context).textTheme.titleLarge),
                 Text('@${account.username}',
-                    style: const TextStyle(
+                    style: TextStyle(
                         color: GemPalette.textMuted, fontSize: 13)),
                 const SizedBox(height: 12),
                 const Text(
@@ -260,7 +261,7 @@ class _AccountPermissionsScreenState extends State<AccountPermissionsScreen> {
                 Text(account.displayName,
                     style: Theme.of(context).textTheme.titleLarge),
                 Text('@${account.username}',
-                    style: const TextStyle(
+                    style: TextStyle(
                         color: GemPalette.textMuted, fontSize: 13)),
               ],
             ),
@@ -275,7 +276,7 @@ class _AccountPermissionsScreenState extends State<AccountPermissionsScreen> {
                 Text('Permisos globales',
                     style: Theme.of(context).textTheme.titleMedium),
                 const SizedBox(height: 4),
-                const Text(
+                Text(
                   'Estos permisos aplican a todo el sistema (no a una '
                   'iglesia en particular).',
                   style:
@@ -302,7 +303,7 @@ class _AccountPermissionsScreenState extends State<AccountPermissionsScreen> {
                         style: const TextStyle(
                             fontWeight: FontWeight.w600, fontSize: 14)),
                     subtitle: Text(d.description,
-                        style: const TextStyle(
+                        style: TextStyle(
                             color: GemPalette.textMuted, fontSize: 12)),
                   );
                 }),
@@ -341,7 +342,7 @@ class _AccountPermissionsScreenState extends State<AccountPermissionsScreen> {
                 ),
                 const SizedBox(height: 4),
                 if (account.churchAssignments.isEmpty)
-                  const Padding(
+                  Padding(
                     padding: EdgeInsets.symmetric(vertical: 12),
                     child: Text(
                       'Esta cuenta aún no tiene iglesias asignadas. Asigna '
@@ -417,9 +418,9 @@ class _ChurchAssignmentCard extends StatelessWidget {
                   ),
                 ),
                 TextButton.icon(
-                  icon: const Icon(Icons.delete_outline,
+                  icon: Icon(Icons.delete_outline,
                       size: 16, color: GemPalette.danger),
-                  label: const Text('Quitar',
+                  label: Text('Quitar',
                       style: TextStyle(color: GemPalette.danger)),
                   onPressed: onRemove,
                 ),
@@ -440,7 +441,7 @@ class _ChurchAssignmentCard extends StatelessWidget {
                     style: const TextStyle(
                         fontWeight: FontWeight.w600, fontSize: 13.5)),
                 subtitle: Text(d.description,
-                    style: const TextStyle(
+                    style: TextStyle(
                         color: GemPalette.textMuted, fontSize: 11.5)),
               );
             }),
@@ -523,7 +524,7 @@ class _AssignChurchScreenState extends State<_AssignChurchScreen> {
     final descriptors =
         widget.catalog.catalog.where((d) => d.group == 'church').toList();
     return Scaffold(
-      appBar: AppBar(title: const Text('Asignar iglesia')),
+      appBar: GemAppBar(title: const Text('Asignar iglesia')),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
@@ -599,7 +600,7 @@ class _AssignChurchScreenState extends State<_AssignChurchScreen> {
                             style: const TextStyle(
                                 fontWeight: FontWeight.w600, fontSize: 13.5)),
                         subtitle: Text(d.description,
-                            style: const TextStyle(
+                            style: TextStyle(
                                 color: GemPalette.textMuted, fontSize: 11.5)),
                       );
                     }),

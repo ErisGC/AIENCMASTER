@@ -50,7 +50,7 @@ class _VersionChipState extends State<VersionChip> {
       ),
       child: Text(
         l,
-        style: const TextStyle(
+        style: TextStyle(
           color: GemPalette.textMuted,
           fontSize: 10.5,
           fontWeight: FontWeight.w700,

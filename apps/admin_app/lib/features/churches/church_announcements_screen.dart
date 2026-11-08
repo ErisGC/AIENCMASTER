@@ -7,6 +7,7 @@ import '../../core/state/locator.dart';
 import '../../core/theme/gem_palette.dart';
 import '../../core/widgets/gem_widgets.dart';
 import '../announcements/announcement_edit_screen.dart';
+import '../../core/widgets/theme_toggle.dart';
 
 /// Anuncios locales de UNA iglesia concreta.
 ///
@@ -97,7 +98,7 @@ class _ChurchAnnouncementsScreenState extends State<ChurchAnnouncementsScreen> {
   Widget build(BuildContext context) {
     final df = DateFormat('d MMM yyyy', 'es');
     return Scaffold(
-      appBar: AppBar(title: const Text('Anuncios de la iglesia')),
+      appBar: GemAppBar(title: const Text('Anuncios de la iglesia')),
       floatingActionButton: FloatingActionButton.extended(
         backgroundColor: GemPalette.emerald,
         foregroundColor: Colors.white,
@@ -114,7 +115,7 @@ class _ChurchAnnouncementsScreenState extends State<ChurchAnnouncementsScreen> {
                 children: [
                   Text(
                     widget.churchName,
-                    style: const TextStyle(
+                    style: TextStyle(
                         color: GemPalette.textMuted, fontSize: 12.5),
                   ),
                   const SizedBox(height: 12),
@@ -123,7 +124,7 @@ class _ChurchAnnouncementsScreenState extends State<ChurchAnnouncementsScreen> {
                     const SizedBox(height: 12),
                   ],
                   if (_items.isEmpty)
-                    const Padding(
+                    Padding(
                       padding: EdgeInsets.symmetric(vertical: 28),
                       child: Text(
                         'Esta iglesia aún no tiene anuncios. Crea el primero '
@@ -146,7 +147,7 @@ class _ChurchAnnouncementsScreenState extends State<ChurchAnnouncementsScreen> {
                                 const SizedBox(height: 2),
                                 Text(
                                   '${a.author}  ·  ${df.format(a.createdAt)}',
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                       color: GemPalette.textMuted,
                                       fontSize: 12),
                                 ),
@@ -170,10 +171,10 @@ class _ChurchAnnouncementsScreenState extends State<ChurchAnnouncementsScreen> {
                                     ),
                                     const Spacer(),
                                     TextButton.icon(
-                                      icon: const Icon(Icons.delete_outline,
+                                      icon: Icon(Icons.delete_outline,
                                           size: 18,
                                           color: GemPalette.danger),
-                                      label: const Text('Eliminar',
+                                      label: Text('Eliminar',
                                           style: TextStyle(
                                               color: GemPalette.danger)),
                                       onPressed: () => _delete(a),

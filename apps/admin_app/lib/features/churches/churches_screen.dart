@@ -32,7 +32,19 @@ class _ChurchesScreenState extends State<ChurchesScreen> {
     });
     try {
       final list = await Locator.churches.list();
-      if (mounted) setState(() => _items = list);
+      // Quien no administra todas las iglesias ve solo las suyas (igual que
+      // en el panel web): las demás le responderían "sin permiso".
+      final cuenta = Locator.authState.account;
+      final veTodas = cuenta == null ||
+          cuenta.isRoot ||
+          cuenta.globalPermissions.contains(GlobalPermission.MANAGE_CHURCHES);
+      final propias = {
+        for (final a in cuenta?.churchAssignments ?? const <ChurchAssignment>[])
+          a.churchId,
+      };
+      final visibles =
+          veTodas ? list : list.where((c) => propias.contains(c.id)).toList();
+      if (mounted) setState(() => _items = visibles);
     } catch (e) {
       if (mounted) setState(() => _error = userMessageFor(e));
     } finally {
@@ -53,15 +65,16 @@ class _ChurchesScreenState extends State<ChurchesScreen> {
           child: _loading
               ? const Center(child: CircularProgressIndicator())
               : _error != null
-                  ? Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: GemErrorBanner(message: _error!),
+                  ? GemListMessage(
+                      message: _error!,
+                      isError: true,
+                      onRetry: _load,
                     )
                   : _items.isEmpty
-                      ? const Center(
-                          child: Text('No hay iglesias registradas todavía.',
-                              style:
-                                  TextStyle(color: GemPalette.textMuted)),
+                      ? GemListMessage(
+                          icon: Icons.church_outlined,
+                          message: 'No hay iglesias registradas todavía.',
+                          onRetry: _load,
                         )
                       : RefreshIndicator(
                           onRefresh: _load,
@@ -123,7 +136,7 @@ class _ChurchTile extends StatelessWidget {
             ),
             alignment: Alignment.center,
             child: church.mainImageUrl == null
-                ? const Icon(Icons.church, color: GemPalette.textMuted)
+                ? Icon(Icons.church, color: GemPalette.textMuted)
                 : null,
           ),
           const SizedBox(width: 12),
@@ -136,14 +149,14 @@ class _ChurchTile extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   church.city,
-                  style: const TextStyle(
+                  style: TextStyle(
                       color: GemPalette.textMuted, fontSize: 12.5),
                 ),
                 if (church.avgAttendance != null) ...[
                   const SizedBox(height: 4),
                   Text(
                     'Asistencia promedio: ${church.avgAttendance}',
-                    style: const TextStyle(
+                    style: TextStyle(
                         color: GemPalette.textMuted, fontSize: 11.5),
                   ),
                 ],

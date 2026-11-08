@@ -10,6 +10,7 @@ import '../../core/state/locator.dart';
 import '../../core/theme/gem_palette.dart';
 import '../../core/utils/montos.dart';
 import '../../core/widgets/gem_widgets.dart';
+import '../../core/widgets/theme_toggle.dart';
 
 class NewReportScreen extends StatefulWidget {
   const NewReportScreen({super.key});
@@ -19,6 +20,29 @@ class NewReportScreen extends StatefulWidget {
 }
 
 class _NewReportScreenState extends State<NewReportScreen> {
+  /// Ya se escribió algo: "atrás" pregunta antes de descartar.
+  bool _tocado = false;
+
+  void _vigilarCambios() {
+    for (final c in [
+      _title,
+      _notes,
+      _totalCop,
+      _expDesc,
+      _count,
+      _eventName,
+      _eventAttendees,
+      _eventSummary,
+      _reqSubject,
+      _reqBody,
+      _freeText,
+    ]) {
+      c.addListener(() {
+        if (!_tocado && mounted) setState(() => _tocado = true);
+      });
+    }
+  }
+
   ReportType _type = ReportType.OFFERINGS;
   String? _churchId;
   final _title = TextEditingController();
@@ -112,6 +136,7 @@ class _NewReportScreenState extends State<NewReportScreen> {
   void initState() {
     super.initState();
     _churchId = Locator.authState.activeChurchId;
+    _vigilarCambios();
     if (Locator.authState.account?.isRoot ?? false) {
       Locator.churches.list().then((l) {
         if (mounted) setState(() => _churches = l);
@@ -150,7 +175,7 @@ class _NewReportScreenState extends State<NewReportScreen> {
       initialDate: DateTime.now(),
       builder: (c, child) => Theme(
         data: Theme.of(c).copyWith(
-          colorScheme: const ColorScheme.dark(
+          colorScheme: Theme.of(c).colorScheme.copyWith(
             primary: GemPalette.sapphire,
             onPrimary: Colors.white,
           ),
@@ -349,11 +374,12 @@ class _NewReportScreenState extends State<NewReportScreen> {
       }
     }
 
+    Locator.reports.cambios.value++;
     if (!mounted) return;
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text(mensaje)));
-    context.pop();
+    context.pop(true);
   }
 
   @override
@@ -361,228 +387,234 @@ class _NewReportScreenState extends State<NewReportScreen> {
     final isRoot = Locator.authState.account?.isRoot ?? false;
     final assignments = Locator.authState.account?.churchAssignments ?? [];
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Nuevo informe')),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: GemCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _label('Tipo de informe'),
-                DropdownButtonFormField<ReportType>(
-                  initialValue: _type,
-                  items: [
-                    for (final t in ReportType.values)
-                      DropdownMenuItem(
-                        value: t,
-                        child: Text(reportTypeLabels[t] ?? t.name),
-                      ),
-                  ],
-                  onChanged: (v) => setState(() => _type = v ?? _type),
-                ),
-                const SizedBox(height: 14),
-                _label('Iglesia'),
-                if (isRoot)
-                  DropdownButtonFormField<String>(
-                    initialValue: _churchId,
-                    isExpanded: true,
+    return DiscardGuard(
+      dirty: _tocado,
+      child: Scaffold(
+        appBar: GemAppBar(title: const Text('Nuevo informe')),
+        body: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: GemCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _label('Tipo de informe'),
+                  DropdownButtonFormField<ReportType>(
+                    initialValue: _type,
                     items: [
-                      for (final c in _churches)
+                      for (final t in ReportType.values)
                         DropdownMenuItem(
-                          value: c.id,
-                          child: Text('${c.name} — ${c.city}'),
+                          value: t,
+                          child: Text(reportTypeLabels[t] ?? t.name),
                         ),
                     ],
-                    onChanged: (v) => setState(() => _churchId = v),
-                  )
-                else if (assignments.length > 1)
-                  DropdownButtonFormField<String>(
-                    initialValue: _churchId,
-                    isExpanded: true,
-                    items: [
-                      for (final a in assignments)
-                        DropdownMenuItem(
-                          value: a.churchId,
-                          child: Text(a.churchName ?? a.churchId),
-                        ),
-                    ],
-                    onChanged: (v) => setState(() => _churchId = v),
-                  )
-                else
-                  // Sólo muestra el nombre; antes era un campo deshabilitado
-                  // con un controlador creado dentro del build, que se
-                  // instanciaba en cada repintado y nunca se liberaba.
-                  InputDecorator(
-                    decoration: const InputDecoration(),
-                    child: Text(
-                      assignments.isNotEmpty
-                          ? (assignments.first.churchName ?? '—')
-                          : 'Sin iglesia asignada',
-                      style: const TextStyle(color: GemPalette.textMuted),
-                    ),
+                    onChanged: (v) => setState(() => _type = v ?? _type),
                   ),
-                const SizedBox(height: 14),
-                _label('Título'),
-                TextField(controller: _title, maxLength: 180),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () => _pickDate(
-                          context,
-                          (d) => setState(() => _periodStart = d),
-                        ),
-                        child: Text(
-                          _periodStart != null
-                              ? 'Desde: ${DateFormat('d MMM yyyy', 'es').format(_periodStart!)}'
-                              : 'Período desde…',
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () => _pickDate(
-                          context,
-                          (d) => setState(() => _periodEnd = d),
-                        ),
-                        child: Text(
-                          _periodEnd != null
-                              ? 'Hasta: ${DateFormat('d MMM yyyy', 'es').format(_periodEnd!)}'
-                              : 'Período hasta…',
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                _label('¿Cómo vas a entregar este informe?'),
-                SegmentedButton<bool>(
-                  segments: const [
-                    ButtonSegment(
-                      value: false,
-                      label: Text('Formulario'),
-                      icon: Icon(Icons.edit_note),
-                    ),
-                    ButtonSegment(
-                      value: true,
-                      label: Text('Documento'),
-                      icon: Icon(Icons.description_outlined),
-                    ),
-                  ],
-                  selected: {_soloDocumento},
-                  onSelectionChanged: (s) =>
-                      setState(() => _soloDocumento = s.first),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  _soloDocumento
-                      ? 'Subes el informe ya hecho: un PDF, una foto, un Word '
-                            'o un Excel.'
-                      : 'Escribes los montos o datos aquí mismo.',
-                  style: const TextStyle(
-                    color: GemPalette.textMuted,
-                    fontSize: 12.5,
-                  ),
-                ),
-                if (!_soloDocumento) ...[
                   const SizedBox(height: 14),
-                  _label('Datos del informe'),
-                  ..._typeFields(),
-                ],
-                const SizedBox(height: 14),
-                _label(
-                  _soloDocumento
-                      ? 'Documento del informe'
-                      : 'Documentos de soporte (opcional)',
-                ),
-                const Text(
-                  'Hasta 10 MB cada uno. Solo los ven el administrador '
-                  'principal y quien los sube.',
-                  style: TextStyle(color: GemPalette.textMuted, fontSize: 12.5),
-                ),
-                const SizedBox(height: 8),
-                for (var i = 0; i < _archivos.length; i++)
-                  Container(
-                    margin: const EdgeInsets.only(bottom: 6),
-                    padding: const EdgeInsets.fromLTRB(12, 6, 4, 6),
-                    decoration: BoxDecoration(
-                      color: GemPalette.chip,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: GemPalette.borderSoft),
+                  _label('Iglesia'),
+                  if (isRoot)
+                    DropdownButtonFormField<String>(
+                      initialValue: _churchId,
+                      isExpanded: true,
+                      items: [
+                        for (final c in _churches)
+                          DropdownMenuItem(
+                            value: c.id,
+                            child: Text('${c.name} — ${c.city}'),
+                          ),
+                      ],
+                      onChanged: (v) => setState(() => _churchId = v),
+                    )
+                  else if (assignments.length > 1)
+                    DropdownButtonFormField<String>(
+                      initialValue: _churchId,
+                      isExpanded: true,
+                      items: [
+                        for (final a in assignments)
+                          DropdownMenuItem(
+                            value: a.churchId,
+                            child: Text(a.churchName ?? a.churchId),
+                          ),
+                      ],
+                      onChanged: (v) => setState(() => _churchId = v),
+                    )
+                  else
+                    // Sólo muestra el nombre; antes era un campo deshabilitado
+                    // con un controlador creado dentro del build, que se
+                    // instanciaba en cada repintado y nunca se liberaba.
+                    InputDecorator(
+                      decoration: const InputDecoration(),
+                      child: Text(
+                        assignments.isNotEmpty
+                            ? (assignments.first.churchName ?? '—')
+                            : 'Sin iglesia asignada',
+                        style: TextStyle(color: GemPalette.textMuted),
+                      ),
                     ),
-                    child: Row(
-                      children: [
-                        const Icon(
-                          Icons.insert_drive_file_outlined,
-                          size: 18,
-                          color: GemPalette.emerald,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                _archivos[i].name,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              Text(
-                                formatBytes(_archivos[i].size),
-                                style: const TextStyle(
-                                  color: GemPalette.textMuted,
-                                  fontSize: 11.5,
-                                ),
-                              ),
-                            ],
+                  const SizedBox(height: 14),
+                  _label('Título'),
+                  TextField(controller: _title, maxLength: 180),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => _pickDate(
+                            context,
+                            (d) => setState(() => _periodStart = d),
+                          ),
+                          child: Text(
+                            _periodStart != null
+                                ? 'Desde: ${DateFormat('d MMM yyyy', 'es').format(_periodStart!)}'
+                                : 'Período desde…',
                           ),
                         ),
-                        IconButton(
-                          tooltip: 'Quitar',
-                          icon: const Icon(Icons.close, size: 18),
-                          onPressed: _submitting
-                              ? null
-                              : () => setState(() => _archivos.removeAt(i)),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => _pickDate(
+                            context,
+                            (d) => setState(() => _periodEnd = d),
+                          ),
+                          child: Text(
+                            _periodEnd != null
+                                ? 'Hasta: ${DateFormat('d MMM yyyy', 'es').format(_periodEnd!)}'
+                                : 'Período hasta…',
+                          ),
                         ),
-                      ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  _label('¿Cómo vas a entregar este informe?'),
+                  SegmentedButton<bool>(
+                    segments: const [
+                      ButtonSegment(
+                        value: false,
+                        label: Text('Formulario'),
+                        icon: Icon(Icons.edit_note),
+                      ),
+                      ButtonSegment(
+                        value: true,
+                        label: Text('Documento'),
+                        icon: Icon(Icons.description_outlined),
+                      ),
+                    ],
+                    selected: {_soloDocumento},
+                    onSelectionChanged: (s) =>
+                        setState(() => _soloDocumento = s.first),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    _soloDocumento
+                        ? 'Subes el informe ya hecho: un PDF, una foto, un Word '
+                              'o un Excel.'
+                        : 'Escribes los montos o datos aquí mismo.',
+                    style: TextStyle(
+                      color: GemPalette.textMuted,
+                      fontSize: 12.5,
                     ),
                   ),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    OutlinedButton.icon(
-                      onPressed: _submitting ? null : _elegirArchivos,
-                      icon: const Icon(Icons.attach_file, size: 18),
-                      label: const Text('Elegir archivo'),
-                    ),
-                    OutlinedButton.icon(
-                      onPressed: _submitting ? null : _tomarFoto,
-                      icon: const Icon(Icons.photo_camera_outlined, size: 18),
-                      label: const Text('Tomar foto'),
-                    ),
+                  if (!_soloDocumento) ...[
+                    const SizedBox(height: 14),
+                    _label('Datos del informe'),
+                    ..._typeFields(),
                   ],
-                ),
-                const SizedBox(height: 14),
-                _label('Notas (opcional)'),
-                TextField(controller: _notes, maxLines: 3, maxLength: 4000),
-                if (_error != null) ...[
+                  const SizedBox(height: 14),
+                  _label(
+                    _soloDocumento
+                        ? 'Documento del informe'
+                        : 'Documentos de soporte (opcional)',
+                  ),
+                  Text(
+                    'Hasta 10 MB cada uno. Solo los ven el administrador '
+                    'principal y quien los sube.',
+                    style: TextStyle(
+                      color: GemPalette.textMuted,
+                      fontSize: 12.5,
+                    ),
+                  ),
                   const SizedBox(height: 8),
-                  GemErrorBanner(message: _error!),
+                  for (var i = 0; i < _archivos.length; i++)
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 6),
+                      padding: const EdgeInsets.fromLTRB(12, 6, 4, 6),
+                      decoration: BoxDecoration(
+                        color: GemPalette.chip,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: GemPalette.borderSoft),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.insert_drive_file_outlined,
+                            size: 18,
+                            color: GemPalette.emerald,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  _archivos[i].name,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                Text(
+                                  formatBytes(_archivos[i].size),
+                                  style: TextStyle(
+                                    color: GemPalette.textMuted,
+                                    fontSize: 11.5,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            tooltip: 'Quitar',
+                            icon: const Icon(Icons.close, size: 18),
+                            onPressed: _submitting
+                                ? null
+                                : () => setState(() => _archivos.removeAt(i)),
+                          ),
+                        ],
+                      ),
+                    ),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      OutlinedButton.icon(
+                        onPressed: _submitting ? null : _elegirArchivos,
+                        icon: const Icon(Icons.attach_file, size: 18),
+                        label: const Text('Elegir archivo'),
+                      ),
+                      OutlinedButton.icon(
+                        onPressed: _submitting ? null : _tomarFoto,
+                        icon: const Icon(Icons.photo_camera_outlined, size: 18),
+                        label: const Text('Tomar foto'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  _label('Notas (opcional)'),
+                  TextField(controller: _notes, maxLines: 3, maxLength: 4000),
+                  if (_error != null) ...[
+                    const SizedBox(height: 8),
+                    GemErrorBanner(message: _error!),
+                  ],
+                  const SizedBox(height: 16),
+                  GemPrimaryButton(
+                    label: 'Guardar informe',
+                    loading: _submitting,
+                    onPressed: _submit,
+                  ),
                 ],
-                const SizedBox(height: 16),
-                GemPrimaryButton(
-                  label: 'Guardar informe',
-                  loading: _submitting,
-                  onPressed: _submit,
-                ),
-              ],
+              ),
             ),
           ),
         ),
@@ -594,7 +626,7 @@ class _NewReportScreenState extends State<NewReportScreen> {
     padding: const EdgeInsets.only(top: 6, bottom: 6),
     child: Text(
       text,
-      style: const TextStyle(
+      style: TextStyle(
         fontWeight: FontWeight.w700,
         color: GemPalette.textPrimary,
         fontSize: 13,

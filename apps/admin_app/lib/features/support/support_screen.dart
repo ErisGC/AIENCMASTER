@@ -12,6 +12,7 @@ import '../../core/models/domain.dart';
 import '../../core/state/locator.dart';
 import '../../core/theme/gem_palette.dart';
 import '../../core/widgets/gem_widgets.dart';
+import '../../core/widgets/theme_toggle.dart';
 
 /// Canal de soporte.
 ///
@@ -72,7 +73,7 @@ class _SupportScreenState extends State<SupportScreen> {
   Widget build(BuildContext context) {
     final df = DateFormat('d MMM, HH:mm', 'es');
     return Scaffold(
-      appBar: AppBar(
+      appBar: GemAppBar(
         title: Text(_asRoot ? 'Bandeja de soporte' : 'Soporte'),
       ),
       floatingActionButton: _asRoot
@@ -103,7 +104,7 @@ class _SupportScreenState extends State<SupportScreen> {
                             ? 'Todavía no hay reportes.'
                             : 'Aquí verás tus conversaciones con el administrador principal.',
                         textAlign: TextAlign.center,
-                        style: const TextStyle(color: GemPalette.textMuted),
+                        style: TextStyle(color: GemPalette.textMuted),
                       ),
                     )
                   else
@@ -134,7 +135,7 @@ class _SupportScreenState extends State<SupportScreen> {
                                             Container(
                                               width: 9,
                                               height: 9,
-                                              decoration: const BoxDecoration(
+                                              decoration: BoxDecoration(
                                                 color: GemPalette.danger,
                                                 shape: BoxShape.circle,
                                               ),
@@ -146,21 +147,21 @@ class _SupportScreenState extends State<SupportScreen> {
                                         _asRoot ? c.subject : _estado(c.status),
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                             color: GemPalette.textMuted,
                                             fontSize: 12),
                                       ),
                                       if (c.lastMessageAt != null)
                                         Text(
                                           df.format(c.lastMessageAt!),
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                               color: GemPalette.textMuted,
                                               fontSize: 11),
                                         ),
                                     ],
                                   ),
                                 ),
-                                const Icon(Icons.chevron_right,
+                                Icon(Icons.chevron_right,
                                     color: GemPalette.textMuted),
                               ],
                             ),
@@ -315,7 +316,7 @@ class _ThreadScreenState extends State<_ThreadScreen> {
     final df = DateFormat('d MMM, HH:mm', 'es');
     final bloqueada = widget.conversation.status == 'BLOCKED';
     return Scaffold(
-      appBar: AppBar(
+      appBar: GemAppBar(
         title: Text(widget.asRoot
             ? widget.conversation.authorName
             : widget.conversation.subject),
@@ -412,7 +413,7 @@ class _ThreadScreenState extends State<_ThreadScreen> {
               child: Row(
                 children: [
                   Text('${_files.length} imagen(es) lista(s)',
-                      style: const TextStyle(
+                      style: TextStyle(
                           color: GemPalette.emerald, fontSize: 12)),
                   const Spacer(),
                   TextButton(
@@ -423,7 +424,7 @@ class _ThreadScreenState extends State<_ThreadScreen> {
               ),
             ),
           if (bloqueada)
-            const Padding(
+            Padding(
               padding: EdgeInsets.all(16),
               child: Text('Esta conversación está bloqueada.',
                   style: TextStyle(color: GemPalette.textMuted)),
@@ -528,7 +529,7 @@ class _NewConversationScreenState extends State<_NewConversationScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Nuevo reporte')),
+      appBar: GemAppBar(title: const Text('Nuevo reporte')),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
@@ -536,7 +537,7 @@ class _NewConversationScreenState extends State<_NewConversationScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Text(
+                Text(
                   'Cuéntale al administrador principal qué falla, qué falta o '
                   'qué sugieres. Puedes adjuntar capturas.',
                   style: TextStyle(

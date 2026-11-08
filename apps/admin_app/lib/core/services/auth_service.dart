@@ -37,7 +37,29 @@ class AuthService {
     required String username,
     required String password,
   }) async {
-    final deviceId = await _device.getDeviceId();
+    try {
+      return await _login(
+        username,
+        password,
+        await _device.getDeviceIdFor(username),
+      );
+    } on ApiException catch (e) {
+      // El teléfono es de otra cuenta (por ejemplo, alguien probó una
+      // invitación en él y luego entra la suya). Esta cuenta recibe una
+      // identidad propia y se intenta una vez más: no hereda ninguna
+      // confianza, así que ese ingreso igual tiene que aprobarse.
+      final raw = e.raw;
+      final msg = raw is Map ? '${raw['message']}' : '';
+      if (e.statusCode != 409 || !msg.contains('otra cuenta')) rethrow;
+      return _login(username, password, await _device.newDeviceIdFor(username));
+    }
+  }
+
+  Future<SessionResponse> _login(
+    String username,
+    String password,
+    String deviceId,
+  ) async {
     final deviceName = await _device.getDeviceName();
     final platform = _device.getPlatform();
     final browser = _device.getBrowserOrApp();

@@ -34,6 +34,21 @@ enum AuthPhase {
   authenticated,
 }
 
+/// Resultado de [AuthState.recheckSession].
+enum RecheckOutcome {
+  /// La sesión seguía viva: se entra al panel.
+  authenticated,
+
+  /// La sesión ya no vale: hace falta la contraseña.
+  passwordRequired,
+
+  /// La sesión vale, pero toca el control periódico de contraseña.
+  passwordDue,
+
+  /// No se pudo contactar el servidor.
+  networkError,
+}
+
 /// Resultado de un intento de desbloqueo local (ver [AuthState.unlock]).
 enum UnlockOutcome {
   /// Desbloqueado y con sesión válida.
@@ -65,6 +80,12 @@ class AuthState extends ChangeNotifier {
   bool _isRootDevice = false;
   bool get isRootDevice => _isRootDevice;
 
+  /// Bloqueo por inactividad con la sesión en memoria: la pantalla de bloqueo
+  /// se pone ENCIMA de lo que estaba abierto (ver router.dart y main.dart), y
+  /// al desbloquear la persona sigue donde iba, con lo que hubiera escrito.
+  bool _lockedInPlace = false;
+  bool get lockedInPlace => _phase == AuthPhase.locked && _lockedInPlace;
+
   String? _activeChurchId;
   String? get activeChurchId => _activeChurchId;
   set activeChurchId(String? id) {
@@ -86,6 +107,7 @@ class AuthState extends ChangeNotifier {
   /// ([AuthPhase.needsPassword]) conservando toda la configuración.
   Future<void> bootstrap() async {
     _phase = AuthPhase.loading;
+    _lockedInPlace = false;
     notifyListeners();
 
     final mode = await _localAuth.lockMode();
@@ -169,6 +191,10 @@ class AuthState extends ChangeNotifier {
     _isRootDevice = isRootDevice;
     _selectDefaultChurch();
     await _localAuth.setLastUser(account.username);
+    final nombre = account.displayName.trim();
+    if (nombre.isNotEmpty) {
+      await _localAuth.setLastName(nombre.split(RegExp(r'\s+')).first);
+    }
     // Acaba de escribir su contraseña: reinicia el reloj del control periódico.
     await _localAuth.markPasswordVerified();
     _phase = AuthPhase.authenticated;
@@ -190,6 +216,7 @@ class AuthState extends ChangeNotifier {
   Future<UnlockOutcome> unlock({String? pin}) async {
     if (_account != null) {
       _phase = AuthPhase.authenticated;
+      _lockedInPlace = false;
       notifyListeners();
       return UnlockOutcome.authenticated;
     }
@@ -251,6 +278,37 @@ class AuthState extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// La API respondió 401 a mitad del uso: la sesión venció en el servidor.
+  /// Se pide la contraseña (si hay bloqueo configurado y usuario recordado) o
+  /// se vuelve al inicio.
+  Future<void> sessionExpired() async {
+    if (_phase != AuthPhase.authenticated) return;
+    _lockedInPlace = false;
+    await _askPasswordOrSignOut(await _localAuth.lockMode());
+    notifyListeners();
+  }
+
+  /// Vuelve a consultar la sesión desde la pantalla de contraseña, sin pasar
+  /// por la pantalla de carga (antes "Reintentar sin contraseña" cerraba esa
+  /// pantalla y el aviso del resultado nunca se veía).
+  Future<RecheckOutcome> recheckSession() async {
+    try {
+      final session = await _getSessionWithRetry();
+      if (session.status == 'ACTIVE' && session.account != null) {
+        if (await _localAuth.passwordDue()) return RecheckOutcome.passwordDue;
+        _account = session.account;
+        _isRootDevice = session.isRootDevice;
+        _selectDefaultChurch();
+        _phase = AuthPhase.authenticated;
+        notifyListeners();
+        return RecheckOutcome.authenticated;
+      }
+      return RecheckOutcome.passwordRequired;
+    } catch (_) {
+      return RecheckOutcome.networkError;
+    }
+  }
+
   Future<void> lock() async {
     if (_account == null) return;
     _phase = AuthPhase.locked;
@@ -270,13 +328,24 @@ class AuthState extends ChangeNotifier {
     if (_account == null || _phase != AuthPhase.authenticated) return;
     if (await _localAuth.lockMode() != LockMode.none) {
       _phase = AuthPhase.locked;
+      _lockedInPlace = true;
       notifyListeners();
     }
+  }
+
+  /// En modo "solo huella", si el teléfono ya no ofrece la huella, la persona
+  /// entra con su contraseña en vez de quedar encerrada (o tener que cerrar
+  /// sesión y perder la configuración).
+  void usePasswordInstead() {
+    _lockedInPlace = false;
+    _phase = AuthPhase.needsPassword;
+    notifyListeners();
   }
 
   Future<void> signOut() async {
     await _auth.logout();
     await _localAuth.clearAll();
+    _lockedInPlace = false;
     _account = null;
     _isRootDevice = false;
     _activeChurchId = null;

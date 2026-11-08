@@ -6,6 +6,7 @@ import '../../core/state/auth_state.dart';
 import '../../core/state/locator.dart';
 import '../../core/theme/gem_palette.dart';
 import '../../core/widgets/gem_widgets.dart';
+import '../../core/widgets/theme_toggle.dart';
 
 /// Confirmación de contraseña de la cuenta.
 ///
@@ -81,15 +82,21 @@ class _ReauthScreenState extends State<ReauthScreen> {
       _submitting = true;
       _error = null;
     });
-    await Locator.authState.bootstrap();
+    final r = await Locator.authState.recheckSession();
     if (!mounted) return;
-    setState(() => _submitting = false);
-    if (Locator.authState.phase == AuthPhase.needsPassword) {
-      setState(
-        () => _error =
-            'La sesión ya no está activa. Confirma tu contraseña para continuar.',
-      );
-    }
+    setState(() {
+      _submitting = false;
+      _error = switch (r) {
+        RecheckOutcome.authenticated => null,
+        RecheckOutcome.passwordRequired =>
+          'La sesión ya no está activa. Confirma tu contraseña para continuar.',
+        RecheckOutcome.passwordDue =>
+          'Por seguridad, cada cierto tiempo se confirma la contraseña. Escríbela para continuar.',
+        RecheckOutcome.networkError =>
+          'Sigue sin haber conexión con el servidor. Revisa tu internet.',
+      };
+    });
+    if (r == RecheckOutcome.authenticated && mounted) context.go('/');
   }
 
   /// Salida explícita: borra la protección local y vuelve al inicio.
@@ -107,7 +114,10 @@ class _ReauthScreenState extends State<ReauthScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const SizedBox(height: 24),
+              const Align(
+                alignment: Alignment.centerRight,
+                child: ThemeToggleButton(),
+              ),
               GemCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -123,7 +133,7 @@ class _ReauthScreenState extends State<ReauthScreen> {
                           : 'Por seguridad, confirma la contraseña de @$_username '
                                 'para seguir usando la app. Tu PIN y tu huella se '
                                 'mantienen como los tienes.',
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: GemPalette.textMuted,
                         height: 1.5,
                       ),

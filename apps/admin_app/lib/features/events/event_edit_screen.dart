@@ -7,6 +7,7 @@ import '../../core/services/data_services.dart';
 import '../../core/state/locator.dart';
 import '../../core/theme/gem_palette.dart';
 import '../../core/widgets/gem_widgets.dart';
+import '../../core/widgets/theme_toggle.dart';
 
 /// Iglesia sobre la que se puede programar (id y nombre).
 typedef IglesiaOpcion = ({String id, String name});
@@ -44,6 +45,17 @@ class EventEditScreen extends StatefulWidget {
 }
 
 class _EventEditScreenState extends State<EventEditScreen> {
+  /// Ya se escribió algo: "atrás" pregunta antes de descartar.
+  bool _tocado = false;
+
+  void _vigilarCambios() {
+    for (final c in [_title, _location, _description]) {
+      c.addListener(() {
+        if (!_tocado && mounted) setState(() => _tocado = true);
+      });
+    }
+  }
+
   late final TextEditingController _title;
   late final TextEditingController _location;
   late final TextEditingController _description;
@@ -77,6 +89,7 @@ class _EventEditScreenState extends State<EventEditScreen> {
     _title = TextEditingController(text: ex?.title ?? '');
     _location = TextEditingController(text: ex?.location ?? '');
     _description = TextEditingController(text: ex?.description ?? '');
+    _vigilarCambios();
     _type = ex?.type ?? EventType.CULTO;
     _scope =
         ex?.scope ??
@@ -162,7 +175,7 @@ class _EventEditScreenState extends State<EventEditScreen> {
   static String _hora(DateTime d) => DateFormat.jm('es').format(d);
 
   ThemeData _temaSelector(BuildContext c) => Theme.of(c).copyWith(
-    colorScheme: const ColorScheme.dark(
+    colorScheme: Theme.of(c).colorScheme.copyWith(
       primary: GemPalette.sapphire,
       onPrimary: Colors.white,
     ),
@@ -224,7 +237,7 @@ class _EventEditScreenState extends State<EventEditScreen> {
                 children: [
                   Text('Encargados', style: Theme.of(ctx).textTheme.titleLarge),
                   const SizedBox(height: 4),
-                  const Text(
+                  Text(
                     'Marca a las personas responsables. Se toman de los '
                     'directores registrados en cada iglesia.',
                     style: TextStyle(color: GemPalette.textMuted, height: 1.4),
@@ -266,7 +279,7 @@ class _EventEditScreenState extends State<EventEditScreen> {
                         }
                         final catalogo = snap.data ?? const [];
                         if (catalogo.isEmpty) {
-                          return const Padding(
+                          return Padding(
                             padding: EdgeInsets.all(12),
                             child: Text(
                               'Esta iglesia todavía no tiene directores '
@@ -400,7 +413,7 @@ class _EventEditScreenState extends State<EventEditScreen> {
                     padding: const EdgeInsets.only(left: 8, top: 3),
                     child: Text(
                       '•  ${c.describir()}',
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: GemPalette.textMuted,
                         height: 1.4,
                       ),
@@ -414,7 +427,7 @@ class _EventEditScreenState extends State<EventEditScreen> {
                           'Si guardas, el cruce queda registrado y aparecerá en '
                           'los avisos hasta que se resuelva.'
                     : 'Puedes cambiar la fecha u hora antes de guardar.',
-                style: const TextStyle(
+                style: TextStyle(
                   color: GemPalette.textMuted,
                   fontSize: 12.5,
                   height: 1.4,
@@ -520,382 +533,389 @@ class _EventEditScreenState extends State<EventEditScreen> {
     final iglesiaValida =
         _churchId != null && iglesias.any((c) => c.id == _churchId);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(_isEditing ? 'Editar evento' : 'Nuevo evento'),
-      ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              if (_error != null) ...[
-                GemErrorBanner(
-                  message: _error!,
-                  onDismiss: () => setState(() => _error = null),
-                ),
-                const SizedBox(height: 10),
-              ],
-              GemCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    TextField(
-                      controller: _title,
-                      maxLength: 200,
-                      textCapitalization: TextCapitalization.sentences,
-                      decoration: const InputDecoration(
-                        labelText: 'Nombre del evento',
-                        hintText: 'Ej. Culto de jóvenes',
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    DropdownButtonFormField<EventType>(
-                      initialValue: _type,
-                      decoration: const InputDecoration(labelText: 'Tipo'),
-                      items: [
-                        for (final t in EventType.values)
-                          DropdownMenuItem(
-                            value: t,
-                            child: Text(eventTypeLabel(t)),
-                          ),
-                      ],
-                      onChanged: (v) {
-                        if (v == null) return;
-                        setState(() {
-                          _type = v;
-                          // Sugerencia, no imposición: un culto unido o una
-                          // asamblea suelen ser de toda la Asociación.
-                          if (!_isEditing &&
-                              widget.canGlobal &&
-                              tiposNormalmenteGlobales.contains(v)) {
-                            _scope = EventScope.GLOBAL;
-                          }
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    _label('¿A quién compete?'),
-                    const SizedBox(height: 6),
-                    SegmentedButton<EventScope>(
-                      segments: [
-                        ButtonSegment(
-                          value: EventScope.LOCAL,
-                          label: const Text('Solo a una iglesia'),
-                          icon: const Icon(Icons.church_outlined),
-                          enabled: widget.churches.isNotEmpty,
+    return DiscardGuard(
+      dirty: _tocado,
+      child: Scaffold(
+        appBar: GemAppBar(
+          title: Text(_isEditing ? 'Editar evento' : 'Nuevo evento'),
+        ),
+        body: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (_error != null) ...[
+                  GemErrorBanner(
+                    message: _error!,
+                    onDismiss: () => setState(() => _error = null),
+                  ),
+                  const SizedBox(height: 10),
+                ],
+                GemCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      TextField(
+                        controller: _title,
+                        maxLength: 200,
+                        textCapitalization: TextCapitalization.sentences,
+                        decoration: const InputDecoration(
+                          labelText: 'Nombre del evento',
+                          hintText: 'Ej. Culto de jóvenes',
                         ),
-                        ButtonSegment(
-                          value: EventScope.GLOBAL,
-                          label: const Text('Toda la Asociación'),
-                          icon: const Icon(Icons.public),
-                          enabled: widget.canGlobal,
-                        ),
-                      ],
-                      selected: {_scope},
-                      onSelectionChanged: (s) => setState(() {
-                        _scope = s.first;
-                        if (_scope == EventScope.LOCAL &&
-                            !widget.churches.any((c) => c.id == _churchId)) {
-                          _churchId = widget.churches.isNotEmpty
-                              ? widget.churches.first.id
-                              : null;
-                        }
-                      }),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      esGlobal
-                          ? 'Avisa si se cruza con cualquier otro evento.'
-                          : widget.canGlobal
-                          ? 'Avisa si se cruza con un evento de toda la Asociación.'
-                          : 'Avisa si se cruza con un evento de toda la Asociación. '
-                                'Los eventos de toda la Asociación los programa el '
-                                'administrador principal o quien tenga el permiso.',
-                      style: const TextStyle(
-                        color: GemPalette.textMuted,
-                        fontSize: 12.5,
-                        height: 1.4,
                       ),
-                    ),
-                    const SizedBox(height: 14),
-                    DropdownButtonFormField<String?>(
-                      // La clave fuerza a reconstruir el campo cuando cambia
-                      // el alcance (cambia la lista de opciones).
-                      key: ValueKey(
-                        'iglesia-${_scope.name}-${iglesiaValida ? _churchId : ''}',
-                      ),
-                      initialValue: iglesiaValida ? _churchId : null,
-                      decoration: InputDecoration(
-                        labelText: esGlobal
-                            ? 'Iglesia organizadora (opcional)'
-                            : 'Iglesia',
-                      ),
-                      items: [
-                        if (esGlobal)
-                          const DropdownMenuItem<String?>(
-                            value: null,
-                            child: Text('La Asociación'),
-                          ),
-                        for (final c in iglesias)
-                          DropdownMenuItem<String?>(
-                            value: c.id,
-                            child: Text(c.name),
-                          ),
-                      ],
-                      onChanged: (v) => setState(() => _churchId = v),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 12),
-              GemCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _label('Cuándo'),
-                    ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      leading: const Icon(
-                        Icons.calendar_month_outlined,
-                        color: GemPalette.emerald,
-                      ),
-                      title: const Text('Fecha'),
-                      subtitle: Text(_diaLargo(_fecha)),
-                      trailing: const Icon(
-                        Icons.edit_calendar_outlined,
-                        size: 20,
-                        color: GemPalette.textMuted,
-                      ),
-                      onTap: () async {
-                        final d = await _pickDate(_fecha);
-                        if (d == null) return;
-                        setState(() {
-                          _fecha = DateTime(d.year, d.month, d.day);
-                          if (_fechaFin != null &&
-                              _fechaFin!.isBefore(_fecha)) {
-                            _fechaFin = _fecha;
-                          }
-                          if (_until != null && _until!.isBefore(_fecha)) {
-                            _until = null;
-                          }
-                        });
-                      },
-                    ),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _HoraTile(
-                            label: 'Empieza',
-                            value: _inicio,
-                            onTap: () async {
-                              final t = await _pickTime(_inicio);
-                              if (t != null) setState(() => _inicio = t);
-                            },
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: _HoraTile(
-                            label: 'Termina',
-                            value: _fin,
-                            onTap: () async {
-                              final t = await _pickTime(_fin);
-                              if (t != null) setState(() => _fin = t);
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                    SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      activeThumbColor: GemPalette.emerald,
-                      title: const Text('Termina otro día'),
-                      subtitle: const Text(
-                        'Intensivos, retiros, asambleas de varios días',
-                      ),
-                      value: _otroDia,
-                      onChanged: (v) => setState(() {
-                        _otroDia = v;
-                        _fechaFin ??= _fecha;
-                      }),
-                    ),
-                    if (_otroDia)
-                      ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        leading: const Icon(
-                          Icons.event_outlined,
-                          color: GemPalette.emerald,
-                        ),
-                        title: const Text('Fecha en que termina'),
-                        subtitle: Text(_diaLargo(_fechaFin ?? _fecha)),
-                        onTap: () async {
-                          final d = await _pickDate(
-                            _fechaFin ?? _fecha,
-                            minimo: _fecha,
-                          );
-                          if (d != null) {
-                            setState(
-                              () =>
-                                  _fechaFin = DateTime(d.year, d.month, d.day),
-                            );
-                          }
+                      const SizedBox(height: 6),
+                      DropdownButtonFormField<EventType>(
+                        initialValue: _type,
+                        decoration: const InputDecoration(labelText: 'Tipo'),
+                        items: [
+                          for (final t in EventType.values)
+                            DropdownMenuItem(
+                              value: t,
+                              child: Text(eventTypeLabel(t)),
+                            ),
+                        ],
+                        onChanged: (v) {
+                          if (v == null) return;
+                          setState(() {
+                            _type = v;
+                            // Sugerencia, no imposición: un culto unido o una
+                            // asamblea suelen ser de toda la Asociación.
+                            if (!_isEditing &&
+                                widget.canGlobal &&
+                                tiposNormalmenteGlobales.contains(v)) {
+                              _scope = EventScope.GLOBAL;
+                            }
+                          });
                         },
                       ),
-                    if (!_isEditing) ...[
-                      const Divider(height: 22, color: GemPalette.borderSoft),
-                      DropdownButtonFormField<String?>(
-                        key: ValueKey('rep-${_fecha.toIso8601String()}'),
-                        initialValue: _repeat,
-                        decoration: const InputDecoration(
-                          labelText: '¿Se repite?',
-                        ),
-                        items: [
-                          const DropdownMenuItem<String?>(
-                            value: null,
-                            child: Text('No, es una sola vez'),
+                      const SizedBox(height: 16),
+                      _label('¿A quién compete?'),
+                      const SizedBox(height: 6),
+                      SegmentedButton<EventScope>(
+                        segments: [
+                          ButtonSegment(
+                            value: EventScope.LOCAL,
+                            label: const Text('Solo a una iglesia'),
+                            icon: const Icon(Icons.church_outlined),
+                            enabled: widget.churches.isNotEmpty,
                           ),
-                          DropdownMenuItem<String?>(
-                            value: 'WEEKLY',
-                            child: Text('Cada semana, $_fraseSemanal'),
-                          ),
-                          DropdownMenuItem<String?>(
-                            value: 'MONTHLY_BY_WEEKDAY',
-                            child: Text('Cada mes, $_fraseMensual'),
+                          ButtonSegment(
+                            value: EventScope.GLOBAL,
+                            label: const Text('Toda la Asociación'),
+                            icon: const Icon(Icons.public),
+                            enabled: widget.canGlobal,
                           ),
                         ],
-                        onChanged: (v) => setState(() {
-                          _repeat = v;
-                          if (v != null) {
-                            _until ??= DateTime(_fecha.year, 12, 31);
+                        selected: {_scope},
+                        onSelectionChanged: (s) => setState(() {
+                          _scope = s.first;
+                          if (_scope == EventScope.LOCAL &&
+                              !widget.churches.any((c) => c.id == _churchId)) {
+                            _churchId = widget.churches.isNotEmpty
+                                ? widget.churches.first.id
+                                : null;
                           }
                         }),
                       ),
-                      if (_repeat != null) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        esGlobal
+                            ? 'Avisa si se cruza con cualquier otro evento.'
+                            : widget.canGlobal
+                            ? 'Avisa si se cruza con un evento de toda la Asociación.'
+                            : 'Avisa si se cruza con un evento de toda la Asociación. '
+                                  'Los eventos de toda la Asociación los programa el '
+                                  'administrador principal o quien tenga el permiso.',
+                        style: TextStyle(
+                          color: GemPalette.textMuted,
+                          fontSize: 12.5,
+                          height: 1.4,
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      DropdownButtonFormField<String?>(
+                        // La clave fuerza a reconstruir el campo cuando cambia
+                        // el alcance (cambia la lista de opciones).
+                        key: ValueKey(
+                          'iglesia-${_scope.name}-${iglesiaValida ? _churchId : ''}',
+                        ),
+                        initialValue: iglesiaValida ? _churchId : null,
+                        decoration: InputDecoration(
+                          labelText: esGlobal
+                              ? 'Iglesia organizadora (opcional)'
+                              : 'Iglesia',
+                        ),
+                        items: [
+                          if (esGlobal)
+                            const DropdownMenuItem<String?>(
+                              value: null,
+                              child: Text('La Asociación'),
+                            ),
+                          for (final c in iglesias)
+                            DropdownMenuItem<String?>(
+                              value: c.id,
+                              child: Text(c.name),
+                            ),
+                        ],
+                        onChanged: (v) => setState(() => _churchId = v),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+                GemCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _label('Cuándo'),
+                      ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: Icon(
+                          Icons.calendar_month_outlined,
+                          color: GemPalette.emerald,
+                        ),
+                        title: const Text('Fecha'),
+                        subtitle: Text(_diaLargo(_fecha)),
+                        trailing: Icon(
+                          Icons.edit_calendar_outlined,
+                          size: 20,
+                          color: GemPalette.textMuted,
+                        ),
+                        onTap: () async {
+                          final d = await _pickDate(_fecha);
+                          if (d == null) return;
+                          setState(() {
+                            _fecha = DateTime(d.year, d.month, d.day);
+                            if (_fechaFin != null &&
+                                _fechaFin!.isBefore(_fecha)) {
+                              _fechaFin = _fecha;
+                            }
+                            if (_until != null && _until!.isBefore(_fecha)) {
+                              _until = null;
+                            }
+                          });
+                        },
+                      ),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _HoraTile(
+                              label: 'Empieza',
+                              value: _inicio,
+                              onTap: () async {
+                                final t = await _pickTime(_inicio);
+                                if (t != null) setState(() => _inicio = t);
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: _HoraTile(
+                              label: 'Termina',
+                              value: _fin,
+                              onTap: () async {
+                                final t = await _pickTime(_fin);
+                                if (t != null) setState(() => _fin = t);
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                      SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        activeThumbColor: GemPalette.emerald,
+                        title: const Text('Termina otro día'),
+                        subtitle: const Text(
+                          'Intensivos, retiros, asambleas de varios días',
+                        ),
+                        value: _otroDia,
+                        onChanged: (v) => setState(() {
+                          _otroDia = v;
+                          _fechaFin ??= _fecha;
+                        }),
+                      ),
+                      if (_otroDia)
                         ListTile(
                           contentPadding: EdgeInsets.zero,
-                          leading: const Icon(
-                            Icons.event_repeat_outlined,
+                          leading: Icon(
+                            Icons.event_outlined,
                             color: GemPalette.emerald,
                           ),
-                          title: const Text('Hasta qué fecha (incluida)'),
-                          subtitle: Text(
-                            _until == null
-                                ? 'Elige la última fecha'
-                                : _diaCorto(_until!),
-                          ),
+                          title: const Text('Fecha en que termina'),
+                          subtitle: Text(_diaLargo(_fechaFin ?? _fecha)),
                           onTap: () async {
                             final d = await _pickDate(
-                              _until ?? DateTime(_fecha.year, 12, 31),
+                              _fechaFin ?? _fecha,
                               minimo: _fecha,
                             );
                             if (d != null) {
                               setState(
-                                () => _until = DateTime(d.year, d.month, d.day),
+                                () => _fechaFin = DateTime(
+                                  d.year,
+                                  d.month,
+                                  d.day,
+                                ),
                               );
                             }
                           },
                         ),
-                        const Text(
-                          'Como mucho un año. Cada fecha queda como evento '
-                          'propio: después se puede mover o cancelar una sola '
-                          'sin tocar las demás.',
+                      if (!_isEditing) ...[
+                        Divider(height: 22, color: GemPalette.borderSoft),
+                        DropdownButtonFormField<String?>(
+                          key: ValueKey('rep-${_fecha.toIso8601String()}'),
+                          initialValue: _repeat,
+                          decoration: const InputDecoration(
+                            labelText: '¿Se repite?',
+                          ),
+                          items: [
+                            const DropdownMenuItem<String?>(
+                              value: null,
+                              child: Text('No, es una sola vez'),
+                            ),
+                            DropdownMenuItem<String?>(
+                              value: 'WEEKLY',
+                              child: Text('Cada semana, $_fraseSemanal'),
+                            ),
+                            DropdownMenuItem<String?>(
+                              value: 'MONTHLY_BY_WEEKDAY',
+                              child: Text('Cada mes, $_fraseMensual'),
+                            ),
+                          ],
+                          onChanged: (v) => setState(() {
+                            _repeat = v;
+                            if (v != null) {
+                              _until ??= DateTime(_fecha.year, 12, 31);
+                            }
+                          }),
+                        ),
+                        if (_repeat != null) ...[
+                          ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            leading: Icon(
+                              Icons.event_repeat_outlined,
+                              color: GemPalette.emerald,
+                            ),
+                            title: const Text('Hasta qué fecha (incluida)'),
+                            subtitle: Text(
+                              _until == null
+                                  ? 'Elige la última fecha'
+                                  : _diaCorto(_until!),
+                            ),
+                            onTap: () async {
+                              final d = await _pickDate(
+                                _until ?? DateTime(_fecha.year, 12, 31),
+                                minimo: _fecha,
+                              );
+                              if (d != null) {
+                                setState(
+                                  () =>
+                                      _until = DateTime(d.year, d.month, d.day),
+                                );
+                              }
+                            },
+                          ),
+                          Text(
+                            'Como mucho un año. Cada fecha queda como evento '
+                            'propio: después se puede mover o cancelar una sola '
+                            'sin tocar las demás.',
+                            style: TextStyle(
+                              color: GemPalette.textMuted,
+                              fontSize: 12.5,
+                              height: 1.4,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+                GemCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      TextField(
+                        controller: _location,
+                        maxLength: 300,
+                        textCapitalization: TextCapitalization.sentences,
+                        decoration: const InputDecoration(
+                          labelText: 'Lugar (opcional)',
+                          hintText: 'Ej. Templo central, salón de jóvenes',
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          Expanded(child: _label('Encargados')),
+                          TextButton.icon(
+                            icon: const Icon(
+                              Icons.person_add_alt_1_outlined,
+                              size: 18,
+                            ),
+                            label: Text(
+                              _encargados.isEmpty ? 'Elegir' : 'Cambiar',
+                            ),
+                            onPressed: _elegirEncargados,
+                          ),
+                        ],
+                      ),
+                      if (_encargados.isEmpty)
+                        Text(
+                          'Opcional. Las personas responsables del evento.',
                           style: TextStyle(
                             color: GemPalette.textMuted,
                             fontSize: 12.5,
-                            height: 1.4,
                           ),
+                        )
+                      else
+                        Wrap(
+                          spacing: 6,
+                          runSpacing: 6,
+                          children: [
+                            for (final d in _encargados.values)
+                              InputChip(
+                                label: Text(d.displayName),
+                                onDeleted: () =>
+                                    setState(() => _encargados.remove(d.id)),
+                              ),
+                          ],
                         ),
-                      ],
+                      const SizedBox(height: 14),
+                      TextField(
+                        controller: _description,
+                        maxLength: 4000,
+                        maxLines: 4,
+                        textCapitalization: TextCapitalization.sentences,
+                        decoration: const InputDecoration(
+                          labelText: 'Descripción (opcional)',
+                        ),
+                      ),
                     ],
-                  ],
+                  ),
                 ),
-              ),
-              const SizedBox(height: 12),
-              GemCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    TextField(
-                      controller: _location,
-                      maxLength: 300,
-                      textCapitalization: TextCapitalization.sentences,
-                      decoration: const InputDecoration(
-                        labelText: 'Lugar (opcional)',
-                        hintText: 'Ej. Templo central, salón de jóvenes',
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Row(
-                      children: [
-                        Expanded(child: _label('Encargados')),
-                        TextButton.icon(
-                          icon: const Icon(
-                            Icons.person_add_alt_1_outlined,
-                            size: 18,
-                          ),
-                          label: Text(
-                            _encargados.isEmpty ? 'Elegir' : 'Cambiar',
-                          ),
-                          onPressed: _elegirEncargados,
-                        ),
-                      ],
-                    ),
-                    if (_encargados.isEmpty)
-                      const Text(
-                        'Opcional. Las personas responsables del evento.',
-                        style: TextStyle(
-                          color: GemPalette.textMuted,
-                          fontSize: 12.5,
-                        ),
-                      )
-                    else
-                      Wrap(
-                        spacing: 6,
-                        runSpacing: 6,
-                        children: [
-                          for (final d in _encargados.values)
-                            InputChip(
-                              label: Text(d.displayName),
-                              onDeleted: () =>
-                                  setState(() => _encargados.remove(d.id)),
-                            ),
-                        ],
-                      ),
-                    const SizedBox(height: 14),
-                    TextField(
-                      controller: _description,
-                      maxLength: 4000,
-                      maxLines: 4,
-                      textCapitalization: TextCapitalization.sentences,
-                      decoration: const InputDecoration(
-                        labelText: 'Descripción (opcional)',
-                      ),
-                    ),
-                  ],
+                const SizedBox(height: 16),
+                OutlinedButton.icon(
+                  icon: _revisando
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.rule_folder_outlined),
+                  label: Text(_revisando ? 'Revisando…' : 'Revisar cruces'),
+                  onPressed: _revisando || _guardando ? null : _revisarCruces,
                 ),
-              ),
-              const SizedBox(height: 16),
-              OutlinedButton.icon(
-                icon: _revisando
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.rule_folder_outlined),
-                label: Text(_revisando ? 'Revisando…' : 'Revisar cruces'),
-                onPressed: _revisando || _guardando ? null : _revisarCruces,
-              ),
-              const SizedBox(height: 10),
-              GemPrimaryButton(
-                label: _isEditing ? 'Guardar cambios' : 'Programar',
-                icon: Icons.check,
-                loading: _guardando,
-                onPressed: _guardando ? null : () => _guardar(),
-              ),
-            ],
+                const SizedBox(height: 10),
+                GemPrimaryButton(
+                  label: _isEditing ? 'Guardar cambios' : 'Programar',
+                  icon: Icons.check,
+                  loading: _guardando,
+                  onPressed: _guardando ? null : () => _guardar(),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -904,7 +924,7 @@ class _EventEditScreenState extends State<EventEditScreen> {
 
   Widget _label(String s) => Text(
     s,
-    style: const TextStyle(
+    style: TextStyle(
       color: GemPalette.textPrimary,
       fontWeight: FontWeight.w700,
       fontSize: 13.5,
@@ -939,19 +959,16 @@ class _HoraTile extends StatelessWidget {
           children: [
             Text(
               label,
-              style: const TextStyle(
-                color: GemPalette.textMuted,
-                fontSize: 11.5,
-              ),
+              style: TextStyle(color: GemPalette.textMuted, fontSize: 11.5),
             ),
             const SizedBox(height: 2),
             Row(
               children: [
-                const Icon(Icons.schedule, size: 16, color: GemPalette.emerald),
+                Icon(Icons.schedule, size: 16, color: GemPalette.emerald),
                 const SizedBox(width: 6),
                 Text(
                   value.format(context),
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: GemPalette.textPrimary,
                     fontWeight: FontWeight.w700,
                     fontSize: 15,

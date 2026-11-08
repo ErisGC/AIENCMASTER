@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/gem_palette.dart';
+import 'theme_toggle.dart';
 
 /// Tarjeta con borde gradient + fondo surface. Equivale al `.formCard` /
 /// `.listCard` de la web. Si recibe onTap, añade una micro-interacción de
@@ -37,11 +38,11 @@ class _GemCardState extends State<GemCard> {
         border: widget.gradientBorder
             ? null
             : Border.all(color: GemPalette.borderSoft, width: 1),
-        boxShadow: const [
+        boxShadow: [
           BoxShadow(
-            color: Color(0x33000000),
+            color: GemPalette.shadow,
             blurRadius: 18,
-            offset: Offset(0, 8),
+            offset: const Offset(0, 8),
           ),
         ],
       ),
@@ -67,6 +68,9 @@ class _GemCardState extends State<GemCard> {
         ),
       );
       content = Stack(
+        // La tarjeta toma el ancho que le dan (antes se encogía a su contenido
+        // y en modo claro se notaba su fondo más angosto que el borde).
+        fit: StackFit.passthrough,
         children: [
           card,
           Positioned.fill(child: IgnorePointer(child: stroke)),
@@ -108,6 +112,7 @@ class GemSectionHeader extends StatelessWidget {
   final String? subtitle;
   final Widget? trailing;
   final EdgeInsetsGeometry margin;
+  final bool showThemeToggle;
 
   const GemSectionHeader({
     super.key,
@@ -116,6 +121,7 @@ class GemSectionHeader extends StatelessWidget {
     this.subtitle,
     this.trailing,
     this.margin = const EdgeInsets.fromLTRB(16, 16, 16, 8),
+    this.showThemeToggle = true,
   });
 
   @override
@@ -127,10 +133,17 @@ class GemSectionHeader extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            GemPalette.sapphire.withValues(alpha: 0.32),
-            GemPalette.emerald.withValues(alpha: 0.14),
-          ],
+          // En claro, un velo de cielo más tenue; en oscuro, el de siempre.
+          colors: GemPalette.current.isDark
+              ? [
+                  GemPalette.sapphire.withValues(alpha: 0.32),
+                  GemPalette.emerald.withValues(alpha: 0.14),
+                ]
+              : [
+                  GemPalette.sapphire.withValues(alpha: 0.13),
+                  GemPalette.emerald.withValues(alpha: 0.07),
+                  GemPalette.topaz.withValues(alpha: 0.10),
+                ],
         ),
         borderRadius: BorderRadius.circular(22),
         border: Border.all(
@@ -145,7 +158,7 @@ class GemSectionHeader extends StatelessWidget {
               children: [
                 Text(
                   eyebrow.toUpperCase(),
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: GemPalette.textMuted,
                     fontWeight: FontWeight.w700,
                     fontSize: 11,
@@ -170,6 +183,8 @@ class GemSectionHeader extends StatelessWidget {
             ),
           ),
           ?trailing,
+          // Cambio de tonalidad a la mano en el encabezado de cada pestaña.
+          if (showThemeToggle) const ThemeToggleButton(),
         ],
       ),
     );
@@ -269,6 +284,9 @@ class GemBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // El oro decorativo no se lee como texto sobre fondo claro: el texto y el
+    // ícono usan su versión más profunda.
+    final fg = color == GemPalette.topaz ? GemPalette.topazText : color;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
@@ -280,13 +298,13 @@ class GemBadge extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (icon != null) ...[
-            Icon(icon, size: 13, color: color),
+            Icon(icon, size: 13, color: fg),
             const SizedBox(width: 4),
           ],
           Text(
             label,
             style: TextStyle(
-              color: color,
+              color: fg,
               fontWeight: FontWeight.w700,
               fontSize: 11.5,
               letterSpacing: 0.4,
@@ -328,7 +346,7 @@ class KpiTile extends StatelessWidget {
               Expanded(
                 child: Text(
                   label.toUpperCase(),
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: GemPalette.textMuted,
                     fontWeight: FontWeight.w700,
                     fontSize: 11,
@@ -376,12 +394,12 @@ class GemErrorBanner extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Icon(Icons.error_outline, color: GemPalette.danger, size: 18),
+          Icon(Icons.error_outline, color: GemPalette.danger, size: 18),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               message,
-              style: const TextStyle(
+              style: TextStyle(
                 color: GemPalette.danger,
                 fontWeight: FontWeight.w600,
                 fontSize: 13,
@@ -390,7 +408,7 @@ class GemErrorBanner extends StatelessWidget {
           ),
           if (onDismiss != null)
             IconButton(
-              icon: const Icon(Icons.close, size: 18, color: GemPalette.danger),
+              icon: Icon(Icons.close, size: 18, color: GemPalette.danger),
               onPressed: onDismiss,
               splashRadius: 18,
             ),
@@ -448,3 +466,111 @@ class GemPill extends StatelessWidget {
     );
   }
 }
+
+/// Lista vacía o que no cargó. Siempre deja una salida: el botón para volver
+/// a intentar y el gesto de deslizar hacia abajo (antes, si una pestaña
+/// fallaba al abrir la app, quedaba rota hasta reiniciarla).
+class GemListMessage extends StatelessWidget {
+  const GemListMessage({
+    super.key,
+    required this.message,
+    this.isError = false,
+    this.icon,
+    this.onRetry,
+  });
+
+  final String message;
+  final bool isError;
+  final IconData? icon;
+  final Future<void> Function()? onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final contenido = LayoutBuilder(
+      builder: (context, constraints) => ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          ConstrainedBox(
+            constraints: BoxConstraints(minHeight: constraints.maxHeight),
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(28, 24, 28, 96),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      icon ??
+                          (isError
+                              ? Icons.cloud_off_outlined
+                              : Icons.inbox_outlined),
+                      size: 44,
+                      color: (isError ? GemPalette.danger : GemPalette.textMuted)
+                          .withValues(alpha: 0.75),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      message,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: GemPalette.textMuted, height: 1.5),
+                    ),
+                    if (onRetry != null && isError) ...[
+                      const SizedBox(height: 16),
+                      OutlinedButton.icon(
+                        onPressed: onRetry,
+                        icon: const Icon(Icons.refresh_rounded),
+                        label: const Text('Reintentar'),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (onRetry == null) return contenido;
+    return RefreshIndicator(onRefresh: onRetry!, child: contenido);
+  }
+}
+
+/// Protege un formulario: si la persona ya escribió algo y toca "atrás", se
+/// le pregunta antes de descartar (antes el gesto de atrás borraba un informe
+/// o un evento a medio llenar sin avisar). Guardar sigue cerrando directo.
+class DiscardGuard extends StatelessWidget {
+  const DiscardGuard({super.key, required this.dirty, required this.child});
+
+  final bool dirty;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return PopScope(
+      canPop: !dirty,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        final salir = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('¿Descartar lo que escribiste?'),
+            content: const Text('Si sales ahora, los cambios no se guardan.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Seguir editando'),
+              ),
+              TextButton(
+                style: TextButton.styleFrom(foregroundColor: GemPalette.danger),
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('Descartar'),
+              ),
+            ],
+          ),
+        );
+        if (salir == true && context.mounted) Navigator.of(context).pop();
+      },
+      child: child,
+    );
+  }
+}
+

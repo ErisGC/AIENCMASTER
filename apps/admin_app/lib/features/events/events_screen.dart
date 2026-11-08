@@ -180,7 +180,7 @@ class _EventsScreenState extends State<EventsScreen> {
             ),
             TextButton(
               onPressed: () => Navigator.pop(ctx, true),
-              child: const Text(
+              child: Text(
                 'Toda la serie',
                 style: TextStyle(color: GemPalette.danger),
               ),
@@ -188,7 +188,7 @@ class _EventsScreenState extends State<EventsScreen> {
           ] else
             TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: const Text(
+              child: Text(
                 'Eliminar',
                 style: TextStyle(color: GemPalette.danger),
               ),
@@ -410,7 +410,7 @@ class _EventsScreenState extends State<EventsScreen> {
                               ? 'Cargando…'
                               : 'No hay eventos próximos.',
                           textAlign: TextAlign.center,
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: GemPalette.textMuted,
                             height: 1.5,
                           ),
@@ -452,7 +452,7 @@ class _EventsScreenState extends State<EventsScreen> {
             padding: EdgeInsets.only(top: out.isEmpty ? 0 : 12, bottom: 6),
             child: Text(
               _diaLargo(dia).toUpperCase(),
-              style: const TextStyle(
+              style: TextStyle(
                 color: GemPalette.textMuted,
                 fontSize: 11.5,
                 fontWeight: FontWeight.w700,
@@ -517,17 +517,14 @@ class _AlertsBanner extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
               child: Row(
                 children: [
-                  const Icon(
-                    Icons.warning_amber_rounded,
-                    color: GemPalette.ruby,
-                  ),
+                  Icon(Icons.warning_amber_rounded, color: GemPalette.ruby),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       n == 1
                           ? 'Hay 1 evento con cruce de horario'
                           : 'Hay $n eventos con cruce de horario',
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: GemPalette.textPrimary,
                         fontWeight: FontWeight.w700,
                       ),
@@ -548,10 +545,10 @@ class _AlertsBanner extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   for (final it in alerts.items) ...[
-                    const Divider(height: 14, color: GemPalette.borderSoft),
+                    Divider(height: 14, color: GemPalette.borderSoft),
                     Text(
                       it.event.title,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: GemPalette.textPrimary,
                         fontWeight: FontWeight.w700,
                       ),
@@ -559,7 +556,7 @@ class _AlertsBanner extends StatelessWidget {
                     Text(
                       '${diaLargo(it.event.startsAt)} · ${rango(it.event)}'
                       '${it.event.churchName != null ? ' · ${it.event.churchName}' : ' · Toda la Asociación'}',
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: GemPalette.textMuted,
                         fontSize: 12.5,
                       ),
@@ -569,7 +566,7 @@ class _AlertsBanner extends StatelessWidget {
                         padding: const EdgeInsets.only(top: 3),
                         child: Text(
                           '•  ${c.describir()}',
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: GemPalette.textMuted,
                             fontSize: 12.5,
                             height: 1.4,
@@ -654,7 +651,7 @@ class _MonthGrid extends StatelessWidget {
                 child: Text(
                   titulo[0].toUpperCase() + titulo.substring(1),
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: GemPalette.textPrimary,
                     fontSize: 16,
                     fontWeight: FontWeight.w800,
@@ -670,7 +667,7 @@ class _MonthGrid extends StatelessWidget {
             ],
           ),
           if (loading)
-            const LinearProgressIndicator(
+            LinearProgressIndicator(
               minHeight: 2,
               color: GemPalette.emerald,
               backgroundColor: Colors.transparent,
@@ -683,7 +680,7 @@ class _MonthGrid extends StatelessWidget {
                   child: Text(
                     i,
                     textAlign: TextAlign.center,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: GemPalette.textMuted,
                       fontSize: 11.5,
                       fontWeight: FontWeight.w700,
@@ -718,7 +715,7 @@ class _MonthGrid extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 8),
-          const Wrap(
+          Wrap(
             spacing: 14,
             runSpacing: 4,
             alignment: WrapAlignment.center,
@@ -840,7 +837,7 @@ class _Leyenda extends StatelessWidget {
         const SizedBox(width: 5),
         Text(
           label,
-          style: const TextStyle(color: GemPalette.textMuted, fontSize: 11),
+          style: TextStyle(color: GemPalette.textMuted, fontSize: 11),
         ),
       ],
     );
@@ -886,7 +883,7 @@ class _EventCard extends StatelessWidget {
                 Expanded(
                   child: Text(
                     rango,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: GemPalette.textPrimary,
                       fontWeight: FontWeight.w700,
                       fontSize: 12.5,
@@ -906,7 +903,7 @@ class _EventCard extends StatelessWidget {
             const SizedBox(height: 2),
             Text(
               quien,
-              style: const TextStyle(
+              style: TextStyle(
                 color: GemPalette.textMuted,
                 fontSize: 12.5,
                 height: 1.4,
@@ -915,31 +912,25 @@ class _EventCard extends StatelessWidget {
             if (item.seriesLabel != null)
               Text(
                 'Se repite ${item.seriesLabel}',
-                style: const TextStyle(
-                  color: GemPalette.textMuted,
-                  fontSize: 12.5,
-                ),
+                style: TextStyle(color: GemPalette.textMuted, fontSize: 12.5),
               ),
             if (item.location != null && item.location!.isNotEmpty)
               Text(
                 'Lugar: ${item.location}',
-                style: const TextStyle(
-                  color: GemPalette.textMuted,
-                  fontSize: 12.5,
-                ),
+                style: TextStyle(color: GemPalette.textMuted, fontSize: 12.5),
               ),
             if (item.directors.isNotEmpty)
               Text(
                 '${item.directors.length == 1 ? 'Encargado' : 'Encargados'}: '
                 '${item.directors.map((d) => d.displayName).join(', ')}',
-                style: const TextStyle(
+                style: TextStyle(
                   color: GemPalette.textMuted,
                   fontSize: 12.5,
                   height: 1.4,
                 ),
               ),
             if (conCruce)
-              const Padding(
+              Padding(
                 padding: EdgeInsets.only(top: 6),
                 child: Text(
                   'Este evento se cruza con otro. Revisa los avisos.',
@@ -960,12 +951,12 @@ class _EventCard extends StatelessWidget {
                     onPressed: onEdit,
                   ),
                   TextButton.icon(
-                    icon: const Icon(
+                    icon: Icon(
                       Icons.delete_outline,
                       size: 16,
                       color: GemPalette.danger,
                     ),
-                    label: const Text(
+                    label: Text(
                       'Eliminar',
                       style: TextStyle(color: GemPalette.danger),
                     ),

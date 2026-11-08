@@ -1,10 +1,14 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:showcaseview/showcaseview.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../core/models/domain.dart';
 import '../../core/services/update_service.dart';
+import '../../core/state/auth_state.dart';
 import '../../core/state/locator.dart';
 import '../../core/theme/gem_palette.dart';
 import '../../core/widgets/coach_card.dart';
@@ -13,6 +17,7 @@ import '../announcements/announcements_screen.dart';
 import '../churches/churches_screen.dart';
 import '../events/events_screen.dart';
 import '../reports/reports_screen.dart';
+import '../security/approval_sheet.dart';
 import '../security/security_screen.dart';
 
 /// Shell con barra inferior. Las seis secciones se mantienen montadas
@@ -29,8 +34,33 @@ class HomeShell extends StatefulWidget {
   State<HomeShell> createState() => _HomeShellState();
 }
 
-class _HomeShellState extends State<HomeShell> {
+class _HomeShellState extends State<HomeShell>
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
+  /// Cada cuánto se mira si hay un ingreso web esperando aprobación mientras
+  /// la app está abierta.
+  static const _cadaCuanto = Duration(seconds: 4);
+  Timer? _vigia;
+  bool _hojaAbierta = false;
+
+  /// Solicitudes que la persona dejó para después ("Ahora no"): no se le
+  /// vuelven a poner encima; siguen en Seguridad, Sesiones.
+  final Set<String> _postergadas = {};
+
+  /// Vueltas del vigía: los accesos de otras cuentas (solo la principal) se
+  /// miran una vuelta sí y otra no.
+  int _vuelta = 0;
   static const _kTutorialSeen = 'aienc_tutorial_seen_v1';
+
+  /// Versión de la actualización a la que el usuario ya dijo "Ahora no": no
+  /// se le vuelve a preguntar por esa misma versión en cada arranque.
+  static const _kUpdateSkipped = 'aienc_update_skipped';
+
+  /// Fundido al cambiar de pestaña (las pestañas siguen montadas).
+  late final AnimationController _tabFade = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 220),
+    value: 1,
+  );
 
   /// Paso por el que va el tutorial (índice del punto que se está mostrando).
   /// Permite reanudarlo justo donde se quedó, no sólo repetirlo entero.
@@ -69,7 +99,118 @@ class _HomeShellState extends State<HomeShell> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) => _runStartupChecks());
+    _vigia = Timer.periodic(_cadaCuanto, (_) => _revisarAprobaciones());
+  }
+
+  @override
+  void dispose() {
+    _vigia?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    _tabFade.dispose();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Al volver a la app se revisa de inmediato: lo normal es que la persona
+    // acabe de intentar entrar en el computador y abra el teléfono.
+    if (state == AppLifecycleState.resumed) _revisarAprobaciones();
+  }
+
+  /// Si hay un ingreso web de esta cuenta esperando, se muestra "¿Eres tú?".
+  Future<void> _revisarAprobaciones() async {
+    if (_hojaAbierta || !mounted) return;
+    final auth = Locator.authState;
+    if (auth.phase != AuthPhase.authenticated || auth.account == null) return;
+    if (WidgetsBinding.instance.lifecycleState != AppLifecycleState.resumed) {
+      return;
+    }
+    // El aviso sale sobre cualquier pantalla (va en el navegador raíz): una
+    // hoja inferior no borra lo que haya abierto debajo.
+    try {
+      final data = await Locator.linkedDevices.overview();
+      final nuevas = data.pending
+          .where((r) => !_postergadas.contains(r.id))
+          .toList();
+      if (nuevas.isEmpty) {
+        // Nada propio: la principal revisa si alguien más espera aprobación
+        // (por ejemplo, quien acaba de aceptar una invitación).
+        if (auth.isRootDevice && (_vuelta++).isEven) {
+          await _revisarAccesosDeOtros();
+        }
+        return;
+      }
+      if (!mounted || _hojaAbierta) return;
+      _hojaAbierta = true;
+      final res = await showApprovalSheet(context, nuevas.first);
+      _hojaAbierta = false;
+      if (!mounted) return;
+      final aviso = switch (res) {
+        ApprovalOutcome.approved => 'Listo: ese equipo ya entró al panel.',
+        ApprovalOutcome.rejected => 'Ingreso rechazado.',
+        ApprovalOutcome.dismissed => null,
+      };
+      if (res == ApprovalOutcome.dismissed) _postergadas.add(nuevas.first.id);
+      if (aviso != null) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(aviso)));
+      }
+    } catch (_) {
+      // Sin red o sin permiso: se vuelve a intentar en la próxima vuelta.
+      _hojaAbierta = false;
+    }
+  }
+
+  Future<void> _revisarAccesosDeOtros() async {
+    final miId = Locator.authState.account?.id;
+    final otras = (await Locator.linkedDevices.panelRequests())
+        // Solo los que esperan a la principal: los que tienen app propia los
+        // aprueba esa app (y siguen en Sesiones como respaldo).
+        .where(
+          (r) =>
+              r.accountId != miId &&
+              r.approvalChannel != 'APP' &&
+              !_postergadas.contains(r.id),
+        )
+        .toList();
+    if (otras.isEmpty || !mounted || _hojaAbierta) return;
+    _hojaAbierta = true;
+    final res = await showPanelRequestSheet(context, otras.first);
+    _hojaAbierta = false;
+    if (!mounted) return;
+    if (res == ApprovalOutcome.dismissed) _postergadas.add(otras.first.id);
+    final aviso = switch (res) {
+      ApprovalOutcome.approved => 'Acceso aprobado.',
+      ApprovalOutcome.rejected => 'Acceso rechazado.',
+      ApprovalOutcome.dismissed => null,
+    };
+    if (aviso != null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(aviso)));
+    }
+  }
+
+  void _irA(int i) {
+    if (i == _idx) return;
+    setState(() => _idx = i);
+    if (!(MediaQuery.maybeOf(context)?.disableAnimations ?? false)) {
+      _tabFade.forward(from: 0.35);
+    }
+  }
+
+  /// ¿Puede enviar informes? La cuenta principal siempre; los demás, si en
+  /// alguna de sus iglesias tienen ese permiso.
+  bool get _puedeEnviarInformes {
+    final a = Locator.authState.account;
+    if (a == null) return false;
+    if (a.isRoot) return true;
+    return a.churchAssignments.any(
+      (c) => c.permissions.contains(ChurchPermission.SUBMIT_REPORTS),
+    );
   }
 
   // ── Arranque ─────────────────────────────────────────────────────────────
@@ -85,6 +226,9 @@ class _HomeShellState extends State<HomeShell> {
   Future<bool> _checkForUpdate() async {
     final info = await _updateService.check();
     if (info == null || !info.hasUpdate || !mounted) return false;
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.getString(_kUpdateSkipped) == info.latestVersion) return false;
+    if (!mounted) return false;
 
     final accept = await showDialog<bool>(
       context: context,
@@ -117,6 +261,7 @@ class _HomeShellState extends State<HomeShell> {
       );
       return true;
     }
+    await prefs.setString(_kUpdateSkipped, info.latestVersion);
     return false;
   }
 
@@ -158,7 +303,7 @@ class _HomeShellState extends State<HomeShell> {
     final keys = [_dashKey, _navKey];
     final inicio = from.clamp(0, keys.length - 1);
     _tutorialOffset = inicio;
-    if (_idx != 0) setState(() => _idx = 0);
+    if (_idx != 0) _irA(0);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final c = _scCtx;
       if (!mounted || c == null) return;
@@ -242,69 +387,83 @@ class _HomeShellState extends State<HomeShell> {
       ),
     ];
 
-    return Scaffold(
-      body: SafeArea(
-        bottom: false,
-        child: IndexedStack(
-          index: _idx,
-          children: tabs.map((t) => t.child).toList(),
-        ),
-      ),
-      bottomNavigationBar: Showcase.withWidget(
-        key: _navKey,
-        height: coachHeight(ctx),
-        width: coachWidth(ctx),
-        container: _navCoach(ctx, account, isRoot),
-        child: Container(
-          decoration: const BoxDecoration(
-            color: GemPalette.surfaceElevated,
-            border: Border(top: BorderSide(color: GemPalette.borderSoft)),
+    // "Atrás" desde otra pestaña vuelve a Métricas; solo desde Métricas sale
+    // de la app (antes cerraba la app desde cualquier pestaña).
+    return PopScope(
+      canPop: _idx == 0,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _irA(0);
+      },
+      child: Scaffold(
+        body: SafeArea(
+          bottom: false,
+          child: FadeTransition(
+            opacity: CurvedAnimation(parent: _tabFade, curve: Curves.easeOut),
+            child: IndexedStack(
+              index: _idx,
+              children: tabs.map((t) => t.child).toList(),
+            ),
           ),
-          child: SafeArea(
-            top: false,
-            child: NavigationBarTheme(
-              data: NavigationBarThemeData(
-                backgroundColor: Colors.transparent,
-                indicatorColor: GemPalette.sapphire.withValues(alpha: 0.25),
-                labelTextStyle: WidgetStateProperty.all(
-                  const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600),
-                ),
-              ),
-              child: NavigationBar(
-                selectedIndex: _idx < tabs.length ? _idx : 0,
-                onDestinationSelected: (i) => setState(() => _idx = i),
-                destinations: [
-                  for (final t in tabs)
-                    NavigationDestination(
-                      icon: Badge.count(
-                        count: t.badge,
-                        isLabelVisible: t.badge > 0,
-                        backgroundColor: GemPalette.ruby,
-                        child: Icon(t.icon),
-                      ),
-                      selectedIcon: Badge.count(
-                        count: t.badge,
-                        isLabelVisible: t.badge > 0,
-                        backgroundColor: GemPalette.ruby,
-                        child: Icon(t.activeIcon),
-                      ),
-                      label: t.label,
+        ),
+        bottomNavigationBar: Showcase.withWidget(
+          key: _navKey,
+          height: coachHeight(ctx),
+          width: coachWidth(ctx),
+          container: _navCoach(ctx, account, isRoot),
+          child: Container(
+            decoration: BoxDecoration(
+              color: GemPalette.surfaceElevated,
+              border: Border(top: BorderSide(color: GemPalette.borderSoft)),
+            ),
+            child: SafeArea(
+              top: false,
+              child: NavigationBarTheme(
+                data: NavigationBarThemeData(
+                  backgroundColor: Colors.transparent,
+                  indicatorColor: GemPalette.sapphire.withValues(alpha: 0.25),
+                  labelTextStyle: WidgetStateProperty.all(
+                    const TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w600,
                     ),
-                ],
+                  ),
+                ),
+                child: NavigationBar(
+                  selectedIndex: _idx < tabs.length ? _idx : 0,
+                  onDestinationSelected: _irA,
+                  destinations: [
+                    for (final t in tabs)
+                      NavigationDestination(
+                        icon: Badge.count(
+                          count: t.badge,
+                          isLabelVisible: t.badge > 0,
+                          backgroundColor: GemPalette.ruby,
+                          child: Icon(t.icon),
+                        ),
+                        selectedIcon: Badge.count(
+                          count: t.badge,
+                          isLabelVisible: t.badge > 0,
+                          backgroundColor: GemPalette.ruby,
+                          child: Icon(t.activeIcon),
+                        ),
+                        label: t.label,
+                      ),
+                  ],
+                ),
               ),
             ),
           ),
         ),
+        floatingActionButton: _idx == _idxInformes && _puedeEnviarInformes
+            ? FloatingActionButton.extended(
+                backgroundColor: GemPalette.emerald,
+                foregroundColor: Colors.white,
+                icon: const Icon(Icons.add),
+                label: const Text('Nuevo informe'),
+                onPressed: () => context.push('/reports/new'),
+              )
+            : null,
       ),
-      floatingActionButton: _idx == _idxInformes
-          ? FloatingActionButton.extended(
-              backgroundColor: GemPalette.emerald,
-              foregroundColor: Colors.white,
-              icon: const Icon(Icons.add),
-              label: const Text('Nuevo informe'),
-              onPressed: () => context.push('/reports/new'),
-            )
-          : null,
     );
   }
 

@@ -7,6 +7,7 @@ import '../../core/models/domain.dart';
 import '../../core/state/locator.dart';
 import '../../core/theme/gem_palette.dart';
 import '../../core/widgets/gem_widgets.dart';
+import '../../core/widgets/theme_toggle.dart';
 
 class InviteScreen extends StatefulWidget {
   final String? initialToken;
@@ -116,10 +117,16 @@ class _InviteScreenState extends State<InviteScreen> {
     });
     try {
       await Locator.auth.acceptInvitation(_extractToken(_tokenCtrl.text), pwd);
+      // El login queda con el usuario de la invitación ya escrito: la persona
+      // solo repite la contraseña que acaba de crear.
+      final usuario = _preview?.username;
+      if (usuario != null && usuario.isNotEmpty) {
+        await Locator.localAuth.setLastUser(usuario);
+      }
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Cuenta activada. Inicia sesión con tu usuario.'),
+          content: Text('Cuenta activada. Escribe tu contraseña para entrar.'),
         ),
       );
       context.go('/login');
@@ -137,7 +144,7 @@ class _InviteScreenState extends State<InviteScreen> {
     final preview = _preview;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Activar invitación')),
+      appBar: GemAppBar(title: const Text('Activar invitación')),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(20),
@@ -153,7 +160,7 @@ class _InviteScreenState extends State<InviteScreen> {
                       style: Theme.of(context).textTheme.headlineSmall,
                     ),
                     const SizedBox(height: 6),
-                    const Text(
+                    Text(
                       'Pega aquí el enlace completo que te enviaron. No hace '
                       'falta recortar nada: la app toma el token sola.',
                       style:
@@ -219,7 +226,7 @@ class _InviteScreenState extends State<InviteScreen> {
                                 color: GemPalette.amethyst.withValues(alpha: 0.4),
                               ),
                             ),
-                            child: const Text(
+                            child: Text(
                               'Estás activando una cuenta de administrador '
                               'principal (ROOT). Tendrás acceso total al '
                               'sistema. Usa una contraseña fuerte y guárdala '
@@ -257,7 +264,7 @@ class _InviteScreenState extends State<InviteScreen> {
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
                       const SizedBox(height: 6),
-                      const Text(
+                      Text(
                         'Mínimo 8 caracteres. Combina letras, números y '
                         'símbolos. No podrás recuperarla sin ayuda del ROOT.',
                         style: TextStyle(
@@ -339,7 +346,7 @@ class _InfoRow extends StatelessWidget {
           SizedBox(
             width: 80,
             child: Text(label,
-                style: const TextStyle(
+                style: TextStyle(
                     color: GemPalette.textMuted, fontSize: 12.5)),
           ),
           Expanded(

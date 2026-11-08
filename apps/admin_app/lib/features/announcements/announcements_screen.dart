@@ -206,10 +206,7 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen>
       {required bool isGlobal}) {
     if (loading) return const Center(child: CircularProgressIndicator());
     if (_error != null && items.isEmpty) {
-      return Padding(
-        padding: const EdgeInsets.all(16),
-        child: GemErrorBanner(message: _error!),
-      );
+      return GemListMessage(message: _error!, isError: true, onRetry: _load);
     }
     if (items.isEmpty) {
       // Esta pestaña trabaja sobre "mi iglesia". El administrador principal no
@@ -217,21 +214,16 @@ class _AnnouncementsScreenState extends State<AnnouncementsScreen>
       // indicamos dónde se gestionan los anuncios de cada iglesia.
       final sinIglesia =
           !isGlobal && Locator.authState.activeChurchId == null;
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Text(
-            isGlobal
-                ? 'Aún no hay anuncios globales publicados.'
-                : sinIglesia
-                    ? 'Tu cuenta no está asignada a una iglesia concreta.\n\n'
-                        'Para publicar anuncios de una iglesia, entra a '
-                        'Iglesias, ábrela y usa "Anuncios de la iglesia".'
-                    : 'Aún no hay anuncios para esta iglesia.',
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: GemPalette.textMuted, height: 1.5),
-          ),
-        ),
+      return GemListMessage(
+        icon: Icons.campaign_outlined,
+        onRetry: _load,
+        message: isGlobal
+            ? 'Aún no hay anuncios globales publicados.'
+            : sinIglesia
+                ? 'Tu cuenta no está asignada a una iglesia concreta.\n\n'
+                    'Para publicar anuncios de una iglesia, entra a '
+                    'Iglesias, ábrela y usa "Anuncios de la iglesia".'
+                : 'Aún no hay anuncios para esta iglesia.',
       );
     }
 
@@ -285,7 +277,7 @@ class _AnnouncementCard extends StatelessWidget {
               ),
               Text(
                 DateFormat('d MMM', 'es').format(item.createdAt),
-                style: const TextStyle(
+                style: TextStyle(
                     color: GemPalette.textMuted, fontSize: 12),
               ),
             ],
@@ -293,7 +285,7 @@ class _AnnouncementCard extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             'Por ${item.author}',
-            style: const TextStyle(
+            style: TextStyle(
               color: GemPalette.emerald,
               fontWeight: FontWeight.w700,
               fontSize: 12.5,
@@ -334,7 +326,7 @@ class _AnnouncementCard extends StatelessWidget {
                       ),
                       child: Text(
                         '📎 ${a.name.isNotEmpty ? a.name : a.format.toUpperCase()}',
-                        style: const TextStyle(
+                        style: TextStyle(
                             color: GemPalette.emerald, fontSize: 12),
                       ),
                     ),
@@ -354,9 +346,9 @@ class _AnnouncementCard extends StatelessWidget {
                 ),
                 const SizedBox(width: 4),
                 TextButton.icon(
-                  icon: const Icon(Icons.delete_outline,
+                  icon: Icon(Icons.delete_outline,
                       size: 16, color: GemPalette.danger),
-                  label: const Text('Eliminar',
+                  label: Text('Eliminar',
                       style: TextStyle(color: GemPalette.danger)),
                   onPressed: onDelete,
                 ),

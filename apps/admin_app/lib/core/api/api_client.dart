@@ -317,9 +317,21 @@ String userMessageFor(Object e) {
   return 'No se pudo completar la operación. Intenta de nuevo.';
 }
 
+/// Se llama cuando una ruta del panel responde 401: la sesión venció
+/// mientras se usaba la app. Locator lo conecta con AuthState, que pide la
+/// contraseña (o lleva al inicio) en vez de dejar cada pantalla con el aviso
+/// "Sesión no válida" sin salida.
+void Function()? onAdminSessionExpired;
+
 class _ErrorMappingInterceptor extends Interceptor {
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) {
+    final path = err.requestOptions.path;
+    if (err.response?.statusCode == 401 &&
+        path.contains('/admin/') &&
+        !path.contains('/admin/auth/')) {
+      onAdminSessionExpired?.call();
+    }
     if (err.response != null) {
       handler.reject(
         DioException(

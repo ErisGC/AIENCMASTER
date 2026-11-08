@@ -436,16 +436,22 @@ class SessionResponse {
   /// (el dispositivo principal, único) o 'APPROVED_DEVICE'.
   final String? deviceRoleScope;
 
+  /// La API dice si este dispositivo tiene los poderes del administrador
+  /// principal: el dispositivo principal clásico, la app de la cuenta
+  /// principal o un navegador aprobado con ella.
+  final bool? devicePrincipal;
+
   SessionResponse({
     required this.status,
     required this.account,
     this.deviceRoleScope,
+    this.devicePrincipal,
   });
 
   /// El módulo de seguridad de la API (cuentas, permisos, dispositivos y
-  /// auditoría) solo atiende al dispositivo principal, aunque la cuenta sea
-  /// ROOT. Desde cualquier otro teléfono responde 403.
-  bool get isRootDevice => deviceRoleScope == 'ROOT_DEVICE';
+  /// auditoría) solo atiende a un dispositivo con poderes de principal. Si la
+  /// API es anterior y no lo dice, se mira el dispositivo principal clásico.
+  bool get isRootDevice => devicePrincipal ?? deviceRoleScope == 'ROOT_DEVICE';
 
   factory SessionResponse.fromJson(Map<String, dynamic> j) => SessionResponse(
     status: j['status'] as String? ?? 'UNAUTHENTICATED',
@@ -454,7 +460,182 @@ class SessionResponse {
         : AdminAccount.fromJson(j['account'] as Map<String, dynamic>),
     deviceRoleScope:
         (j['device'] as Map<String, dynamic>?)?['roleScope'] as String?,
+    devicePrincipal:
+        (j['device'] as Map<String, dynamic>?)?['principal'] as bool?,
   );
+}
+
+// ── Sesiones y dispositivos vinculados ─────────────────────────────────
+
+DateTime? _fechaOpt(Object? v) =>
+    v is String ? DateTime.tryParse(v)?.toLocal() : null;
+
+/// Una sesión de la cuenta: la app de un teléfono o un navegador.
+class LinkedDevice {
+  LinkedDevice({
+    required this.id,
+    required this.name,
+    required this.deviceName,
+    required this.customName,
+    required this.clientKind,
+    required this.platform,
+    required this.browser,
+    required this.ip,
+    required this.state,
+    required this.current,
+    required this.principal,
+    required this.ephemeral,
+    required this.lastSeenAt,
+    required this.approvedAt,
+    required this.signedOutAt,
+  });
+
+  final String id;
+  final String name;
+  final String deviceName;
+  final String? customName;
+
+  /// 'APP' o 'WEB'.
+  final String clientKind;
+  final String platform;
+  final String browser;
+  final String? ip;
+
+  /// 'IN_USE' | 'OPEN' | 'WINDOW_CLOSED' | 'PAUSED' | 'SIGNED_OUT' |
+  /// 'REJECTED' | 'REVOKED' | 'PENDING'
+  final String state;
+
+  /// Es el teléfono que se está usando.
+  final bool current;
+  final bool principal;
+  final bool ephemeral;
+  final DateTime? lastSeenAt;
+  final DateTime? approvedAt;
+  final DateTime? signedOutAt;
+
+  bool get isApp => clientKind == 'APP';
+  bool get isOpen =>
+      state == 'IN_USE' || state == 'OPEN' || state == 'WINDOW_CLOSED';
+  bool get isPaused => state == 'PAUSED';
+
+  factory LinkedDevice.fromJson(Map<String, dynamic> j) => LinkedDevice(
+    id: j['id'] as String,
+    name: (j['name'] as String?) ?? (j['deviceName'] as String? ?? ''),
+    deviceName: j['deviceName'] as String? ?? '',
+    customName: j['customName'] as String?,
+    clientKind: j['clientKind'] as String? ?? 'WEB',
+    platform: j['platform'] as String? ?? '',
+    browser: j['browser'] as String? ?? '',
+    ip: j['ip'] as String?,
+    state: j['state'] as String? ?? 'OPEN',
+    current: j['current'] as bool? ?? false,
+    principal: j['principal'] as bool? ?? false,
+    ephemeral: j['ephemeral'] as bool? ?? false,
+    lastSeenAt: _fechaOpt(j['lastSeenAt']),
+    approvedAt: _fechaOpt(j['approvedAt']),
+    signedOutAt: _fechaOpt(j['signedOutAt']),
+  );
+}
+
+/// Ingreso web de la propia cuenta que espera aprobación desde la app.
+class LinkedRequest {
+  LinkedRequest({
+    required this.id,
+    required this.deviceName,
+    required this.platform,
+    required this.browser,
+    required this.ip,
+    required this.requestedAt,
+    required this.codeOptions,
+  });
+
+  final String id;
+  final String deviceName;
+  final String platform;
+  final String browser;
+  final String? ip;
+  final DateTime? requestedAt;
+
+  /// Tres números: uno es el que muestra la web.
+  final List<String> codeOptions;
+
+  factory LinkedRequest.fromJson(Map<String, dynamic> j) => LinkedRequest(
+    id: j['id'] as String,
+    deviceName: j['deviceName'] as String? ?? '',
+    platform: j['platform'] as String? ?? '',
+    browser: j['browser'] as String? ?? '',
+    ip: j['ip'] as String?,
+    requestedAt: _fechaOpt(j['requestedAt']),
+    codeOptions: ((j['codeOptions'] as List?) ?? const [])
+        .map((e) => e.toString())
+        .toList(),
+  );
+}
+
+class LinkedOverview {
+  LinkedOverview({required this.devices, required this.pending});
+  final List<LinkedDevice> devices;
+  final List<LinkedRequest> pending;
+
+  factory LinkedOverview.fromJson(Map<String, dynamic> j) => LinkedOverview(
+    devices: ((j['devices'] as List?) ?? const [])
+        .map((e) => LinkedDevice.fromJson(e as Map<String, dynamic>))
+        .toList(),
+    pending: ((j['pending'] as List?) ?? const [])
+        .map((e) => LinkedRequest.fromJson(e as Map<String, dynamic>))
+        .toList(),
+  );
+}
+
+/// Solicitud de acceso de cualquier cuenta: la ve la cuenta principal para
+/// aprobar como respaldo a quien no tiene la app.
+class PanelAccessRequest {
+  PanelAccessRequest({
+    required this.id,
+    required this.deviceName,
+    required this.platform,
+    required this.browser,
+    required this.ip,
+    required this.requestedAt,
+    required this.accountId,
+    required this.accountName,
+    required this.username,
+    this.approvalChannel = 'PANEL',
+  });
+
+  final String id;
+  final String deviceName;
+  final String platform;
+  final String browser;
+  final String? ip;
+  final DateTime? requestedAt;
+  final String? accountId;
+  final String accountName;
+  final String username;
+
+  /// 'APP' cuando ese ingreso lo aprueba la app de la propia cuenta; 'PANEL'
+  /// cuando le toca a la administración principal.
+  final String approvalChannel;
+
+  factory PanelAccessRequest.fromJson(Map<String, dynamic> j) {
+    final cuenta = j['adminAccount'] as Map<String, dynamic>?;
+    return PanelAccessRequest(
+      id: j['id'] as String,
+      deviceName: j['deviceName'] as String? ?? '',
+      platform: j['platform'] as String? ?? '',
+      browser: j['browser'] as String? ?? '',
+      ip: j['ip'] as String?,
+      requestedAt: _fechaOpt(j['requestedAt']),
+      accountId: cuenta?['id'] as String?,
+      accountName:
+          (cuenta?['displayName'] as String?) ??
+          (j['requestedUsername'] as String? ?? ''),
+      username:
+          (cuenta?['username'] as String?) ??
+          (j['requestedUsername'] as String? ?? ''),
+      approvalChannel: j['approvalChannel'] as String? ?? 'PANEL',
+    );
+  }
 }
 
 // ── Invitación ─────────────────────────────────────────────────────────

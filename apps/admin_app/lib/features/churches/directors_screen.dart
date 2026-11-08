@@ -9,6 +9,7 @@ import '../../core/models/domain.dart';
 import '../../core/state/locator.dart';
 import '../../core/theme/gem_palette.dart';
 import '../../core/widgets/gem_widgets.dart';
+import '../../core/widgets/theme_toggle.dart';
 
 /// Gestión de representantes/directores de una iglesia: crear, editar
 /// (nombre, cargo, celular, correo, foto) y eliminar.
@@ -182,7 +183,7 @@ class _DirectorsScreenState extends State<DirectorsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Representantes')),
+      appBar: GemAppBar(title: const Text('Representantes')),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : SafeArea(
@@ -193,7 +194,7 @@ class _DirectorsScreenState extends State<DirectorsScreen> {
                   children: [
                     Text(
                       widget.churchName,
-                      style: const TextStyle(
+                      style: TextStyle(
                           color: GemPalette.textMuted, fontSize: 12.5),
                     ),
                     const SizedBox(height: 12),
@@ -207,7 +208,7 @@ class _DirectorsScreenState extends State<DirectorsScreen> {
                         style: Theme.of(context).textTheme.titleMedium),
                     const SizedBox(height: 8),
                     if (_items.isEmpty)
-                      const Padding(
+                      Padding(
                         padding: EdgeInsets.symmetric(vertical: 18),
                         child: Text(
                           'Aún no hay representantes. Agrega el primero arriba.',
@@ -312,11 +313,11 @@ class _DirectorsScreenState extends State<DirectorsScreen> {
                           fontWeight: FontWeight.w700, fontSize: 14.5)),
                   if (d.role.isNotEmpty)
                     Text(d.role,
-                        style: const TextStyle(
+                        style: TextStyle(
                             color: GemPalette.sapphire, fontSize: 12)),
                   if (contact.isNotEmpty)
                     Text(contact.join('  ·  '),
-                        style: const TextStyle(
+                        style: TextStyle(
                             color: GemPalette.textMuted, fontSize: 12)),
                 ],
               ),
@@ -327,7 +328,7 @@ class _DirectorsScreenState extends State<DirectorsScreen> {
               tooltip: 'Editar',
             ),
             IconButton(
-              icon: const Icon(Icons.delete_outline,
+              icon: Icon(Icons.delete_outline,
                   size: 20, color: GemPalette.danger),
               onPressed: () => _delete(d),
               tooltip: 'Eliminar',
@@ -370,7 +371,7 @@ class _AvatarPreview extends StatelessWidget {
               (initial != null && initial!.isNotEmpty)
                   ? initial!.characters.first.toUpperCase()
                   : '?',
-              style: const TextStyle(
+              style: TextStyle(
                   fontWeight: FontWeight.w800, color: GemPalette.textMuted),
             )
           : null,

@@ -3,10 +3,12 @@ import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/api/api_client.dart';
+import '../../core/config/app_config.dart';
 import '../../core/models/domain.dart';
 import '../../core/state/locator.dart';
 import '../../core/theme/gem_palette.dart';
 import '../../core/widgets/gem_widgets.dart';
+import '../../core/widgets/theme_toggle.dart';
 
 class InvitationsScreen extends StatefulWidget {
   const InvitationsScreen({super.key});
@@ -65,80 +67,110 @@ class _InvitationsScreenState extends State<InvitationsScreen> {
   Future<void> _showLinkDialog(CreatedInvitation inv) async {
     // Construimos el deep-link a la app para que el admin lo comparta. La web
     // también acepta el mismo token via /admin/invite/[token].
-    final deepLink = 'aiencadmin://invite?token=${inv.token}';
+    final deepLink =
+        '${AppConfig.webBaseUrl}/admin/invite/${Uri.encodeComponent(inv.token)}';
     final isRoot = inv.targetRole == 'ROOT';
+    var copiado = false;
     await showDialog<void>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(
-          isRoot
-              ? 'Invitación ROOT creada para @${inv.username}'
-              : 'Invitación creada para @${inv.username}',
-        ),
-        content: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (isRoot)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 6),
-                  margin: const EdgeInsets.only(bottom: 10),
-                  decoration: BoxDecoration(
-                    color: GemPalette.amethyst.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Text(
-                    'Esta invitación creará otra cuenta ROOT al aceptarse.',
-                    style: TextStyle(
-                      color: GemPalette.amethyst,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 12.5,
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setLocal) => AlertDialog(
+          title: Text(
+            isRoot
+                ? 'Invitación ROOT creada para @${inv.username}'
+                : 'Invitación creada para @${inv.username}',
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (isRoot)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
+                    margin: const EdgeInsets.only(bottom: 10),
+                    decoration: BoxDecoration(
+                      color: GemPalette.amethyst.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      'Esta invitación creará otra cuenta ROOT al aceptarse.',
+                      style: TextStyle(
+                        color: GemPalette.amethyst,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 12.5,
+                      ),
                     ),
                   ),
+                Text(
+                  // La caducidad la decide el servidor; escribirla a mano hacía
+                  // que el texto mintiera si allí cambiaba.
+                  'Comparte este enlace con la persona invitada. En un celular '
+                  'la lleva a abrir o instalar la app, y en un computador al '
+                  'panel web. '
+                  '${_vigencia(inv.expiresAt)} y sólo se puede usar una vez. ',
+                  style: const TextStyle(height: 1.45),
                 ),
-              Text(
-                // La caducidad la decide el servidor; escribirla a mano hacía
-                // que el texto mintiera si allí cambiaba.
-                'Comparte este enlace con la persona invitada. '
-                '${_vigencia(inv.expiresAt)} y sólo se puede usar una vez. ',
-                style: const TextStyle(height: 1.45),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'No volverá a mostrarse — guárdalo ahora.',
-                style: TextStyle(
-                  color: GemPalette.danger,
-                  fontWeight: FontWeight.w700,
+                const SizedBox(height: 8),
+                Text(
+                  'No volverá a mostrarse — guárdalo ahora.',
+                  style: TextStyle(
+                    color: GemPalette.danger,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 12),
-              SelectableText(
-                deepLink,
-                style: const TextStyle(
-                  fontFamily: 'monospace',
-                  fontSize: 12,
+                const SizedBox(height: 12),
+                SelectableText(
+                  deepLink,
+                  style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
+          actions: [
+            TextButton(
+              onPressed: () async {
+                await Clipboard.setData(ClipboardData(text: deepLink));
+                setLocal(() => copiado = true);
+              },
+              child: Text(copiado ? 'Copiado ✓' : 'Copiar enlace'),
+            ),
+            TextButton(
+              onPressed: () async {
+                // El enlace no se vuelve a mostrar: si no se copió, se pregunta.
+                if (!copiado) {
+                  final salir = await showDialog<bool>(
+                    context: ctx,
+                    builder: (c) => AlertDialog(
+                      title: const Text('¿Ya guardaste el enlace?'),
+                      content: const Text(
+                        'Este enlace no se volverá a mostrar. Si lo pierdes, '
+                        'tendrás que revocar esta invitación y crear otra.',
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(c, false),
+                          child: const Text('Volver'),
+                        ),
+                        TextButton(
+                          onPressed: () => Navigator.pop(c, true),
+                          child: const Text('Cerrar de todos modos'),
+                        ),
+                      ],
+                    ),
+                  );
+                  if (salir != true) return;
+                }
+                if (ctx.mounted) Navigator.pop(ctx);
+              },
+              child: const Text('Cerrar'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Clipboard.setData(ClipboardData(text: deepLink));
-              ScaffoldMessenger.of(ctx).showSnackBar(
-                const SnackBar(content: Text('Enlace copiado.')),
-              );
-            },
-            child: const Text('Copiar enlace'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cerrar'),
-          ),
-        ],
       ),
     );
   }
@@ -169,9 +201,9 @@ class _InvitationsScreenState extends State<InvitationsScreen> {
       await _load();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(userMessageFor(e))),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(userMessageFor(e))));
       }
     }
   }
@@ -179,7 +211,7 @@ class _InvitationsScreenState extends State<InvitationsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Invitaciones')),
+      appBar: GemAppBar(title: const Text('Invitaciones')),
       floatingActionButton: FloatingActionButton.extended(
         backgroundColor: GemPalette.emerald,
         foregroundColor: Colors.white,
@@ -190,33 +222,25 @@ class _InvitationsScreenState extends State<InvitationsScreen> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null && _items.isEmpty
-              ? Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: GemErrorBanner(message: _error!),
-                )
-              : _items.isEmpty
-                  ? const Center(
-                      child: Padding(
-                        padding: EdgeInsets.all(24),
-                        child: Text(
-                          'Aún no se han generado invitaciones.',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(color: GemPalette.textMuted),
-                        ),
-                      ),
-                    )
-                  : RefreshIndicator(
-                      onRefresh: _load,
-                      child: ListView.separated(
-                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 90),
-                        separatorBuilder: (_, __) => const SizedBox(height: 10),
-                        itemCount: _items.length,
-                        itemBuilder: (_, i) => _InvitationTile(
-                          inv: _items[i],
-                          onRevoke: () => _revoke(_items[i]),
-                        ),
-                      ),
-                    ),
+          ? GemListMessage(message: _error!, isError: true, onRetry: _load)
+          : _items.isEmpty
+          ? GemListMessage(
+              icon: Icons.mail_outline_rounded,
+              message: 'Aún no se han generado invitaciones.',
+              onRetry: _load,
+            )
+          : RefreshIndicator(
+              onRefresh: _load,
+              child: ListView.separated(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 90),
+                separatorBuilder: (_, __) => const SizedBox(height: 10),
+                itemCount: _items.length,
+                itemBuilder: (_, i) => _InvitationTile(
+                  inv: _items[i],
+                  onRevoke: () => _revoke(_items[i]),
+                ),
+              ),
+            ),
     );
   }
 }
@@ -248,11 +272,17 @@ class _InvitationTile extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(inv.displayName,
-                        style: Theme.of(context).textTheme.titleMedium),
-                    Text('@${inv.username}',
-                        style: const TextStyle(
-                            color: GemPalette.textMuted, fontSize: 12.5)),
+                    Text(
+                      inv.displayName,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    Text(
+                      '@${inv.username}',
+                      style: TextStyle(
+                        color: GemPalette.textMuted,
+                        fontSize: 12.5,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -277,13 +307,12 @@ class _InvitationTile extends StatelessWidget {
             isRoot
                 ? 'Sin iglesia asignada — acceso total al sistema'
                 : 'Iglesia: ${inv.assignedChurchName ?? "—"}',
-            style: const TextStyle(
-                color: GemPalette.textPrimary, fontSize: 13),
+            style: TextStyle(color: GemPalette.textPrimary, fontSize: 13),
           ),
           const SizedBox(height: 2),
           Text(
             'Expira: ${DateFormat("d MMM yyyy, HH:mm", 'es').format(inv.expiresAt.toLocal())}',
-            style: const TextStyle(color: GemPalette.textMuted, fontSize: 12),
+            style: TextStyle(color: GemPalette.textMuted, fontSize: 12),
           ),
           if (isPending) ...[
             const SizedBox(height: 10),
@@ -295,7 +324,7 @@ class _InvitationTile extends StatelessWidget {
                 onPressed: onRevoke,
                 style: OutlinedButton.styleFrom(
                   foregroundColor: GemPalette.danger,
-                  side: const BorderSide(color: GemPalette.danger),
+                  side: BorderSide(color: GemPalette.danger),
                 ),
               ),
             ),
@@ -322,10 +351,6 @@ class _NewInvitationScreenState extends State<_NewInvitationScreen> {
   PermissionsCatalog? _catalog;
   String _templateKey = 'PASTOR';
   Set<ChurchPermission> _churchPerms = {};
-
-  /// Si está activado, la invitación crea otra cuenta ROOT (administrador
-  /// principal). Sólo otra cuenta ROOT puede hacerlo — el backend valida.
-  bool _rootInvitation = false;
 
   bool _submitting = false;
   bool _loadingCatalog = true;
@@ -400,44 +425,19 @@ class _NewInvitationScreenState extends State<_NewInvitationScreen> {
     if (!RegExp(r'^[a-zA-Z0-9_.\-]+$').hasMatch(user) ||
         user.length < 3 ||
         user.length > 50) {
-      setState(() => _error =
-          'Usuario inválido (3–50 caracteres, sin espacios ni acentos).');
+      setState(
+        () => _error =
+            'Usuario inválido (3–50 caracteres, sin espacios ni acentos).',
+      );
       return;
     }
     if (name.length < 2 || name.length > 100) {
       setState(() => _error = 'Nombre visible inválido (2–100 caracteres).');
       return;
     }
-    if (!_rootInvitation && _churchId == null) {
+    if (_churchId == null) {
       setState(() => _error = 'Selecciona la iglesia asignada.');
       return;
-    }
-
-    // Confirmación adicional para invitaciones ROOT — es la acción más
-    // sensible del sistema.
-    if (_rootInvitation) {
-      final ok = await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('Crear otra cuenta ROOT'),
-          content: const Text(
-            'Vas a generar una invitación para crear OTRA cuenta de '
-            'administrador principal (ROOT). La nueva cuenta tendrá '
-            'acceso total al sistema, igual que la tuya. ¿Continuar?',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancelar'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Generar invitación ROOT'),
-            ),
-          ],
-        ),
-      );
-      if (ok != true) return;
     }
 
     setState(() {
@@ -448,13 +448,20 @@ class _NewInvitationScreenState extends State<_NewInvitationScreen> {
       final created = await Locator.invitations.create(
         username: user,
         displayName: name,
-        targetRole: _rootInvitation ? 'ROOT' : 'ADMIN',
-        assignedChurchId: _rootInvitation ? null : _churchId,
-        churchPermissions:
-            _rootInvitation ? const [] : _churchPerms.toList(),
+        targetRole: 'ADMIN',
+        assignedChurchId: _churchId,
+        churchPermissions: _churchPerms.toList(),
       );
       if (!mounted) return;
       Navigator.pop(context, created);
+    } on ApiException catch (e) {
+      // El servidor explica el conflicto (usuario ya usado, por ejemplo).
+      final raw = e.raw;
+      setState(
+        () => _error = raw is Map && raw['message'] is String
+            ? raw['message'] as String
+            : e.message,
+      );
     } catch (e) {
       setState(() => _error = userMessageFor(e));
     } finally {
@@ -466,13 +473,13 @@ class _NewInvitationScreenState extends State<_NewInvitationScreen> {
   Widget build(BuildContext context) {
     if (_loadingCatalog) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Nueva invitación')),
+        appBar: GemAppBar(title: const Text('Nueva invitación')),
         body: const Center(child: CircularProgressIndicator()),
       );
     }
     final cat = _catalog;
     return Scaffold(
-      appBar: AppBar(title: const Text('Nueva invitación')),
+      appBar: GemAppBar(title: const Text('Nueva invitación')),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
@@ -483,8 +490,10 @@ class _NewInvitationScreenState extends State<_NewInvitationScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Text('Datos del nuevo administrador',
-                        style: Theme.of(context).textTheme.titleMedium),
+                    Text(
+                      'Datos del nuevo administrador',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
                     const SizedBox(height: 10),
                     TextField(
                       controller: _username,
@@ -503,13 +512,14 @@ class _NewInvitationScreenState extends State<_NewInvitationScreen> {
                       ),
                       maxLength: 100,
                     ),
-                    if (!_rootInvitation) ...[
+                    ...[
                       const SizedBox(height: 8),
                       DropdownButtonFormField<String>(
                         initialValue: _churchId,
                         isExpanded: true,
                         decoration: const InputDecoration(
-                            labelText: 'Iglesia asignada'),
+                          labelText: 'Iglesia asignada',
+                        ),
                         items: [
                           for (final c in _churches)
                             DropdownMenuItem(
@@ -520,58 +530,29 @@ class _NewInvitationScreenState extends State<_NewInvitationScreen> {
                         onChanged: (v) => setState(() => _churchId = v),
                       ),
                       const SizedBox(height: 6),
-                      const Text(
+                      Text(
                         'El nuevo admin podrá gestionar la iglesia que '
                         'selecciones. Más adelante puedes asignarle otras.',
                         style: TextStyle(
-                            color: GemPalette.textMuted, fontSize: 12),
+                          color: GemPalette.textMuted,
+                          fontSize: 12,
+                        ),
                       ),
                     ],
                   ],
                 ),
               ),
               const SizedBox(height: 14),
-              // Toggle "Crear como administrador principal" — sólo visible
-              // a ROOTs (esta pantalla ya lo es, está dentro de la tab
-              // Seguridad que sólo se muestra a ROOT). El backend además
-              // valida que el actor sea ROOT.
-              GemCard(
-                borderGradient: const LinearGradient(
-                  colors: [GemPalette.amethyst, GemPalette.sapphire],
-                ),
-                child: CheckboxListTile.adaptive(
-                  contentPadding: EdgeInsets.zero,
-                  controlAffinity: ListTileControlAffinity.leading,
-                  activeColor: GemPalette.amethyst,
-                  value: _rootInvitation,
-                  onChanged: (v) =>
-                      setState(() => _rootInvitation = v ?? false),
-                  title: const Text(
-                    'Crear como administrador principal (ROOT)',
-                    style: TextStyle(
-                        fontWeight: FontWeight.w800,
-                        color: GemPalette.amethyst),
-                  ),
-                  subtitle: const Padding(
-                    padding: EdgeInsets.only(top: 4),
-                    child: Text(
-                      'La nueva cuenta tendrá los mismos privilegios totales '
-                      'que tú: gestiona todas las iglesias, todos los admins, '
-                      'y puede a su vez invitar a otras cuentas ROOT.',
-                      style: TextStyle(
-                          color: GemPalette.textMuted, fontSize: 12, height: 1.4),
-                    ),
-                  ),
-                ),
-              ),
               const SizedBox(height: 14),
-              if (!_rootInvitation && cat != null) ...[
+              if (cat != null) ...[
                 GemCard(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Rol que va a tener',
-                          style: Theme.of(context).textTheme.titleMedium),
+                      Text(
+                        'Rol que va a tener',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
                       const SizedBox(height: 8),
                       Wrap(
                         spacing: 8,
@@ -588,11 +569,15 @@ class _NewInvitationScreenState extends State<_NewInvitationScreen> {
                       const SizedBox(height: 6),
                       Text(
                         cat.templates
-                                .firstWhere((t) => t.key == _templateKey,
-                                    orElse: () => cat.templates.first)
-                                .description,
-                        style: const TextStyle(
-                            color: GemPalette.textMuted, fontSize: 12),
+                            .firstWhere(
+                              (t) => t.key == _templateKey,
+                              orElse: () => cat.templates.first,
+                            )
+                            .description,
+                        style: TextStyle(
+                          color: GemPalette.textMuted,
+                          fontSize: 12,
+                        ),
                       ),
                     ],
                   ),
@@ -602,30 +587,35 @@ class _NewInvitationScreenState extends State<_NewInvitationScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Permisos efectivos sobre la iglesia',
-                          style: Theme.of(context).textTheme.titleMedium),
+                      Text(
+                        'Permisos efectivos sobre la iglesia',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
                       const SizedBox(height: 6),
-                      ...cat.catalog
-                          .where((d) => d.group == 'church')
-                          .map((d) {
+                      ...cat.catalog.where((d) => d.group == 'church').map((d) {
                         final perm = churchPermissionFromString(d.key);
                         if (perm == null) return const SizedBox.shrink();
                         return CheckboxListTile.adaptive(
                           contentPadding: EdgeInsets.zero,
                           dense: true,
-                          controlAffinity:
-                              ListTileControlAffinity.leading,
+                          controlAffinity: ListTileControlAffinity.leading,
                           activeColor: GemPalette.emerald,
                           value: _churchPerms.contains(perm),
                           onChanged: (_) => _togglePerm(perm),
-                          title: Text(d.label,
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 14)),
-                          subtitle: Text(d.description,
-                              style: const TextStyle(
-                                  color: GemPalette.textMuted,
-                                  fontSize: 12)),
+                          title: Text(
+                            d.label,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                            ),
+                          ),
+                          subtitle: Text(
+                            d.description,
+                            style: TextStyle(
+                              color: GemPalette.textMuted,
+                              fontSize: 12,
+                            ),
+                          ),
                         );
                       }),
                     ],
