@@ -6,7 +6,9 @@ export default async function AdminEntryPage() {
   const session = await getServerAdminSession();
 
   if (session.status === 'ACTIVE') {
-    redirect('/admin/announcements');
+    // Métricas es lo primero del menú y le sirve a cualquier administrador;
+    // Anuncios (institucionales) solo lo maneja quien tiene ese permiso.
+    redirect('/admin/dashboard');
   }
 
   if (session.status === 'BOOTSTRAP_REQUIRED' || session.bootstrapAvailable) {

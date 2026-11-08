@@ -16,7 +16,7 @@
 }
 
 :root[data-theme="dark"] .form {
-  background: linear-gradient(180deg, var(--surface), rgba(0,0,0,.18));
+  background: var(--gradient-surface);
 }
 
 /* ─────────── HEADER ─────────── */
@@ -127,17 +127,17 @@
 
 .dangerGhost {
   background: transparent;
-  border: 1px dashed rgba(255, 95, 95, 0.35);
+  border: 1px dashed var(--danger-line);
   border-radius: 10px;
   padding: 0.5rem 0.75rem;
   cursor: pointer;
   font-size: 0.85rem;
-  color: #ff5f5f;
+  color: var(--danger);
 }
 
 .dangerGhost:hover {
-  border-color: rgba(255, 95, 95, 0.6);
-  color: #ff3b3b;
+  border-color: var(--danger);
+  color: var(--danger-strong-hover);
 }
 
 /* ─────────── LOCATION BOX ─────────── */
@@ -227,14 +227,14 @@
 .removeBtn {
   background: none;
   border: none;
-  color: #ff5f5f;
+  color: var(--danger);
   cursor: pointer;
   font-size: 1.1rem;
   line-height: 1;
 }
 
 .removeBtn:hover {
-  color: #ff3b3b;
+  color: var(--danger-strong-hover);
 }
 
 /* Input real oculto */
@@ -262,7 +262,7 @@
 }
 
 .footer button {
-  background: linear-gradient(135deg, var(--accent), rgba(37, 99, 235, 0.65));
+  background: var(--btn-primary-bg);
   border: none;
   border-radius: 10px;
   padding: 0.6rem 1.4rem;
@@ -274,7 +274,7 @@
 }
 
 :root[data-theme="dark"] .footer button {
-  background: linear-gradient(135deg, var(--accent), rgba(96, 165, 250, 0.55));
+  background: var(--btn-primary-bg-hover);
 }
 
 .footer button:hover:not(:disabled) {

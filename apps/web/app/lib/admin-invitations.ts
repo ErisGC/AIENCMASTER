@@ -88,7 +88,7 @@ async function invitationsRequest<T>(
           : res.status === 404
             ? 'Invitación no encontrada.'
             : res.status === 409
-              ? 'El nombre de usuario ya está en uso.'
+              ? mensajeDelServidor(text) ?? 'El nombre de usuario ya está en uso.'
               : res.status === 400
                 ? 'Datos inválidos.'
                 : res.status >= 500
@@ -158,4 +158,21 @@ export function acceptInvitation(token: string, password: string) {
     method: 'POST',
     body: JSON.stringify({ token, password }),
   });
+}
+
+/**
+ * Mensaje en español que la API manda en un conflicto (409). No todos los
+ * conflictos son "usuario repetido", así que se muestra el del servidor
+ * cuando viene uno legible.
+ */
+function mensajeDelServidor(text: string): string | null {
+  try {
+    const data = JSON.parse(text) as { message?: unknown };
+    const msg = Array.isArray(data.message) ? data.message[0] : data.message;
+    return typeof msg === 'string' && msg.length > 0 && msg.length < 300
+      ? msg
+      : null;
+  } catch {
+    return null;
+  }
 }

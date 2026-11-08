@@ -4,7 +4,8 @@
   display: flex;
   flex-direction: column;
   isolation: isolate;
-  background: var(--bg-main);
+  /* Sin fondo propio: deja ver el del body y su luz (globals.css). */
+  background: transparent;
 }
 
 /* ─────────────────────────  TOP-NAV  ───────────────────────── */
@@ -29,11 +30,7 @@
 
 /* Transparente sobre el hero (sólo home, sin scroll) */
 .topnav.transparent {
-  background: linear-gradient(
-    180deg,
-    rgba(8, 22, 40, 0.42),
-    rgba(8, 22, 40, 0)
-  );
+  background: var(--topnav-hero-bg);
   border-bottom-color: transparent;
 }
 
@@ -98,14 +95,13 @@
   color: var(--text-soft);
 }
 
-/* En transparente, el texto de marca va claro para contrastar con el hero */
-.topnav.transparent .brandName,
-.topnav.transparent .brandSub {
-  color: #fff;
+/* Sobre la portada, el texto de marca sigue la tonalidad de la portada */
+.topnav.transparent .brandName {
+  color: var(--topnav-hero-text);
 }
 
 .topnav.transparent .brandSub {
-  color: rgba(255, 255, 255, 0.82);
+  color: var(--topnav-hero-text-muted);
 }
 
 /* Links de nav (desktop) */
@@ -136,19 +132,19 @@
   background: var(--accent-weak);
 }
 
-/* Sobre el hero transparente, los links van claros */
+/* Sobre la portada, los links siguen la tonalidad de la portada */
 .topnav.transparent .navLink {
-  color: rgba(255, 255, 255, 0.86);
+  color: var(--topnav-hero-text-muted);
 }
 
 .topnav.transparent .navLink:hover {
-  color: #fff;
-  background: rgba(255, 255, 255, 0.14);
+  color: var(--topnav-hero-text);
+  background: var(--topnav-hero-chip);
 }
 
 .topnav.transparent .navLink.active {
-  color: #fff;
-  background: rgba(255, 255, 255, 0.18);
+  color: var(--topnav-hero-text);
+  background: var(--topnav-hero-chip-strong);
 }
 
 .navActions {
@@ -180,21 +176,10 @@
 
 .topnav.transparent .themeBtn,
 .topnav.transparent .menuBtn {
-  background: rgba(255, 255, 255, 0.16);
-  border-color: rgba(255, 255, 255, 0.28);
-  color: #fff;
+  background: var(--topnav-hero-chip);
+  border-color: var(--topnav-hero-chip-border);
+  color: var(--topnav-hero-text);
   box-shadow: none;
-}
-
-.themeIcon {
-  display: inline-flex;
-  width: 18px;
-  height: 18px;
-}
-
-.themeIcon svg {
-  width: 18px;
-  height: 18px;
 }
 
 .menuBtn {

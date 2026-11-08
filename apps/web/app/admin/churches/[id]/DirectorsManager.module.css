@@ -131,7 +131,7 @@
 
 .primaryBtn,
 .primaryBtnSmall {
-  background: linear-gradient(135deg, var(--gem-sapphire), var(--gem-emerald));
+  background: var(--btn-accent-bg);
   color: #fff;
   border: none;
   padding: 0.7rem 1.4rem;
@@ -208,7 +208,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, var(--gem-sapphire), var(--gem-emerald));
+  background: var(--btn-accent-bg);
   color: #fff;
   font-weight: 800;
   font-size: 1.1rem;
@@ -313,3 +313,15 @@
     flex-basis: 100%;
   }
 }
+
+.retryInline {
+  margin-left: 0.25rem;
+  padding: 0.2rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  background: transparent;
+  color: var(--color-primary);
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+

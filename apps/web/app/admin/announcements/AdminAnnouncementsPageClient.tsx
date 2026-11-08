@@ -9,6 +9,7 @@ import {
   adminDeleteAnnouncement,
   adminGetAnnouncements,
 } from '@/app/lib/admin-announcements';
+import { useActiveChurch } from '@/app/admin/_components/ActiveChurchContext';
 import styles from './page.module.css';
 
 export function AdminAnnouncementsPageClient() {
@@ -18,6 +19,10 @@ export function AdminAnnouncementsPageClient() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  // Publicar, editar y eliminar anuncios institucionales exige un permiso
+  // global (la API lo pide igual); sin él, no se ofrecen esos botones.
+  const { isRoot, isLoaded, globalPermissions } = useActiveChurch();
+  const canManage = isRoot || globalPermissions.includes('MANAGE_GLOBAL_ANNOUNCEMENTS');
 
   // El temporizador anterior se cancela antes de armar el nuevo: dos avisos
   // seguidos hacían que el primero borrara el segundo casi al instante.
@@ -48,6 +53,20 @@ export function AdminAnnouncementsPageClient() {
   useEffect(() => {
     void loadAnnouncements();
   }, [loadAnnouncements]);
+
+  // Al volver de crear o editar llega ?ok=...: se confirma con un aviso y se
+  // limpia la dirección para que no se repita al recargar.
+  useEffect(() => {
+    const ok = new URLSearchParams(window.location.search).get('ok');
+    if (!ok) return;
+    window.history.replaceState(null, '', window.location.pathname);
+    const mensaje =
+      ok === 'creado' ? 'Anuncio publicado.' : ok === 'guardado' ? 'Cambios guardados.' : null;
+    if (!mensaje) return;
+    const t = setTimeout(() => showToast(mensaje, 'success'), 0);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function handleDelete(id: string) {
     setDeletingId(id);
@@ -124,10 +143,19 @@ export function AdminAnnouncementsPageClient() {
 
       <header className={styles.header}>
         <h1>Anuncios</h1>
-        <Link href="/admin/announcements/new" className={styles.newButton}>
-          Nuevo anuncio
-        </Link>
+        {canManage && (
+          <Link href="/admin/announcements/new" className={styles.newButton}>
+            Nuevo anuncio
+          </Link>
+        )}
       </header>
+
+      {isLoaded && !canManage && (
+        <p className={styles.permissionNote}>
+          Los anuncios institucionales los publica la administración general.
+          Los de tu iglesia se manejan desde <Link href="/admin/churches">Iglesias</Link>.
+        </p>
+      )}
 
       {loadError && (
         <div className={styles.errorBanner}>
@@ -138,12 +166,14 @@ export function AdminAnnouncementsPageClient() {
         </div>
       )}
 
-      {!loadError && announcements.length === 0 ? (
+      {loadError ? null : announcements.length === 0 ? (
         <div className={styles.emptyState}>
           <p>No hay anuncios creados todavía.</p>
-          <Link href="/admin/announcements/new" className={styles.newButton}>
-            Crear el primero
-          </Link>
+          {canManage && (
+            <Link href="/admin/announcements/new" className={styles.newButton}>
+              Crear el primero
+            </Link>
+          )}
         </div>
       ) : (
         <div className={styles.tableWrapper}>
@@ -153,7 +183,7 @@ export function AdminAnnouncementsPageClient() {
                 <th>Título</th>
                 <th>Autor</th>
                 <th>Fecha</th>
-                <th>Acciones</th>
+                {canManage && <th>Acciones</th>}
               </tr>
             </thead>
 
@@ -163,23 +193,25 @@ export function AdminAnnouncementsPageClient() {
                   <td className={styles.title}>{a.title}</td>
                   <td>{a.author}</td>
                   <td>{formatDateTimeWithSeconds(a.createdAt)}</td>
-                  <td className={styles.actions}>
-                    <Link
-                      href={`/admin/announcements/${a.id}/edit`}
-                      className={styles.editLink}
-                    >
-                      Editar
-                    </Link>
+                  {canManage && (
+                    <td className={styles.actions}>
+                      <Link
+                        href={`/admin/announcements/${a.id}/edit`}
+                        className={styles.editLink}
+                      >
+                        Editar
+                      </Link>
 
-                    <button
-                      type="button"
-                      className={styles.deleteButton}
-                      onClick={() => setConfirmDeleteId(a.id)}
-                      disabled={deletingId === a.id}
-                    >
-                      {deletingId === a.id ? 'Eliminando…' : 'Eliminar'}
-                    </button>
-                  </td>
+                      <button
+                        type="button"
+                        className={styles.deleteButton}
+                        onClick={() => setConfirmDeleteId(a.id)}
+                        disabled={deletingId === a.id}
+                      >
+                        {deletingId === a.id ? 'Eliminando…' : 'Eliminar'}
+                      </button>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>

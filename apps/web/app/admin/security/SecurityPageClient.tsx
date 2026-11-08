@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 
 import {
   adminApproveAccessRequest,
@@ -24,6 +25,24 @@ import { formatDateTimeWithSeconds } from '@/app/lib/formatDate';
 import { actionTypeLabel, roleShortLabel } from '@/app/lib/i18n';
 import styles from './page.module.css';
 
+/** Estado del equipo en palabras (antes se mostraba el código: APPROVED...). */
+function estadoLabel(status: string) {
+  switch (status) {
+    case 'APPROVED':
+      return 'Aprobado';
+    case 'REJECTED':
+      return 'Rechazado';
+    case 'REVOKED':
+      return 'Revocado';
+    case 'PENDING':
+      return 'Pendiente';
+    case 'SIGNED_OUT':
+      return 'Sesión cerrada';
+    default:
+      return status;
+  }
+}
+
 function badgeClass(status: string) {
   switch (status) {
     case 'APPROVED':
@@ -42,6 +61,8 @@ export function SecurityPageClient() {
   const [requests, setRequests] = useState<SecurityAccessRequest[]>([]);
   const [devices, setDevices] = useState<SecurityDevice[]>([]);
   const [accounts, setAccounts] = useState<SecurityAccount[]>([]);
+  // Fila con una acción en curso (aprobar, rechazar, revocar, desactivar).
+  const [ocupado, setOcupado] = useState<string | null>(null);
   const [logs, setLogs] = useState<SecurityAuditLog[]>([]);
   const [actionTypeFilter, setActionTypeFilter] = useState('');
   const [auditActorFilter, setAuditActorFilter] = useState('');
@@ -147,7 +168,14 @@ export function SecurityPageClient() {
     accion: () => Promise<unknown>,
     mensajeOk: string,
     mensajeError: string,
+    clave?: string,
   ) {
+    // Mientras corre, los botones de esa fila quedan quietos: un doble clic
+    // ya no manda la misma acción dos veces.
+    if (clave) {
+      if (ocupado) return;
+      setOcupado(clave);
+    }
     setError(null);
     try {
       await accion();
@@ -155,6 +183,10 @@ export function SecurityPageClient() {
       setToast(mensajeOk);
     } catch (e) {
       setError(e instanceof Error ? e.message : mensajeError);
+      // El aviso de error va arriba de la página: se lleva la vista hasta él.
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } finally {
+      if (clave) setOcupado(null);
     }
   }
 
@@ -163,22 +195,41 @@ export function SecurityPageClient() {
       () => adminApproveAccessRequest(id),
       'Dispositivo aprobado.',
       'No se pudo aprobar el dispositivo.',
+      `req:${id}`,
     );
   }
 
-  async function handleReject(id: string) {
+  async function handleReject(request: SecurityAccessRequest) {
+    const quien =
+      request.adminAccount?.displayName ?? request.requestedUsername ?? 'esta cuenta';
+    if (
+      !window.confirm(
+        `¿Rechazar el acceso de "${request.deviceName}" (${quien})? Ese equipo no podrá entrar al panel.`,
+      )
+    ) {
+      return;
+    }
     await ejecutarAccion(
-      () => adminRejectAccessRequest(id),
+      () => adminRejectAccessRequest(request.id),
       'Solicitud rechazada.',
       'No se pudo rechazar la solicitud.',
+      `req:${request.id}`,
     );
   }
 
-  async function handleRevoke(id: string) {
+  async function handleRevoke(device: SecurityDevice) {
+    if (
+      !window.confirm(
+        `¿Revocar el acceso de "${device.deviceName}"? Se cerrará su sesión y tendrá que pedir aprobación de nuevo.`,
+      )
+    ) {
+      return;
+    }
     await ejecutarAccion(
-      () => adminRevokeDevice(id),
+      () => adminRevokeDevice(device.id),
       'Dispositivo revocado.',
       'No se pudo revocar el dispositivo.',
+      `dev:${device.id}`,
     );
   }
 
@@ -204,6 +255,14 @@ export function SecurityPageClient() {
   }
 
   async function handleToggleAccount(account: SecurityAccount) {
+    if (
+      account.isActive &&
+      !window.confirm(
+        `¿Desactivar la cuenta de ${account.displayName}? No podrá entrar hasta que la reactives.`,
+      )
+    ) {
+      return;
+    }
     await ejecutarAccion(
       () =>
         adminUpdateSecurityAccount(account.id, {
@@ -211,6 +270,7 @@ export function SecurityPageClient() {
         }),
       account.isActive ? 'Cuenta desactivada.' : 'Cuenta reactivada.',
       'No se pudo cambiar el estado de la cuenta.',
+      `acc:${account.id}`,
     );
   }
 
@@ -283,16 +343,16 @@ export function SecurityPageClient() {
         <div>
           <h1 className={styles.title}>Seguridad administrativa</h1>
           <p className={styles.subtitle}>
-            Este módulo sólo está disponible para la cuenta root desde el root device.
+            Solo la cuenta principal, desde el dispositivo principal, puede entrar aquí.
           </p>
         </div>
         <div className={styles.headerActions}>
-          <a href="/admin/site" className={styles.headerCTASecondary}>
+          <Link href="/admin/site" className={styles.headerCTASecondary}>
             Fondos del portal
-          </a>
-          <a href="/admin/security/invitations" className={styles.headerCTA}>
+          </Link>
+          <Link href="/admin/security/invitations" className={styles.headerCTA}>
             Invitar nuevo administrador →
-          </a>
+          </Link>
         </div>
       </header>
 
@@ -324,7 +384,7 @@ export function SecurityPageClient() {
           <div>
             <h2 className={styles.sectionTitle}>Solicitudes pendientes</h2>
             <p className={styles.sectionHint}>
-              Se actualizan automáticamente para permitir aprobación desde el root device.
+              Equipos que piden entrar al panel. La lista se actualiza sola.
             </p>
           </div>
         </div>
@@ -339,7 +399,7 @@ export function SecurityPageClient() {
                   <div>
                     <p className={styles.titleLine}>
                       {request.deviceName}{' '}
-                      <span className={badgeClass(request.status)}>{request.status}</span>
+                      <span className={badgeClass(request.status)}>{estadoLabel(request.status)}</span>
                     </p>
                     <div className={styles.meta}>
                       <span>{request.adminAccount?.displayName ?? request.requestedUsername}</span>
@@ -354,13 +414,15 @@ export function SecurityPageClient() {
                       type="button"
                       className={styles.primaryBtn}
                       onClick={() => void handleApprove(request.id)}
+                      disabled={ocupado === `req:${request.id}`}
                     >
                       Aprobar
                     </button>
                     <button
                       type="button"
                       className={styles.dangerBtn}
-                      onClick={() => void handleReject(request.id)}
+                      onClick={() => void handleReject(request)}
+                      disabled={ocupado === `req:${request.id}`}
                     >
                       Rechazar
                     </button>
@@ -377,7 +439,7 @@ export function SecurityPageClient() {
           <div>
             <h2 className={styles.sectionTitle}>Dispositivos autorizados</h2>
             <p className={styles.sectionHint}>
-              El root device no puede revocarse desde este panel.
+              El dispositivo principal no se puede revocar desde aquí.
             </p>
           </div>
         </div>
@@ -389,13 +451,20 @@ export function SecurityPageClient() {
                 <div>
                   <p className={styles.titleLine}>
                     {device.deviceName}{' '}
-                    <span className={badgeClass(device.status)}>{device.status}</span>
+                    <span className={badgeClass(device.status)}>{estadoLabel(device.status)}</span>
                   </p>
                   <div className={styles.meta}>
                     <span>{device.adminAccount?.displayName ?? 'Sin cuenta'}</span>
                     <span>{device.browser}</span>
                     <span>{device.platform}</span>
-                    <span>{device.roleScope}</span>
+                    <span>
+                      {device.roleScope === 'ROOT_DEVICE'
+                        ? 'Dispositivo principal'
+                        : device.clientKind === 'APP'
+                          ? 'App del teléfono'
+                          : 'Navegador'}
+                      {device.paused ? ' · pausado desde la app' : ''}
+                    </span>
                     <span>
                       Última actividad:{' '}
                       {device.lastSeenAt
@@ -409,7 +478,8 @@ export function SecurityPageClient() {
                   <button
                     type="button"
                     className={styles.dangerBtn}
-                    onClick={() => void handleRevoke(device.id)}
+                    onClick={() => void handleRevoke(device)}
+                    disabled={ocupado === `dev:${device.id}`}
                   >
                     Revocar
                   </button>
@@ -425,7 +495,7 @@ export function SecurityPageClient() {
           <div>
             <h2 className={styles.sectionTitle}>Cuentas admin</h2>
             <p className={styles.sectionHint}>
-              El bootstrap crea el root. Desde aquí se gestionan cuentas secundarias.
+              La cuenta principal se crea una sola vez al instalar el sistema. Aquí se gestionan las demás.
             </p>
           </div>
         </div>
@@ -485,12 +555,12 @@ export function SecurityPageClient() {
                 </div>
 
                 <div className={styles.actions}>
-                  <a
+                  <Link
                     href={`/admin/security/accounts/${account.id}`}
                     className={styles.inlineBtn}
                   >
                     Ver historial
-                  </a>
+                  </Link>
                   <button
                     type="button"
                     className={styles.inlineBtn}
@@ -503,6 +573,7 @@ export function SecurityPageClient() {
                       type="button"
                       className={styles.inlineBtn}
                       onClick={() => void handleToggleAccount(account)}
+                      disabled={ocupado === `acc:${account.id}`}
                     >
                       {account.isActive ? 'Desactivar' : 'Reactivar'}
                     </button>

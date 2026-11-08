@@ -157,7 +157,7 @@
 /* ── Botones ── */
 
 .primaryBtn {
-  background: linear-gradient(135deg, var(--gem-sapphire), var(--gem-emerald));
+  background: var(--btn-accent-bg);
   color: #fff;
   border: none;
   padding: 0.7rem 1.25rem;
@@ -246,7 +246,7 @@
   position: fixed;
   inset: 0;
   z-index: 150;
-  background: rgba(0, 0, 0, 0.55);
+  background: var(--overlay);
   display: flex;
   align-items: center;
   justify-content: center;

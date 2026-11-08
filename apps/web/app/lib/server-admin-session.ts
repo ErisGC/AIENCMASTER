@@ -45,11 +45,12 @@ export async function requireActiveAdminSession() {
 export async function requireRootSecuritySession() {
   const session = await requireActiveAdminSession();
 
-  if (
-    session.account?.role !== 'ROOT' ||
-    session.device?.roleScope !== 'ROOT_DEVICE'
-  ) {
-    redirect('/admin/announcements');
+  // Poderes de principal: el dispositivo principal clásico o, desde ahora,
+  // la app de la cuenta principal y los navegadores aprobados con ella.
+  const principal =
+    session.device?.principal ?? session.device?.roleScope === 'ROOT_DEVICE';
+  if (session.account?.role !== 'ROOT' || !principal) {
+    redirect('/admin/dashboard');
   }
 
   return session;

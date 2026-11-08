@@ -39,12 +39,17 @@ export function DirectorsManager({ churchId }: Props) {
   const [editEmail, setEditEmail] = useState('');
   const [editPhotoFile, setEditPhotoFile] = useState<File | null>(null);
 
+  // Si la lista no cargó, no se dice "aún no hay": se ofrece reintentar.
+  const [loadFailed, setLoadFailed] = useState(false);
+
   const refresh = useCallback(async () => {
     try {
       const list = await adminListDirectors(churchId);
       setDirectors(list);
       setError(null);
+      setLoadFailed(false);
     } catch (err) {
+      setLoadFailed(true);
       setError(
         err instanceof Error ? err.message : 'No se pudo cargar la lista.',
       );
@@ -249,6 +254,13 @@ export function DirectorsManager({ churchId }: Props) {
       <ul className={styles.list}>
         {loading ? (
           <li className={styles.empty}>Cargando…</li>
+        ) : loadFailed ? (
+          <li className={styles.empty}>
+            No se pudo cargar la lista.{' '}
+            <button type="button" className={styles.retryInline} onClick={() => void refresh()}>
+              Reintentar
+            </button>
+          </li>
         ) : directors.length === 0 ? (
           <li className={styles.empty}>
             Aún no hay directores registrados. Agrega el primero arriba.

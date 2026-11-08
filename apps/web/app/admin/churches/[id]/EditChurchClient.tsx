@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
@@ -25,7 +26,15 @@ const MapPicker = dynamic(
   { ssr: false },
 );
 
-export function EditChurchClient({ initialChurch }: { initialChurch: Church }) {
+export function EditChurchClient({
+  initialChurch,
+  canToggle,
+  canDelete,
+}: {
+  initialChurch: Church;
+  canToggle: boolean;
+  canDelete: boolean;
+}) {
   const router = useRouter();
 
   const [church, setChurch] = useState<Church>(initialChurch);
@@ -203,7 +212,11 @@ export function EditChurchClient({ initialChurch }: { initialChurch: Church }) {
   async function onToggle() {
     if (toggling) return;
 
-    const ok = confirm(`¿Cambiar estado de esta iglesia?`);
+    const ok = confirm(
+      savedActive
+        ? `¿Marcar "${church.name}" como inactiva? Dejará de mostrarse con página propia en el portal.`
+        : `¿Marcar "${church.name}" como activa? Volverá a mostrarse en el portal.`,
+    );
     if (!ok) return;
 
     setToggling(true);
@@ -244,10 +257,16 @@ export function EditChurchClient({ initialChurch }: { initialChurch: Church }) {
     }
   }
 
-  const badge = isActive ? styles.badgeActive : styles.badgeInactive;
+  // El estado que se muestra es el guardado. Antes salía del formulario sin
+  // guardar, y "Marcar activa" podía terminar desactivando la iglesia.
+  const savedActive = !!church.isActive;
+  const badge = savedActive ? styles.badgeActive : styles.badgeInactive;
 
   return (
     <div className={styles.shell}>
+      <Link href="/admin/churches" className={styles.backLink}>
+        ← Iglesias
+      </Link>
       {/* HERO */}
       <section className={styles.hero}>
         {church.coverImageUrl ? (
@@ -283,7 +302,7 @@ export function EditChurchClient({ initialChurch }: { initialChurch: Church }) {
             <div className={styles.heroTopRow}>
               <h1 className={styles.title}>{church.name}</h1>
               <span className={`${styles.badge} ${badge}`}>
-                {isActive ? 'Activa' : 'Inactiva'}
+                {savedActive ? 'Activa' : 'Inactiva'}
               </span>
             </div>
 
@@ -293,14 +312,16 @@ export function EditChurchClient({ initialChurch }: { initialChurch: Church }) {
             </p>
 
             <div className={styles.actions}>
-              <button
-                type="button"
-                className={styles.ghostBtn}
-                onClick={onToggle}
-                disabled={toggling}
-              >
-                {toggling ? 'Cambiando…' : isActive ? 'Marcar inactiva' : 'Marcar activa'}
-              </button>
+              {canToggle && (
+                <button
+                  type="button"
+                  className={styles.ghostBtn}
+                  onClick={onToggle}
+                  disabled={toggling}
+                >
+                  {toggling ? 'Cambiando…' : savedActive ? 'Marcar inactiva' : 'Marcar activa'}
+                </button>
+              )}
 
               <button
                 type="button"
@@ -347,16 +368,6 @@ export function EditChurchClient({ initialChurch }: { initialChurch: Church }) {
               />
             </div>
 
-            <div className={styles.field}>
-              <label>Estado</label>
-              <select
-                value={isActive ? '1' : '0'}
-                onChange={(e) => setIsActive(e.target.value === '1')}
-              >
-                <option value="1">Activa</option>
-                <option value="0">Inactiva</option>
-              </select>
-            </div>
           </div>
 
           <div className={styles.meta}>
@@ -524,9 +535,19 @@ export function EditChurchClient({ initialChurch }: { initialChurch: Church }) {
             </div>
           </div>
 
-          <p className={styles.help}>
-            Selecciona archivos y pulsa <strong>Guardar cambios</strong>.
-          </p>
+          <div className={styles.saveRow}>
+            <p className={styles.help}>
+              Las imágenes elegidas se suben al guardar.
+            </p>
+            <button
+              type="button"
+              className={styles.primaryBtn}
+              onClick={onSave}
+              disabled={saving}
+            >
+              {saving ? 'Guardando…' : 'Guardar cambios'}
+            </button>
+          </div>
         </section>
 
         {/* DIRECTORS */}
@@ -539,21 +560,24 @@ export function EditChurchClient({ initialChurch }: { initialChurch: Church }) {
         <ChurchStudiesManager churchId={initialChurch.id} />
 
         {/* DANGER */}
-        <section className={`${styles.card} ${styles.dangerCard}`}>
-          <h2 className={styles.cardTitle}>Zona de riesgo</h2>
-          <p className={styles.dangerText}>
-            Eliminar borra el registro y también intenta borrar imágenes en Cloudinary.
-          </p>
+        {canDelete && (
+          <section className={`${styles.card} ${styles.dangerCard}`}>
+            <h2 className={styles.cardTitle}>Zona de riesgo</h2>
+            <p className={styles.dangerText}>
+              Eliminar borra la iglesia del portal junto con sus imágenes. No
+              se puede deshacer.
+            </p>
 
-          <button
-            type="button"
-            className={styles.dangerBtn}
-            onClick={onDelete}
-            disabled={deleting}
-          >
-            {deleting ? 'Eliminando…' : 'Eliminar iglesia'}
-          </button>
-        </section>
+            <button
+              type="button"
+              className={styles.dangerBtn}
+              onClick={onDelete}
+              disabled={deleting}
+            >
+              {deleting ? 'Eliminando…' : 'Eliminar iglesia'}
+            </button>
+          </section>
+        )}
       </div>
     </div>
   );

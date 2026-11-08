@@ -13,11 +13,9 @@
   justify-content: center;
   overflow: hidden;
   isolation: isolate;
-  /* Base cinematográfica por si el ROOT no configuró fondos rotativos. */
-  background:
-    radial-gradient(circle at 20% 20%, rgba(15, 76, 129, 0.55), transparent 55%),
-    radial-gradient(circle at 80% 80%, rgba(15, 123, 108, 0.45), transparent 55%),
-    linear-gradient(150deg, var(--gem-sapphire-deep), #06223c 60%, var(--gem-emerald-deep));
+  /* Base por si el ROOT no configuró fondos rotativos: en modo claro un cielo
+     luminoso, en oscuro la de siempre (ver --hero-fallback en globals.css). */
+  background: var(--hero-fallback);
 }
 
 .heroInner {
@@ -37,7 +35,7 @@
   font-weight: 700;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.86);
+  color: var(--hero-eyebrow);
   max-width: 40ch;
 }
 
@@ -47,16 +45,22 @@
   font-weight: 600;
   line-height: 0.92;
   letter-spacing: -0.02em;
-  color: #fff;
+  color: var(--hero-text);
   margin: 0;
-  text-shadow: 0 8px 40px rgba(0, 0, 0, 0.35);
+  /* Relleno degradado (azul de cielo en claro, blanco en oscuro) y un halo
+     con drop-shadow, que sí respeta el texto recortado. */
+  background: var(--hero-title-fill);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: var(--hero-title-glow);
 }
 
 .heroLead {
   max-width: 54ch;
   font-size: clamp(1.05rem, 1.6vw, 1.3rem);
   line-height: 1.6;
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--hero-text-muted);
 }
 
 .heroActions {
@@ -85,27 +89,26 @@
 }
 
 .primaryAction {
-  color: var(--gem-sapphire-deep);
-  background: #fff;
-  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.28);
+  color: var(--hero-primary-text);
+  background: var(--hero-primary-bg);
+  box-shadow: var(--hero-primary-shadow);
 }
 
 .primaryAction:hover {
   transform: translateY(-2px);
-  box-shadow: 0 24px 50px rgba(0, 0, 0, 0.34);
+  filter: brightness(1.04);
 }
 
 .secondaryAction {
-  color: #fff;
-  border: 1px solid rgba(255, 255, 255, 0.4);
-  background: rgba(255, 255, 255, 0.08);
+  color: var(--hero-secondary-text);
+  border: 1px solid var(--hero-secondary-border);
+  background: var(--hero-secondary-bg);
   backdrop-filter: blur(6px);
 }
 
 .secondaryAction:hover {
   transform: translateY(-2px);
-  background: rgba(255, 255, 255, 0.16);
-  border-color: rgba(255, 255, 255, 0.6);
+  background: var(--hero-secondary-bg-hover);
 }
 
 .scrollHint {
@@ -123,7 +126,7 @@
 .scrollDot {
   width: 22px;
   height: 36px;
-  border: 2px solid rgba(255, 255, 255, 0.55);
+  border: 2px solid var(--hero-scroll);
   border-radius: 999px;
   position: relative;
 }
@@ -137,7 +140,7 @@
   width: 3px;
   height: 7px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.85);
+  background: var(--hero-scroll);
   animation: scrollPulse 1.8s ease-in-out infinite;
 }
 
@@ -145,7 +148,7 @@
   font-size: 0.7rem;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--hero-scroll);
 }
 
 @keyframes scrollPulse {

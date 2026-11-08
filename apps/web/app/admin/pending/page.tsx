@@ -107,10 +107,19 @@ export default function AdminPendingPage() {
     router.refresh();
   }
 
+  const porApp =
+    session?.status === 'PENDING' &&
+    session.accessRequest?.approvalChannel === 'APP' &&
+    Boolean(session.accessRequest.confirmCode);
+
   const statusText = (() => {
     switch (session?.status) {
       case 'PENDING':
-        return 'Tu dispositivo está pendiente de aprobación por el root device.';
+        return porApp
+          ? 'Confirma este ingreso desde la app AIENC Admin de tu teléfono.'
+          : 'Este equipo está esperando la aprobación de la administración principal.';
+      case 'PAUSED':
+        return 'Esta sesión está pausada desde la app del teléfono. Reactívala allí (Seguridad, Sesiones) y este panel se abre solo.';
       case 'REJECTED':
         return 'La solicitud de este dispositivo fue rechazada.';
       case 'REVOKED':
@@ -125,12 +134,26 @@ export default function AdminPendingPage() {
   return (
     <div className={styles.shell}>
       <section className={styles.card}>
-        <h1 className={styles.title}>Estado del acceso</h1>
+        <h1 className={styles.title}>
+          {porApp ? 'Aprueba el ingreso en tu teléfono' : 'Estado del acceso'}
+        </h1>
         <p className={styles.subtitle}>
-          El sistema revisa periódicamente si este dispositivo ya fue aprobado.
+          Esta página se actualiza sola en cuanto el equipo quede aprobado.
         </p>
 
         <div className={styles.statusBox}>{statusText}</div>
+
+        {porApp && (
+          <div className={styles.codeBox} role="status">
+            <span className={styles.code} aria-label="Número de confirmación">
+              {session?.accessRequest?.confirmCode}
+            </span>
+            <span className={styles.codeText}>
+              Abre la app, revisa que diga este equipo y toca este mismo
+              número. Si no ves el aviso, ve a Seguridad y luego a Sesiones.
+            </span>
+          </div>
+        )}
 
         <div className={styles.help}>
           {session?.account && (
@@ -161,7 +184,7 @@ export default function AdminPendingPage() {
           </Link>
           {rootRecoveryAvailable && session?.account?.role === 'ROOT' && (
             <Link href="/admin/recovery" className={styles.secondaryBtn}>
-              Recuperar root
+              Recuperar la cuenta principal
             </Link>
           )}
         </div>

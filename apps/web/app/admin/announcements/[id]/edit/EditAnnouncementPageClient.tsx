@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 
 import {
@@ -93,7 +94,7 @@ export function EditAnnouncementPageClient() {
         description: trimmedDescription,
         author: trimmedAuthor,
       });
-      router.push('/admin/announcements');
+      router.push('/admin/announcements?ok=guardado');
       router.refresh();
     } catch (err) {
       setSaving(false);
@@ -114,7 +115,10 @@ export function EditAnnouncementPageClient() {
   if (loadError) {
     return (
       <main className={styles.container}>
-        <p style={{ padding: '2rem', color: '#dc2626' }}>{loadError}</p>
+        <p style={{ padding: '2rem 2rem 1rem', color: 'var(--danger)' }}>{loadError}</p>
+        <p style={{ padding: '0 2rem' }}>
+          <Link href="/admin/announcements">← Volver a Anuncios</Link>
+        </p>
       </main>
     );
   }
@@ -162,10 +166,13 @@ export function EditAnnouncementPageClient() {
         </div>
 
         {formError && (
-          <p style={{ color: '#dc2626', fontSize: '0.85rem' }}>{formError}</p>
+          <p style={{ color: 'var(--danger)', fontSize: '0.85rem' }}>{formError}</p>
         )}
 
         <footer className={styles.footer}>
+          <Link href="/admin/announcements" className={styles.cancelLink}>
+            Cancelar
+          </Link>
           <button type="submit" disabled={saving}>
             {saving ? 'Guardando…' : 'Guardar cambios'}
           </button>

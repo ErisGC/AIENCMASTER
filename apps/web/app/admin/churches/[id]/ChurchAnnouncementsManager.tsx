@@ -44,12 +44,17 @@ export function ChurchAnnouncementsManager({ churchId }: Props) {
   const [editAuthor, setEditAuthor] = useState('');
   const [savingEdit, setSavingEdit] = useState(false);
 
+  // Si la lista no cargó, no se dice "aún no hay": se ofrece reintentar.
+  const [loadFailed, setLoadFailed] = useState(false);
+
   const refresh = useCallback(async () => {
     try {
       const list = await adminListChurchAnnouncements(churchId);
       setItems(list);
       setError(null);
+      setLoadFailed(false);
     } catch (err) {
+      setLoadFailed(true);
       setError(
         err instanceof Error
           ? err.message
@@ -232,6 +237,13 @@ export function ChurchAnnouncementsManager({ churchId }: Props) {
 
       {loading ? (
         <p className={styles.empty}>Cargando anuncios…</p>
+      ) : loadFailed ? (
+        <p className={styles.empty}>
+          No se pudo cargar la lista.{' '}
+          <button type="button" className={styles.retryInline} onClick={() => void refresh()}>
+            Reintentar
+          </button>
+        </p>
       ) : items.length === 0 ? (
         <p className={styles.empty}>
           Aún no hay anuncios publicados para esta iglesia.

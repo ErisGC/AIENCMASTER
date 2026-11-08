@@ -27,19 +27,19 @@ export default async function ChurchesPage() {
           <span className={styles.eyebrow}>Directorio institucional</span>
           <h1 className={styles.title}>Iglesias asociadas</h1>
           <p className={styles.subtitle}>
-            Comunidades visibles dentro del portal publico, con acceso al detalle
-            cuando la iglesia se encuentra activa.
+            Las congregaciones que forman parte de la AIENC. Entra a cada una
+            para ver dónde queda, quiénes la dirigen y sus actividades.
           </p>
         </div>
 
         <div className={styles.heroStats}>
           <div className={styles.statCard}>
-            <span className={styles.statLabel}>Total visibles</span>
+            <span className={styles.statLabel}>Iglesias</span>
             <strong className={styles.statValue}>{churches.length}</strong>
           </div>
 
           <div className={styles.statCard}>
-            <span className={styles.statLabel}>Con detalle activo</span>
+            <span className={styles.statLabel}>Activas</span>
             <strong className={styles.statValue}>{activeChurches}</strong>
           </div>
         </div>
@@ -53,10 +53,9 @@ export default async function ChurchesPage() {
 
       {churches.length === 0 && (
         <div className={styles.empty}>
-          <h2 className={styles.emptyTitle}>Aun no hay iglesias registradas</h2>
+          <h2 className={styles.emptyTitle}>Aún no hay iglesias registradas</h2>
           <p className={styles.emptyText}>
-            Cuando el administrador cree iglesias, apareceran aqui
-            automaticamente.
+            Cuando la administración registre iglesias, aparecerán aquí.
           </p>
         </div>
       )}

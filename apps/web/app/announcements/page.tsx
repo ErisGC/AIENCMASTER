@@ -29,17 +29,21 @@ export default async function AnnouncementsPage() {
           <span className={styles.eyebrow}>Actualidad institucional</span>
           <h1 className={styles.title}>Anuncios y publicaciones</h1>
           <p className={styles.subtitle}>
-            Consulta comunicados recientes, filtra por titulo o fecha y navega el
-            contenido publico sin perder claridad visual.
+            Los comunicados oficiales de la Asociación. Busca por título o
+            filtra por fecha para encontrar lo que necesitas.
           </p>
         </div>
 
         <div className={styles.heroCard}>
-          <span className={styles.heroCardLabel}>Resultados iniciales</span>
-          <strong className={styles.heroCardValue}>{initialAnnouncements.length}</strong>
+          <span className={styles.heroCardLabel}>Comunicados</span>
+          <strong className={styles.heroCardValue}>
+            {initialAnnouncements.length < PAGE_SIZE
+              ? initialAnnouncements.length
+              : `${PAGE_SIZE}+`}
+          </strong>
           <p className={styles.heroCardText}>
-            El listado conserva su comportamiento actual con una presentacion mas
-            limpia y mejor jerarquia.
+            Los más recientes aparecen primero. Abre cualquiera para leerlo
+            completo y ver sus adjuntos.
           </p>
         </div>
       </section>

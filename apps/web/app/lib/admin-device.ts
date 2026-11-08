@@ -101,3 +101,44 @@ export function getPlatformName() {
 export function getDefaultAdminDeviceName() {
   return `${getBrowserName()} en ${getPlatformName()}`;
 }
+
+/*
+ * Un mismo navegador puede usarlo más de una cuenta (el computador de la
+ * oficina, o quien prueba una invitación en el suyo). El servidor ata cada
+ * identidad de dispositivo a una sola cuenta, así que la segunda cuenta en
+ * adelante recibe la suya propia, guardada aparte, y la primera conserva la
+ * de siempre con su aprobación.
+ */
+const ACCOUNT_DEVICE_IDS_KEY = 'aienc-admin-device-ids';
+
+function readAccountDeviceIds(): Record<string, string> {
+  try {
+    const raw = localStorage.getItem(ACCOUNT_DEVICE_IDS_KEY);
+    const parsed = raw ? (JSON.parse(raw) as unknown) : null;
+    return parsed && typeof parsed === 'object'
+      ? (parsed as Record<string, string>)
+      : {};
+  } catch {
+    return {};
+  }
+}
+
+/** Identidad de este navegador para esa cuenta. */
+export function adminDeviceIdFor(username: string) {
+  const propia = readAccountDeviceIds()[username.trim().toLowerCase()];
+  return propia || ensureAdminDeviceId();
+}
+
+/** Crea y guarda una identidad propia de esa cuenta en este navegador. */
+export function newAdminDeviceIdFor(username: string) {
+  const id = randomDeviceId();
+  const ids = readAccountDeviceIds();
+  ids[username.trim().toLowerCase()] = id;
+  try {
+    localStorage.setItem(ACCOUNT_DEVICE_IDS_KEY, JSON.stringify(ids));
+  } catch {
+    // Sin almacenamiento solo dura este ingreso; el siguiente pedirá
+    // aprobación de nuevo, que es lo seguro.
+  }
+  return id;
+}

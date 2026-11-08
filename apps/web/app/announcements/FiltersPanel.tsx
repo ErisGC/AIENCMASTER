@@ -62,16 +62,20 @@ export function FiltersPanel(props: Props) {
               checked={props.titleEnabled}
               onChange={(event) => props.setTitleEnabled(event.target.checked)}
             />
-            <span className={styles.filterTitle}>Titulo</span>
+            <span className={styles.filterTitle}>Título</span>
           </span>
 
+          {/* Se puede escribir de una vez: al escribir, el filtro se activa
+              solo (antes había que marcar la casilla primero). */}
           <input
             type="text"
             className={styles.input}
-            disabled={!props.titleEnabled}
             value={props.title}
-            onChange={(event) => props.setTitle(event.target.value)}
-            placeholder="Buscar por titulo"
+            onChange={(event) => {
+              props.setTitle(event.target.value);
+              props.setTitleEnabled(event.target.value.trim().length > 0);
+            }}
+            placeholder="Buscar por título"
           />
         </label>
 

@@ -121,7 +121,7 @@
 }
 
 .primaryBtn {
-  background: linear-gradient(135deg, var(--gem-sapphire), var(--gem-emerald));
+  background: var(--btn-accent-bg);
   color: #fff;
   border: none;
   padding: 0.7rem 1.25rem;
@@ -212,7 +212,7 @@
 }
 
 .copyBtn {
-  background: var(--accent-emerald);
+  background: var(--fill-emerald);
   color: #fff;
   border: none;
   padding: 0 1rem;
@@ -387,47 +387,6 @@
   color: var(--text-muted);
   font-size: 0.78rem;
   line-height: 1.4;
-}
-
-/* ── Toggle "Crear como ROOT" ── */
-
-.rootToggle {
-  padding: 1rem 1.1rem;
-  border-radius: 16px;
-  border: 1px dashed var(--gem-amethyst, #7d4cdb);
-  background: color-mix(
-    in srgb,
-    var(--gem-amethyst, #7d4cdb) 10%,
-    transparent
-  );
-}
-
-.rootToggleLabel {
-  display: flex;
-  gap: 0.7rem;
-  align-items: flex-start;
-  cursor: pointer;
-  font-size: 0.9rem;
-}
-
-.rootToggleLabel input[type='checkbox'] {
-  margin-top: 0.18rem;
-  width: 18px;
-  height: 18px;
-  accent-color: var(--gem-amethyst, #7d4cdb);
-  cursor: pointer;
-}
-
-.rootToggleLabel span {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-}
-
-.rootToggleLabel strong {
-  color: var(--gem-amethyst, #7d4cdb);
-  font-weight: 800;
-  letter-spacing: 0.01em;
 }
 
 /* ── Badges Principal/Admin en la tabla ── */

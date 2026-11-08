@@ -41,7 +41,7 @@
 }
 
 .newBtn {
-  background: linear-gradient(135deg, var(--gem-sapphire), var(--gem-emerald));
+  background: var(--btn-accent-bg);
   color: #fff;
   text-decoration: none;
   padding: 0.7rem 1.25rem;
@@ -417,7 +417,7 @@
 }
 
 .submitBtn {
-  background: linear-gradient(135deg, var(--gem-sapphire), var(--gem-emerald));
+  background: var(--btn-accent-bg);
   color: #fff;
   border: none;
   padding: 0.7rem 1.5rem;

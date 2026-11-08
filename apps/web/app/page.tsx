@@ -90,21 +90,25 @@ export default async function HomePage() {
       </section>
 
       {/* ─────────────────  BANDA: ÚLTIMOS ANUNCIOS  ───────────────── */}
-      <section className={`${styles.band} ${styles.bandAlt}`} data-reveal>
-        <div className={styles.bandInner}>
-          <header className={styles.bandHeader}>
-            <div>
-              <span className={styles.eyebrow}>Actualidad</span>
-              <h2 className={styles.bandTitle}>Últimos anuncios</h2>
-            </div>
-            <Link href="/announcements" className={styles.textLink}>
-              Ver todos →
-            </Link>
-          </header>
+      {/* Sin anuncios (o si la API no respondió) la banda no se muestra: antes
+          quedaba el título "Últimos anuncios" con el espacio vacío debajo. */}
+      {announcements.length > 0 && (
+        <section className={`${styles.band} ${styles.bandAlt}`} data-reveal>
+          <div className={styles.bandInner}>
+            <header className={styles.bandHeader}>
+              <div>
+                <span className={styles.eyebrow}>Actualidad</span>
+                <h2 className={styles.bandTitle}>Últimos anuncios</h2>
+              </div>
+              <Link href="/announcements" className={styles.textLink}>
+                Ver todos →
+              </Link>
+            </header>
 
-          <AnnouncementsCarousel announcements={announcements} />
-        </div>
-      </section>
+            <AnnouncementsCarousel announcements={announcements} />
+          </div>
+        </section>
+      )}
 
       {/* ─────────────────  BANDA: IGLESIAS (condicional)  ───────────────── */}
       {previewChurches.length > 0 && (

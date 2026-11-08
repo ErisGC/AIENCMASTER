@@ -1,0 +1,77 @@
+.wrap {
+  min-height: 60vh;
+  display: grid;
+  place-items: center;
+  padding: clamp(2rem, 6vw, 5rem) 1.25rem;
+}
+
+.card {
+  width: min(560px, 100%);
+  padding: clamp(1.6rem, 4vw, 2.4rem);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-soft);
+  background: var(--gradient-surface);
+  box-shadow: var(--shadow-2);
+  text-align: center;
+}
+
+.code {
+  display: inline-block;
+  margin-bottom: 0.6rem;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--gem-topaz-text);
+}
+
+.title {
+  font-size: clamp(1.7rem, 3vw, 2.3rem);
+  margin-bottom: 0.7rem;
+}
+
+.text {
+  margin-bottom: 1.4rem;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.7rem;
+}
+
+.primary,
+.secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0.7rem 1.2rem;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 0.95rem;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.primary {
+  border: 0;
+  background: var(--btn-primary-bg);
+  color: var(--on-accent);
+  box-shadow: var(--btn-primary-shadow);
+}
+
+.primary:hover {
+  background: var(--btn-primary-bg-hover);
+}
+
+.secondary {
+  border: 1px solid var(--border-strong);
+  background: transparent;
+  color: var(--text-main);
+}
+
+.secondary:hover {
+  background: var(--state-hover);
+}

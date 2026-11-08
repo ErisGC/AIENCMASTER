@@ -36,9 +36,9 @@
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(circle at 18% 12%, rgba(15, 76, 129, 0.18), transparent 32%),
-    radial-gradient(circle at 82% 18%, rgba(15, 123, 108, 0.16), transparent 30%),
-    radial-gradient(circle at 50% 110%, rgba(212, 164, 55, 0.12), transparent 36%),
+    radial-gradient(circle at 18% 12%, rgba(42, 107, 181, 0.16), transparent 32%),
+    radial-gradient(circle at 82% 18%, rgba(14, 124, 112, 0.12), transparent 30%),
+    radial-gradient(circle at 50% 110%, rgba(205, 163, 73, 0.14), transparent 36%),
     linear-gradient(180deg, color-mix(in srgb, var(--bg-main) 76%, transparent), color-mix(in srgb, var(--bg-main) 92%, transparent) 70%);
   backdrop-filter: blur(2px);
 }
@@ -52,21 +52,19 @@
 }
 
 /*
- * Velo del hero: oscurece de forma cinematográfica para texto CLARO encima.
- * Mantiene un toque de la paleta gema arriba y hunde la base.
+ * Velo de la portada. En modo claro es una luz de perla que cubre el lado del
+ * texto y deja ver la foto a la derecha; en oscuro, el velo cinematográfico de
+ * siempre. Los dos salen de globals.css (--hero-veil).
  */
 .heroTint {
   position: absolute;
   inset: 0;
-  background:
-    radial-gradient(circle at 16% 10%, rgba(15, 76, 129, 0.30), transparent 36%),
-    radial-gradient(circle at 84% 14%, rgba(15, 123, 108, 0.24), transparent 34%),
-    var(--gradient-hero-overlay);
+  background: var(--hero-veil);
 }
 
-:root[data-theme="dark"] .heroTint {
-  background:
-    radial-gradient(circle at 16% 10%, rgba(111, 168, 220, 0.26), transparent 36%),
-    radial-gradient(circle at 84% 14%, rgba(60, 179, 154, 0.22), transparent 34%),
-    var(--gradient-hero-overlay);
+/* En pantallas angostas el texto ocupa todo el ancho: velo parejo. */
+@media (max-width: 860px) {
+  .heroTint {
+    background: var(--hero-veil-narrow);
+  }
 }

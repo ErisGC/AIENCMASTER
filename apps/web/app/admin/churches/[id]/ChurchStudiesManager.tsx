@@ -29,12 +29,17 @@ export function ChurchStudiesManager({ churchId }: Props) {
   const [submitting, setSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
+  // Si la lista no cargó, no se dice "aún no hay": se ofrece reintentar.
+  const [loadFailed, setLoadFailed] = useState(false);
+
   const refresh = useCallback(async () => {
     try {
       const list = await adminListStudies(churchId);
       setStudies(list);
       setError(null);
+      setLoadFailed(false);
     } catch (err) {
+      setLoadFailed(true);
       setError(
         err instanceof Error ? err.message : 'No se pudo cargar la lista.',
       );
@@ -190,6 +195,13 @@ export function ChurchStudiesManager({ churchId }: Props) {
       <ul className={styles.list}>
         {loading ? (
           <li className={styles.empty}>Cargando…</li>
+        ) : loadFailed ? (
+          <li className={styles.empty}>
+            No se pudo cargar la lista.{' '}
+            <button type="button" className={styles.retryInline} onClick={() => void refresh()}>
+              Reintentar
+            </button>
+          </li>
         ) : studies.length === 0 ? (
           <li className={styles.empty}>
             Aún no hay estudios. Sube el primero arriba.

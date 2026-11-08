@@ -63,7 +63,7 @@
   width: 60px;
   height: 60px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--gem-sapphire), var(--gem-emerald));
+  background: var(--btn-accent-bg);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -383,7 +383,7 @@
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  background: linear-gradient(135deg, var(--gem-sapphire), var(--gem-emerald));
+  background: var(--btn-accent-bg);
   color: #fff;
   text-decoration: none;
   padding: 0.5rem 0.9rem;

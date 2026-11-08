@@ -10,6 +10,7 @@ import {
   type AdminProfile,
 } from '@/app/lib/admin-profile';
 
+import { roleShortLabel } from '@/app/lib/i18n';
 import styles from './page.module.css';
 
 export function ProfileClient() {
@@ -133,7 +134,7 @@ export function ProfileClient() {
           <div className={styles.info}>
             <strong>{profile.displayName}</strong>
             <span>@{profile.username}</span>
-            <span className={styles.role}>{profile.role}</span>
+            <span className={styles.role}>{roleShortLabel(profile.role)}</span>
             {profile.assignedChurchName && (
               <span className={styles.church}>
                 Iglesia asignada:{' '}

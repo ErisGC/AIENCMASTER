@@ -93,7 +93,7 @@
   inset: -1px;
   border-radius: 18px;
   padding: 1px;
-  background: var(--kpiBorder, linear-gradient(135deg, var(--gem-sapphire), var(--gem-emerald)));
+  background: var(--kpiBorder, var(--btn-accent-bg));
   -webkit-mask:
     linear-gradient(#fff 0 0) content-box,
     linear-gradient(#fff 0 0);

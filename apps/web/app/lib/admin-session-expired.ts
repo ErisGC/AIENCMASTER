@@ -47,6 +47,28 @@ export function manejarSesionExpirada(ruta: string): void {
   yaRedirigiendo = true;
 
   // Navegación completa a propósito: así vuelve a correr la comprobación de
-  // sesión del servidor y no queda estado viejo en memoria.
-  window.location.assign("/admin/login");
+  // sesión del servidor y no queda estado viejo en memoria. Se lleva la página
+  // actual para volver a ella después de ingresar (ver destinoTrasLogin).
+  const volver = encodeURIComponent(actual + window.location.search);
+  window.location.assign(`/admin/login?vencida=1&next=${volver}`);
+}
+
+/**
+ * Página a la que volver tras ingresar, tomada de `?next=`. Solo se aceptan
+ * rutas internas del panel (nada de otros dominios ni páginas de acceso);
+ * si no hay una válida, se va a la entrada del panel.
+ */
+export function destinoTrasLogin(search: string): string {
+  const next = new URLSearchParams(search).get("next");
+  if (
+    !next ||
+    !next.startsWith("/admin/") ||
+    next.startsWith("//") ||
+    next.includes("://") ||
+    next.includes("\\") ||
+    PAGINAS_DE_ACCESO.some((p) => next.startsWith(p))
+  ) {
+    return "/admin";
+  }
+  return next;
 }

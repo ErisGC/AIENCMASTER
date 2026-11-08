@@ -68,8 +68,8 @@
 }
 
 .input:focus {
-  border-color: rgba(31, 79, 163, 0.34);
-  box-shadow: 0 0 0 4px rgba(31, 79, 163, 0.12);
+  border-color: color-mix(in srgb, var(--color-primary) 40%, transparent);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-primary) 14%, transparent);
 }
 
 .input:disabled {

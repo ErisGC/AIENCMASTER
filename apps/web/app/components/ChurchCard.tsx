@@ -5,6 +5,20 @@ import type { Church } from '@/app/lib/churches';
 
 import styles from './ChurchCard.module.css';
 
+const PALABRAS_SUELTAS = new Set(['iglesia', 'de', 'del', 'la', 'el', 'los', 'las', 'y']);
+
+/** Iniciales para la tarjeta sin foto: "Iglesia Monte Sión" → "MS". */
+function iniciales(nombre: string) {
+  const palabras = nombre
+    .split(/\s+/)
+    .filter((p) => p && !PALABRAS_SUELTAS.has(p.toLowerCase()));
+  const base = palabras.length > 0 ? palabras : nombre.split(/\s+/);
+  return base
+    .slice(0, 2)
+    .map((p) => p.charAt(0).toUpperCase())
+    .join('');
+}
+
 export function ChurchCard({ church }: { church: Church }) {
   const inner = (
     <>
@@ -18,7 +32,9 @@ export function ChurchCard({ church }: { church: Church }) {
             sizes="(max-width: 640px) 100vw, (max-width: 980px) 50vw, 33vw"
           />
         ) : (
-          <div className={styles.placeholder} aria-hidden="true" />
+          <div className={styles.placeholder} aria-hidden="true">
+            <span className={styles.monogram}>{iniciales(church.name)}</span>
+          </div>
         )}
 
         <div className={styles.overlay} />
@@ -39,7 +55,7 @@ export function ChurchCard({ church }: { church: Church }) {
         <div className={styles.copy}>
           <h3 className={styles.name}>{church.name}</h3>
           <p className={styles.address}>
-            {church.address ?? 'Sin direccion publica registrada.'}
+            {church.address ?? 'Sin dirección pública registrada.'}
           </p>
         </div>
 
@@ -48,11 +64,11 @@ export function ChurchCard({ church }: { church: Church }) {
 
           {church.isActive ? (
             <span className={styles.cta} aria-hidden="true">
-              Ver pagina
+              Ver página
             </span>
           ) : (
             <span className={styles.disabledCta} aria-hidden="true">
-              Sin detalle publico
+              Sin página pública
             </span>
           )}
         </div>
@@ -65,7 +81,7 @@ export function ChurchCard({ church }: { church: Church }) {
       <Link
         href={`/churches/${church.id}`}
         className={`${styles.card} ${styles.cardActive}`}
-        aria-label={`Ver pagina de ${church.name}`}
+        aria-label={`Ver la página de ${church.name}`}
       >
         {inner}
       </Link>

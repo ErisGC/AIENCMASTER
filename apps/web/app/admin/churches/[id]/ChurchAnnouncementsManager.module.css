@@ -136,7 +136,7 @@
   appearance: none;
   border: none;
   cursor: pointer;
-  background: linear-gradient(135deg, var(--gem-sapphire), var(--gem-emerald));
+  background: var(--btn-accent-bg);
   color: #fff;
   padding: 0.65rem 1.1rem;
   border-radius: 12px;
@@ -270,3 +270,15 @@
   font-size: 0.9rem;
   padding: 1rem 0;
 }
+
+.retryInline {
+  margin-left: 0.25rem;
+  padding: 0.2rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  background: transparent;
+  color: var(--color-primary);
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+

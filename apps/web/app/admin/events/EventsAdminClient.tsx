@@ -190,7 +190,7 @@ export function EventsAdminClient() {
     <div className={styles.page}>
       <header className={styles.head}>
         <div>
-          <h1 className={styles.title}>Cronograma</h1>
+          <h1 className={styles.title}>Eventos</h1>
           <p className={styles.subtitle}>
             Cultos, reuniones y actividades de las iglesias y de toda la Asociación.
             El sistema avisa cuando dos eventos se cruzan.

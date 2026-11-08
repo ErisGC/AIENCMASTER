@@ -9,7 +9,13 @@ import { useEffect, useState } from 'react';
  * o laptops con touch:
  *   1. User-agent contiene marcadores típicos de phone (Android Mobile,
  *      iPhone, etc.). Excluye explícitamente iPad/Tablet.
- *   2. Viewport menor a 768px (umbral común de breakpoint phone vs tablet).
+ *   2. Pantalla angosta (menos de 768px) cuyo puntero principal es el dedo
+ *      (pointer: coarse). Así un computador con la ventana angosta o con
+ *      zoom no se toma por celular.
+ *
+ * Se evalúa una sola vez al cargar: antes también se recalculaba al cambiar
+ * el tamaño de la ventana, y acomodar la ventana a media pantalla sacaba al
+ * administrador del panel en mitad de un formulario.
  *
  * La función se ejecuta solo en cliente; durante SSR devuelve `false` para
  * no condicionar el render server y evitar mismatches.
@@ -21,26 +27,15 @@ export function useIsMobileDevice(): {
   const [state, setState] = useState({ isMobile: false, ready: false });
 
   useEffect(() => {
-    function check() {
-      if (typeof window === 'undefined') return;
-      const ua = window.navigator.userAgent || '';
-      const isTablet = /iPad|Tablet|Nexus 7|Nexus 10|SM-T|Kindle|Silk/i.test(ua);
-      // Android sin "Mobile" suele ser tablet; iPhone siempre phone.
-      const isAndroidPhone = /Android/i.test(ua) && /Mobile/i.test(ua);
-      const isIPhone = /iPhone|iPod/i.test(ua);
-      const isWindowsPhone = /Windows Phone|IEMobile/i.test(ua);
-      const uaPhone =
-        !isTablet && (isAndroidPhone || isIPhone || isWindowsPhone);
-
-      const narrowViewport = window.innerWidth < 768;
-      setState({
-        isMobile: uaPhone || (narrowViewport && !isTablet),
-        ready: true,
-      });
-    }
-    check();
-    window.addEventListener('resize', check);
-    return () => window.removeEventListener('resize', check);
+    const ua = window.navigator.userAgent || '';
+    const isTablet = /iPad|Tablet|Nexus 7|Nexus 10|SM-T|Kindle|Silk/i.test(ua);
+    const uaPhone = isPhoneUserAgent(ua);
+    const touchPrimary =
+      window.matchMedia?.('(pointer: coarse)').matches ?? false;
+    const narrowTouch = window.innerWidth < 768 && touchPrimary && !isTablet;
+    // Sincroniza con una señal del navegador que solo existe en el cliente.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setState({ isMobile: uaPhone || narrowTouch, ready: true });
   }, []);
 
   return state;

@@ -49,14 +49,24 @@ export function EventsCalendar({ initialEvents, churches, initialChurchId, today
 
   // Recarga al cambiar de mes o de iglesia. Una respuesta tardía de una carga
   // anterior no debe pisar la actual: se compara contra el número de carga.
-  const cargar = useCallback(async () => {
+  const cargar = useCallback(async (combinar = false) => {
     const mia = ++cargaVigente.current;
     setLoading(true);
     try {
       const { from, to } = ventanaDe(year, month);
       const data = await getPublicEvents({ from, to, churchId: churchId || undefined });
       if (mia !== cargaVigente.current) return;
-      setEvents(data);
+      if (combinar) {
+        // Primera carga: se suman los días del mes a lo que trajo el servidor
+        // (los próximos 60 días), sin perder la agenda de "próximos eventos".
+        setEvents((prev) => {
+          const porId = new Map(prev.map((e) => [e.id, e]));
+          for (const e of data) porId.set(e.id, e);
+          return Array.from(porId.values());
+        });
+      } else {
+        setEvents(data);
+      }
       setError(null);
     } catch {
       if (mia !== cargaVigente.current) return;
@@ -68,9 +78,12 @@ export function EventsCalendar({ initialEvents, churches, initialChurchId, today
 
   const primeraCarga = useRef(true);
   useEffect(() => {
-    // La primera vez ya venimos con datos del servidor.
+    // El servidor trae los próximos 60 días desde hoy, así que los días ya
+    // pasados de este mes se veían vacíos. La primera vez se completa el mes
+    // sin quitar lo que ya está en pantalla.
     if (primeraCarga.current) {
       primeraCarga.current = false;
+      void cargar(true);
       return;
     }
     void cargar();

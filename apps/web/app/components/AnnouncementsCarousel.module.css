@@ -2,59 +2,8 @@
   min-width: 0;
 }
 
-.header {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 1rem;
-}
-
-.headerCopy {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.eyebrow {
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--color-primary);
-}
-
-.title {
-  font-size: clamp(1.35rem, 2vw, 1.8rem);
-}
-
-.seeAll {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 42px;
-  padding: 0.7rem 1rem;
-  border-radius: 999px;
-  border: 1px solid var(--border-soft);
-  background: rgba(255, 255, 255, 0.72);
-  text-decoration: none;
-  font-weight: 700;
-  color: var(--text-main);
-  transition:
-    transform 180ms ease,
-    border-color 180ms ease,
-    box-shadow 180ms ease,
-    background 180ms ease;
-}
-
-:root[data-theme="dark"] .seeAll {
-  background: rgba(17, 27, 43, 0.78);
-}
-
-.seeAll:hover {
-  transform: translateY(-1px);
-  border-color: var(--border-strong);
-  box-shadow: var(--shadow-1);
+.stage {
+  position: relative;
 }
 
 .linkWrapper {
@@ -90,7 +39,7 @@
   width: 220px;
   height: 220px;
   border-radius: 999px;
-  background: rgba(31, 79, 163, 0.14);
+  background: rgba(42, 107, 181, 0.14);
   filter: blur(34px);
   pointer-events: none;
 }
@@ -160,13 +109,18 @@
   min-height: 42px;
   padding: 0.7rem 1rem;
   border-radius: 999px;
-  background: rgba(24, 50, 95, 0.08);
+  background: var(--tint-2);
   border: 1px solid var(--border-soft);
   font-weight: 700;
   color: var(--text-main);
 }
 
+/* Los puntos van sobre la esquina inferior de la tarjeta, alineados con
+   "Abrir anuncio", pero fuera del enlace. */
 .indicators {
+  position: absolute;
+  right: clamp(1.3rem, 3vw, 2rem);
+  bottom: calc(clamp(1.3rem, 3vw, 2rem) + 16px);
   display: flex;
   align-items: center;
   gap: 0.6rem;

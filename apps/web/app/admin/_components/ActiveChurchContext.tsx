@@ -15,6 +15,25 @@ import type {
 
 const LS_KEY = 'aienc-admin:active-church-id';
 
+// El navegador puede bloquear el almacenamiento (modo privado, datos del
+// sitio bloqueados): leer o escribir lanzaría y tumbaría todo el panel.
+function leerGuardada(): string | null {
+  try {
+    return window.localStorage.getItem(LS_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function guardar(id: string | null) {
+  try {
+    if (id) window.localStorage.setItem(LS_KEY, id);
+    else window.localStorage.removeItem(LS_KEY);
+  } catch {
+    /* sin almacenamiento: la elección vale mientras la página esté abierta */
+  }
+}
+
 export interface ChurchAssignmentLite {
   churchId: string;
   churchName: string | null;
@@ -35,6 +54,8 @@ interface ActiveChurchContextValue {
   assignments: ChurchAssignmentLite[];
   isRoot: boolean;
   isLoaded: boolean;
+  /** Permisos globales de la cuenta (la principal los tiene todos). */
+  globalPermissions: string[];
   setActiveChurchId: (id: string | null) => void;
 }
 
@@ -77,10 +98,7 @@ export function ActiveChurchProvider({
     if (!isLoaded) return;
     if (isRoot) {
       // ROOT no necesita selector; mantenemos lo que tenga (puede ser null)
-      const stored =
-        typeof window !== 'undefined'
-          ? window.localStorage.getItem(LS_KEY)
-          : null;
+      const stored = leerGuardada();
       setActiveChurchIdState(stored && stored.length > 0 ? stored : null);
       return;
     }
@@ -88,31 +106,25 @@ export function ActiveChurchProvider({
       setActiveChurchIdState(null);
       return;
     }
-    const stored =
-      typeof window !== 'undefined'
-        ? window.localStorage.getItem(LS_KEY)
-        : null;
+    const stored = leerGuardada();
     const valid =
       stored && assignments.some((a) => a.churchId === stored)
         ? stored
         : assignments[0].churchId;
     setActiveChurchIdState(valid);
-    if (typeof window !== 'undefined') {
-      window.localStorage.setItem(LS_KEY, valid);
-    }
+    guardar(valid);
   }, [isLoaded, isRoot, assignments]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   const setActiveChurchId = useCallback((id: string | null) => {
     setActiveChurchIdState(id);
-    if (typeof window !== 'undefined') {
-      if (id) {
-        window.localStorage.setItem(LS_KEY, id);
-      } else {
-        window.localStorage.removeItem(LS_KEY);
-      }
-    }
+    guardar(id);
   }, []);
+
+  const globalPermissions = useMemo<string[]>(
+    () => session?.account?.globalPermissions ?? [],
+    [session],
+  );
 
   const activeChurch = useMemo(
     () =>
@@ -129,9 +141,10 @@ export function ActiveChurchProvider({
       assignments,
       isRoot,
       isLoaded,
+      globalPermissions,
       setActiveChurchId,
     }),
-    [activeChurchId, activeChurch, assignments, isRoot, isLoaded, setActiveChurchId],
+    [activeChurchId, activeChurch, assignments, isRoot, isLoaded, globalPermissions, setActiveChurchId],
   );
 
   return (

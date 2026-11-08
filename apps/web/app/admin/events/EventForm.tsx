@@ -130,7 +130,18 @@ export function EventForm({
   const [catalogo, setCatalogo] = useState<ChurchPublicDirector[]>([]);
   const [cargandoCatalogo, setCargandoCatalogo] = useState(false);
 
-  const [cruces, setCruces] = useState<ConflictsForDate[] | null>(null);
+  // El resultado de "Revisar cruces" vale solo para el horario con el que se
+  // revisó. Se guarda junto a esa clave: si después cambia la fecha, la hora,
+  // el alcance, la iglesia o la repetición, el resultado deja de mostrarse (y
+  // con él el botón "Guardar de todos modos", que si no aceptaría un cruce que
+  // nadie vio).
+  const claveHorario = [date, startTime, endTime, otroDia, endDate, scope, churchId, repeat, until].join('|');
+  const [crucesRevisados, setCrucesRevisados] = useState<{
+    clave: string;
+    data: ConflictsForDate[];
+  } | null>(null);
+  const cruces = crucesRevisados?.clave === claveHorario ? crucesRevisados.data : null;
+  const setCruces = (data: ConflictsForDate[]) => setCrucesRevisados({ clave: claveHorario, data });
   const [revisando, setRevisando] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);

@@ -213,3 +213,36 @@
     width: 100%;
   }
 }
+
+/* Aviso de error encima del listado (lo cargado sigue visible) */
+.errorBanner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  padding: 0.8rem 1rem;
+  border-radius: 16px;
+  border: 1px solid var(--danger-line);
+  background: var(--danger-weak);
+  color: var(--danger);
+  font-size: 0.92rem;
+}
+
+.errorRetry {
+  flex-shrink: 0;
+  padding: 0.4rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+  background: transparent;
+  color: inherit;
+  font-weight: 700;
+}
+
+/* Mientras se vuelve a consultar, la cuadrícula se atenúa en vez de
+   desaparecer. */
+.gridBusy {
+  opacity: 0.55;
+  transition: opacity 160ms ease;
+}
+

@@ -8,13 +8,16 @@ import {
   adminGetBootstrapStatus,
   adminGetRootRecoveryStatus,
   adminLogin,
+  esConflictoDeDispositivo,
 } from '@/app/lib/admin-auth';
 import {
-  ensureAdminDeviceId,
+  adminDeviceIdFor,
   getBrowserName,
   getDefaultAdminDeviceName,
   getPlatformName,
+  newAdminDeviceIdFor,
 } from '@/app/lib/admin-device';
+import { destinoTrasLogin } from '@/app/lib/admin-session-expired';
 import styles from '../auth.module.css';
 
 export default function AdminLoginPage() {
@@ -26,11 +29,31 @@ export default function AdminLoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [bootstrapAvailable, setBootstrapAvailable] = useState(false);
   const [rootRecoveryAvailable, setRootRecoveryAvailable] = useState(false);
+  const [sessionExpired, setSessionExpired] = useState(false);
+  // Ventana privada o equipo compartido: al cerrar la ventana la sesión se
+  // cierra y el equipo deja de estar aprobado.
+  const [ephemeral, setEphemeral] = useState(false);
 
   useEffect(() => {
     const frameId = window.requestAnimationFrame(() => {
       setDeviceName(getDefaultAdminDeviceName());
+      // Llegó aquí porque la sesión venció a mitad de algo (ver
+      // admin-session-expired.ts): se le explica y luego vuelve a esa página.
+      setSessionExpired(
+        new URLSearchParams(window.location.search).get('vencida') === '1',
+      );
     });
+
+    // Las ventanas privadas suelen tener muy poco espacio de almacenamiento:
+    // si lo parece, se deja marcada la casilla (la persona puede cambiarla).
+    void navigator.storage
+      ?.estimate?.()
+      .then((e) => {
+        if (typeof e.quota === 'number' && e.quota < 1.2 * 1024 ** 3) {
+          setEphemeral(true);
+        }
+      })
+      .catch(() => {});
 
     void adminGetBootstrapStatus()
       .then((data) => setBootstrapAvailable(data.available))
@@ -69,18 +92,38 @@ export default function AdminLoginPage() {
     setError(null);
 
     try {
-      const deviceId = ensureAdminDeviceId();
-      const session = await adminLogin({
+      const datos = {
         username: trimmedUser,
         password,
-        deviceId,
         deviceName: trimmedDevice,
         platform: getPlatformName(),
         browser: getBrowserName(),
-      });
+        ephemeral,
+      };
+      let session;
+      try {
+        session = await adminLogin({
+          ...datos,
+          deviceId: adminDeviceIdFor(trimmedUser),
+        });
+      } catch (err) {
+        if (!esConflictoDeDispositivo(err)) throw err;
+        // Este navegador es de otra cuenta: esta entra con una identidad
+        // propia, que igual tiene que aprobarse.
+        session = await adminLogin({
+          ...datos,
+          deviceId: newAdminDeviceIdFor(trimmedUser),
+        });
+      }
 
       if (session.status === 'ACTIVE') {
-        router.push('/admin');
+        router.push(destinoTrasLogin(window.location.search));
+      } else if (session.status === 'PAUSED') {
+        setError(
+          'Esta sesión está pausada desde la app del teléfono. Reactívala allí (Seguridad, Sesiones) para entrar.',
+        );
+        setSubmitting(false);
+        return;
       } else {
         router.push('/admin/pending');
       }
@@ -104,6 +147,13 @@ export default function AdminLoginPage() {
         <p className={styles.subtitle}>
           El ingreso depende de la cuenta y también del dispositivo autorizado.
         </p>
+
+        {sessionExpired && (
+          <p className={styles.notice} role="status">
+            Tu sesión venció. Ingresa de nuevo y vuelves a la página donde
+            estabas.
+          </p>
+        )}
 
         <form className={styles.form} onSubmit={handleSubmit}>
           <div className={styles.field}>
@@ -130,6 +180,21 @@ export default function AdminLoginPage() {
             />
           </div>
 
+          <label className={styles.checkRow}>
+            <input
+              type="checkbox"
+              checked={ephemeral}
+              onChange={(e) => setEphemeral(e.target.checked)}
+            />
+            <span>
+              Ventana privada o equipo compartido
+              <small>
+                Al cerrar la ventana, la sesión se cierra y este equipo deja de
+                estar aprobado.
+              </small>
+            </span>
+          </label>
+
           {error && <p className={styles.error}>{error}</p>}
 
           <div className={styles.actions}>
@@ -139,16 +204,20 @@ export default function AdminLoginPage() {
 
             {bootstrapAvailable && (
               <Link href="/admin/bootstrap" className={styles.secondaryBtn}>
-                Bootstrap root
+                Crear la cuenta principal
               </Link>
             )}
             {rootRecoveryAvailable && (
               <Link href="/admin/recovery" className={styles.secondaryBtn}>
-                Recuperar root
+                Recuperar la cuenta principal
               </Link>
             )}
           </div>
         </form>
+
+        <Link href="/" className={styles.backToSite}>
+          ← Volver al portal
+        </Link>
       </section>
     </div>
   );

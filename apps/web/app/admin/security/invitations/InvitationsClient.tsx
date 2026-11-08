@@ -38,17 +38,19 @@ export function InvitationsClient() {
   const [formPermissions, setFormPermissions] = useState<ChurchPermission[]>(
     [],
   );
-  // Si el creador marca este toggle, la invitación crea una nueva cuenta
-  // ROOT (administrador principal) en vez de un admin de iglesia.
-  // El backend valida que sólo otra cuenta ROOT puede hacerlo — aquí
-  // sólo lo exponemos en la UI.
-  const [formRootInvitation, setFormRootInvitation] = useState(false);
+  // La plataforma admite una sola cuenta principal y la API rechaza invitar
+  // otra, así que aquí solo se invitan administradores de iglesia.
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [createdLink, setCreatedLink] = useState<{
     url: string;
     invitation: AdminInvitationCreated;
   } | null>(null);
+  // Estado del botón Copiar: el enlace no se vuelve a mostrar, así que hay
+  // que confirmar que de verdad quedó copiado.
+  const [copyState, setCopyState] = useState<'idle' | 'copied' | 'failed'>(
+    'idle',
+  );
 
   const refresh = useCallback(async () => {
     try {
@@ -109,44 +111,25 @@ export function InvitationsClient() {
       setFormError('Nombre visible inválido (2–100 caracteres).');
       return;
     }
-    if (!formRootInvitation && !formChurchId) {
+    if (!formChurchId) {
       setFormError('Selecciona la iglesia que el admin podrá administrar.');
       return;
     }
 
-    // Confirmación explícita cuando se está creando otra cuenta ROOT — es
-    // una acción crítica y queremos que el ROOT pulse "sí" intencionalmente.
-    if (formRootInvitation) {
-      const ok = window.confirm(
-        `Vas a generar una invitación para crear OTRA cuenta de administrador principal (ROOT). ` +
-          `La nueva cuenta tendrá acceso total al sistema, igual que tú. ` +
-          `¿Continuar?`,
-      );
-      if (!ok) return;
-    }
-
     setSubmitting(true);
     try {
-      const inv = await adminCreateInvitation(
-        formRootInvitation
-          ? {
-              username,
-              displayName,
-              targetRole: 'ROOT',
-            }
-          : {
-              username,
-              displayName,
-              assignedChurchId: formChurchId,
-              churchPermissions: formPermissions,
-            },
-      );
+      const inv = await adminCreateInvitation({
+        username,
+        displayName,
+        assignedChurchId: formChurchId,
+        churchPermissions: formPermissions,
+      });
       const url = `${window.location.origin}/admin/invite/${encodeURIComponent(inv.token)}`;
       setCreatedLink({ url, invitation: inv });
+      setCopyState('idle');
       setFormUsername('');
       setFormDisplayName('');
       setFormChurchId('');
-      setFormRootInvitation(false);
       // Reset al template Pastor para la próxima invitación
       const pastor = catalog?.templates.find((t) => t.key === 'PASTOR');
       if (pastor) {
@@ -183,9 +166,24 @@ export function InvitationsClient() {
   async function copyLink(url: string) {
     try {
       await navigator.clipboard.writeText(url);
+      setCopyState('copied');
     } catch {
-      // ignore — el link ya está visible en pantalla
+      // Sin permiso para el portapapeles: el enlace sigue a la vista para
+      // copiarlo a mano.
+      setCopyState('failed');
     }
+  }
+
+  function closeCreatedLink() {
+    if (
+      copyState !== 'copied' &&
+      !window.confirm(
+        'Este enlace no se volverá a mostrar. ¿Ya lo copiaste o lo compartiste?',
+      )
+    ) {
+      return;
+    }
+    setCreatedLink(null);
   }
 
   return (
@@ -238,49 +236,28 @@ export function InvitationsClient() {
             </div>
           </div>
 
-          <div className={styles.rootToggle}>
-            <label className={styles.rootToggleLabel}>
-              <input
-                type="checkbox"
-                checked={formRootInvitation}
-                onChange={(e) => setFormRootInvitation(e.target.checked)}
-              />
-              <span>
-                <strong>Crear como administrador principal (ROOT)</strong>
-                <span className={styles.permDesc}>
-                  La nueva cuenta tendrá los mismos privilegios totales que
-                  tú: gestiona todas las iglesias, todos los admins, y puede
-                  a su vez invitar a otras cuentas ROOT. Sólo tú lo puedes
-                  hacer porque eres ROOT — guarda el enlace en privado.
-                </span>
-              </span>
-            </label>
+          <div className={styles.field}>
+            <label>Iglesia asignada</label>
+            <span className={styles.hint}>
+              El admin sólo podrá gestionar datos y subir informes de la
+              iglesia que selecciones. Después podrás asignarle más iglesias
+              desde el panel de permisos.
+            </span>
+            <select
+              value={formChurchId}
+              onChange={(e) => setFormChurchId(e.target.value)}
+              required
+            >
+              <option value="">Selecciona una iglesia…</option>
+              {churches.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name} — {c.city}
+                </option>
+              ))}
+            </select>
           </div>
 
-          {!formRootInvitation && (
-            <div className={styles.field}>
-              <label>Iglesia asignada</label>
-              <span className={styles.hint}>
-                El admin sólo podrá gestionar datos y subir informes de la
-                iglesia que selecciones. Después podrás asignarle más iglesias
-                desde el panel de permisos.
-              </span>
-              <select
-                value={formChurchId}
-                onChange={(e) => setFormChurchId(e.target.value)}
-                required={!formRootInvitation}
-              >
-                <option value="">Selecciona una iglesia…</option>
-                {churches.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name} — {c.city}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          {!formRootInvitation && catalog && (
+          {catalog && (
             <>
               <div className={styles.field}>
                 <label>Rol que va a tener</label>
@@ -355,7 +332,7 @@ export function InvitationsClient() {
               <button
                 type="button"
                 className={styles.linkClose}
-                onClick={() => setCreatedLink(null)}
+                onClick={closeCreatedLink}
                 aria-label="Cerrar"
               >
                 ×
@@ -372,9 +349,15 @@ export function InvitationsClient() {
                 className={styles.copyBtn}
                 onClick={() => void copyLink(createdLink.url)}
               >
-                Copiar
+                {copyState === 'copied' ? 'Copiado ✓' : 'Copiar'}
               </button>
             </div>
+            {copyState === 'failed' && (
+              <p className={styles.linkBoxText} role="status">
+                No se pudo copiar automáticamente. Selecciona el enlace y
+                cópialo a mano.
+              </p>
+            )}
           </div>
         )}
       </section>

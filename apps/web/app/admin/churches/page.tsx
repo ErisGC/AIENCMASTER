@@ -4,8 +4,24 @@ import { requireActiveAdminSession, serverAdminFetch } from '@/app/lib/server-ad
 import type { Church } from '@/app/lib/admin-churches';
 
 export default async function AdminChurchesPage() {
-  await requireActiveAdminSession();
-  const churches = await serverAdminFetch<Church[]>('/admin/churches');
+  const session = await requireActiveAdminSession();
+  const todas = await serverAdminFetch<Church[]>('/admin/churches');
+
+  const account = session.account;
+  const isRoot = account?.role === 'ROOT';
+  // Crear iglesias es solo de la cuenta principal desde el dispositivo
+  // principal (la API lo exige igual); al resto no se le ofrece el botón.
+  const canCreate =
+    isRoot &&
+    (session.device?.principal ?? session.device?.roleScope === 'ROOT_DEVICE');
+  // Quien no administra todas las iglesias ve solo las suyas: las demás
+  // le responderían "sin permiso" al intentar cualquier cambio.
+  const seesAll =
+    isRoot || (account?.globalPermissions ?? []).includes('MANAGE_CHURCHES');
+  const propias = new Set(
+    (account?.churchAssignments ?? []).map((a) => a.churchId),
+  );
+  const churches = seesAll ? todas : todas.filter((c) => propias.has(c.id));
 
   return (
     <main className={styles.page}>
@@ -13,13 +29,17 @@ export default async function AdminChurchesPage() {
         <div>
           <h1 className={styles.title}>Iglesias</h1>
           <p className={styles.subtitle}>
-            Administra listado público, estado (activa/inactiva) y datos básicos.
+            {seesAll
+              ? 'Datos, ubicación, encargados y contenido de cada iglesia.'
+              : 'Las iglesias que tienes a cargo: datos, encargados y contenido.'}
           </p>
         </div>
 
-        <Link className={styles.primaryBtn} href="/admin/churches/new">
-          + Nueva iglesia
-        </Link>
+        {canCreate && (
+          <Link className={styles.primaryBtn} href="/admin/churches/new">
+            + Nueva iglesia
+          </Link>
+        )}
       </header>
 
       <section className={styles.list}>
@@ -48,7 +68,11 @@ export default async function AdminChurchesPage() {
 
         {churches.length === 0 && (
           <div className={styles.empty}>
-            Aún no hay iglesias. Crea la primera con “Nueva iglesia”.
+            {canCreate
+              ? 'Aún no hay iglesias. Crea la primera con “Nueva iglesia”.'
+              : seesAll
+                ? 'Aún no hay iglesias registradas.'
+                : 'Todavía no tienes una iglesia asignada. Pídele a la administración general que te asigne la tuya.'}
           </div>
         )}
       </section>

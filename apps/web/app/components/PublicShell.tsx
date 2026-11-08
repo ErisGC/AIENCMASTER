@@ -6,11 +6,10 @@ import Link from 'next/link';
 import Image from 'next/image';
 
 import styles from './PublicShell.module.css';
-import { useTheme } from '@/app/lib/useTheme';
-import { useIsClient } from '@/app/lib/useIsClient';
 import { ScrollReveal } from './ScrollReveal';
 import { SiteFooter } from './SiteFooter';
 import { SupportWidget } from './SupportWidget';
+import { ThemeToggle } from './ThemeToggle';
 
 type NavItem = {
   href: string;
@@ -31,36 +30,10 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/info', label: 'Información' },
 ];
 
-function SunIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-      <circle cx="12" cy="12" r="4" />
-      <path d="M12 2.5v2.3" />
-      <path d="M12 19.2v2.3" />
-      <path d="m5.4 5.4 1.6 1.6" />
-      <path d="m17 17 1.6 1.6" />
-      <path d="M2.5 12h2.3" />
-      <path d="M19.2 12h2.3" />
-      <path d="m5.4 18.6 1.6-1.6" />
-      <path d="M17 7l1.6-1.6" />
-    </svg>
-  );
-}
-
-function MoonIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-      <path d="M19 13.2A7.6 7.6 0 0 1 10.8 5a8.2 8.2 0 1 0 8.2 8.2Z" />
-    </svg>
-  );
-}
-
 export function PublicShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const { theme, toggleTheme } = useTheme('theme:public', 'light');
-  const isClient = useIsClient();
   const menuBtnRef = useRef<HTMLButtonElement>(null);
   const wasOpenRef = useRef(false);
 
@@ -92,11 +65,21 @@ export function PublicShell({ children }: { children: React.ReactNode }) {
     setOpen((current) => (current ? false : current));
   }, [pathname]);
 
-  // Bloquear scroll del body con el menú móvil abierto.
+  // Bloquear scroll del body con el menú móvil abierto, y cerrarlo con Escape.
   useEffect(() => {
     document.body.style.overflow = open ? 'hidden' : '';
+    if (!open) {
+      return () => {
+        document.body.style.overflow = '';
+      };
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
     return () => {
       document.body.style.overflow = '';
+      window.removeEventListener('keydown', onKey);
     };
   }, [open]);
 
@@ -152,21 +135,7 @@ export function PublicShell({ children }: { children: React.ReactNode }) {
           </nav>
 
           <div className={styles.navActions}>
-            {isClient && (
-              <button
-                type="button"
-                onClick={toggleTheme}
-                aria-label={
-                  theme === 'light' ? 'Activar modo oscuro' : 'Activar modo claro'
-                }
-                title={theme === 'light' ? 'Modo oscuro' : 'Modo claro'}
-                className={styles.themeBtn}
-              >
-                <span className={styles.themeIcon} aria-hidden>
-                  {theme === 'light' ? <MoonIcon /> : <SunIcon />}
-                </span>
-              </button>
-            )}
+            <ThemeToggle className={styles.themeBtn} />
 
             <button
               ref={menuBtnRef}

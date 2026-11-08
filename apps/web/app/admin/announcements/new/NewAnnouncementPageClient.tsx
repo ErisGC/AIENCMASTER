@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
 import { adminCreateAnnouncement } from '@/app/lib/admin-announcements';
@@ -56,7 +57,7 @@ export function NewAnnouncementPageClient() {
 
     try {
       await adminCreateAnnouncement(form);
-      router.push('/admin/announcements');
+      router.push('/admin/announcements?ok=creado');
       router.refresh();
     } catch (err) {
       setSubmitting(false);
@@ -131,6 +132,9 @@ export function NewAnnouncementPageClient() {
         </div>
 
         <footer className={styles.footer}>
+          <Link href="/admin/announcements" className={styles.cancelLink}>
+            Cancelar
+          </Link>
           <button type="submit" disabled={submitting}>
             {submitting ? 'Publicando…' : 'Crear anuncio'}
           </button>

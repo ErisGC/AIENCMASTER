@@ -2,30 +2,41 @@
 @import "react-day-picker/dist/style.css";
 
 /*
- * Paleta inspirada en piedras preciosas:
- *   Zafiro     #0F4C81  (azul real, primario institucional)
- *   Esmeralda  #0F7B6C  (verde profundo, acento principal)
- *   Topacio    #D4A437  (dorado, acento cálido / highlights)
- *   Amatista   #7B3F99  (púrpura, soporte para gradientes)
- *   Rubí       #B0274D  (rojo profundo, alertas / estados destructivos)
+ * Dos tonalidades que el visitante alterna con el botón de sol y luna.
+ *
+ * Modo claro, "Nueva Jerusalén" (Apocalipsis 21 y 22): una ciudad que
+ * resplandece "como piedra de jaspe, diáfana como el cristal", de "oro puro,
+ * semejante al vidrio limpio", con puertas de perla, cimientos de piedras
+ * preciosas y el río de agua de vida, "resplandeciente como cristal".
+ *   Cielo / zafiro   #2A6BB5  primario
+ *   Río de vida      #0E7C70  acento verde agua (el arco "semejante a esmeralda")
+ *   Oro como vidrio  #CDA349  brillo dorado; #8A6512 cuando va como texto
+ *   Perla y cristal  #FBF8F1 / #F5F9FD  fondos
+ *   Amatista #7656AE y rubí #B23A54 como acentos y estados de alerta
+ *
+ * Modo oscuro, "Firmamento": la paleta de gemas sobre azul noche de siempre.
+ *
+ * Los colores de texto y de botones están medidos para contraste AA.
  */
 
 :root {
   color-scheme: light;
 
-  /* Piedras preciosas — light */
-  --gem-sapphire: #0F4C81;
-  --gem-sapphire-soft: #DCE9F6;
-  --gem-sapphire-deep: #0A3A66;
-  --gem-emerald: #0F7B6C;
-  --gem-emerald-soft: #DCF1ED;
-  --gem-emerald-deep: #0A5A4F;
-  --gem-topaz: #D4A437;
-  --gem-topaz-soft: #FAF1D6;
-  --gem-amethyst: #7B3F99;
-  --gem-amethyst-soft: #EFE3F5;
-  --gem-ruby: #B0274D;
-  --gem-ruby-soft: #FAE0E6;
+  /* Piedras preciosas: modo claro */
+  --gem-sapphire: #2A6BB5;
+  --gem-sapphire-soft: #E3EEFA;
+  --gem-sapphire-deep: #1D4F8C;
+  --gem-emerald: #0E7C70;
+  --gem-emerald-soft: #DDF2EE;
+  --gem-emerald-deep: #0A5C53;
+  --gem-topaz: #CDA349;
+  --gem-topaz-soft: #FAF0D7;
+  --gem-topaz-text: #8A6512;
+  --gem-amethyst: #7656AE;
+  --gem-amethyst-soft: #EEE7F7;
+  --gem-ruby: #B23A54;
+  --gem-ruby-soft: #FBE5EA;
+  --gem-pearl: #FBF8F1;
 
   /* Tokens semánticos (los archivos existentes usan estos nombres) */
   --color-primary: var(--gem-sapphire);
@@ -33,37 +44,37 @@
   --color-secondary: var(--gem-emerald);
   --color-accent: var(--gem-topaz);
 
-  --bg-main: #f6f9fc;
-  --bg-surface: rgba(255, 255, 255, 0.86);
+  --bg-main: #F5F9FD;
+  --bg-surface: rgba(255, 255, 255, 0.88);
   --bg-surface-strong: #ffffff;
-  --bg-surface-muted: #eef4f8;
-  --border-soft: rgba(15, 76, 129, 0.14);
-  --border-strong: rgba(15, 76, 129, 0.22);
-  --text-main: #0E1F33;
+  --bg-surface-muted: #EDF4FB;
+  --border-soft: rgba(42, 107, 181, 0.14);
+  --border-strong: rgba(42, 107, 181, 0.24);
+  --text-main: #172A46;
   --text-primary: var(--text-main);
-  --text-muted: rgba(14, 31, 51, 0.7);
-  --text-soft: rgba(14, 31, 51, 0.54);
+  --text-muted: rgba(23, 42, 70, 0.74);
+  --text-soft: rgba(23, 42, 70, 0.58);
 
-  --state-hover: rgba(15, 76, 129, 0.08);
-  --state-active: rgba(15, 76, 129, 0.14);
-  --overlay: rgba(8, 22, 40, 0.46);
+  --state-hover: rgba(42, 107, 181, 0.08);
+  --state-active: rgba(42, 107, 181, 0.14);
+  --overlay: rgba(23, 42, 70, 0.42);
 
-  --shadow-1: 0 14px 35px rgba(15, 31, 51, 0.08);
-  --shadow-2: 0 24px 60px rgba(15, 31, 51, 0.12);
-  --shadow-3: 0 28px 80px rgba(15, 31, 51, 0.16);
+  --shadow-1: 0 14px 35px rgba(42, 82, 140, 0.08);
+  --shadow-2: 0 24px 60px rgba(42, 82, 140, 0.12);
+  --shadow-3: 0 28px 80px rgba(42, 82, 140, 0.16);
   --radius-sm: 12px;
   --radius-md: 18px;
   --radius-lg: 26px;
   --radius-xl: 34px;
 
-  /* Gradientes con piedras preciosas */
+  /* Gradientes: cielo, río y oro */
   --gradient-hero:
-    linear-gradient(135deg, rgba(15, 76, 129, 0.18), rgba(15, 123, 108, 0.08) 55%, rgba(212, 164, 55, 0.10)),
-    radial-gradient(circle at top left, rgba(255, 255, 255, 0.96), rgba(255, 255, 255, 0.7) 58%, rgba(220, 233, 246, 0.94));
+    linear-gradient(135deg, rgba(42, 107, 181, 0.14), rgba(14, 124, 112, 0.06) 55%, rgba(205, 163, 73, 0.12)),
+    radial-gradient(circle at top left, rgba(255, 255, 255, 0.98), rgba(255, 255, 255, 0.74) 58%, rgba(227, 238, 250, 0.94));
   --gradient-surface:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(247, 250, 253, 0.92));
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(246, 250, 254, 0.94));
   --gradient-soft:
-    linear-gradient(135deg, rgba(15, 76, 129, 0.10), rgba(15, 123, 108, 0.06) 50%, rgba(212, 164, 55, 0.08));
+    linear-gradient(135deg, rgba(42, 107, 181, 0.08), rgba(14, 124, 112, 0.05) 50%, rgba(205, 163, 73, 0.09));
   --gradient-accent:
     linear-gradient(135deg, var(--gem-sapphire), var(--gem-emerald) 55%, var(--gem-topaz));
 
@@ -73,47 +84,111 @@
   --text: var(--text-main);
   --border: var(--border-soft);
   --accent: var(--color-primary);
-  --accent-weak: rgba(15, 76, 129, 0.12);
+  --accent-weak: rgba(42, 107, 181, 0.11);
   --accent-emerald: var(--gem-emerald);
-  --accent-emerald-weak: rgba(15, 123, 108, 0.12);
+  --accent-emerald-weak: rgba(14, 124, 112, 0.11);
   --accent-topaz: var(--gem-topaz);
-  --accent-topaz-weak: rgba(212, 164, 55, 0.18);
+  --accent-topaz-weak: rgba(205, 163, 73, 0.18);
   --danger: var(--gem-ruby);
   --danger-weak: var(--gem-ruby-soft);
-  --chip: rgba(15, 76, 129, 0.08);
-  --chip-border: rgba(15, 76, 129, 0.14);
+  --chip: rgba(42, 107, 181, 0.07);
+  --chip-border: rgba(42, 107, 181, 0.14);
   --btn: var(--bg-surface-strong);
-  --btn-hover: rgba(15, 76, 129, 0.08);
-  --btn-border: rgba(15, 76, 129, 0.18);
+  --btn-hover: rgba(42, 107, 181, 0.08);
+  --btn-border: rgba(42, 107, 181, 0.18);
+
+  /* Botones y estados. Texto blanco encima con contraste AA. */
+  --on-accent: #ffffff;
+  --btn-primary-bg: linear-gradient(135deg, #2A6BB5, #3577BF);
+  --btn-primary-bg-hover: linear-gradient(135deg, #24609F, #2E6CB0);
+  --btn-primary-shadow: 0 12px 26px rgba(42, 107, 181, 0.22);
+  /* Botón o insignia con el degradado cielo y río (texto blanco encima) */
+  --btn-accent-bg: linear-gradient(135deg, #2A6BB5, #0E7C70);
+  /* Rellenos sólidos con texto blanco encima */
+  --fill-sapphire: #2A6BB5;
+  --fill-emerald: #0E7C70;
+  --danger-strong: #B23A54;
+  --danger-strong-hover: #962C44;
+  --danger-line: rgba(178, 58, 84, 0.32);
+  --success: #1F7A4D;
+  --success-strong: #1F7A4D;
+  --success-weak: rgba(31, 122, 77, 0.12);
+  --warning: #8F620A;
+  --warning-weak: rgba(205, 163, 73, 0.18);
+
+  /* Líneas y velos neutros que respetan el modo */
+  --hairline: rgba(23, 42, 70, 0.10);
+  --hairline-strong: rgba(23, 42, 70, 0.16);
+  --tint-1: rgba(42, 107, 181, 0.035);
+  --tint-2: rgba(42, 107, 181, 0.06);
+  --tint-3: rgba(42, 107, 181, 0.09);
+  --modal-bg: var(--bg-surface-strong);
+
+  /* Brillo de fondo de toda la página: luz dorada arriba, cielo y perla */
+  --page-glow:
+    radial-gradient(ellipse 70% 45% at 50% -8%, rgba(250, 228, 170, 0.38), transparent 70%),
+    radial-gradient(ellipse 50% 40% at 0% 20%, rgba(180, 212, 245, 0.30), transparent 70%),
+    radial-gradient(ellipse 50% 40% at 100% 80%, rgba(178, 226, 216, 0.22), transparent 70%);
 
   /* Tipografía (cableada en layout.tsx vía next/font) */
   --font-display: "Fraunces", Georgia, "Times New Roman", serif;
   --font-sans: "Inter", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
 
-  /* Flujo cinematográfico — layout y motion */
+  /* Flujo cinematográfico: layout y motion */
   --topnav-height: 72px;
   --hero-vh: 90vh;
   --band-max: 1240px;
   --reveal-distance: 20px;
   --reveal-duration: 620ms;
 
-  /* Overlay del hero: hunde la base para legibilidad sobre cualquier imagen */
-  --gradient-hero-overlay:
-    linear-gradient(
-      180deg,
-      rgba(8, 22, 40, 0.28) 0%,
-      rgba(8, 22, 40, 0.16) 34%,
-      rgba(8, 22, 40, 0.55) 78%,
-      rgba(8, 22, 40, 0.82) 100%
-    );
-  /* Fondo de la top-nav cuando ya se hizo scroll (estado sólido) */
-  --topnav-bg-scrolled: rgba(255, 255, 255, 0.86);
+  /*
+   * Portada de la home en modo claro: un amanecer luminoso. Sin fotos se ve
+   * el cielo con la gloria dorada arriba; con fotos, un velo de perla a la
+   * izquierda (donde va el texto) que deja ver la imagen a la derecha.
+   */
+  --hero-fallback:
+    radial-gradient(ellipse 80% 60% at 50% -12%, rgba(255, 233, 176, 0.95), transparent 62%),
+    radial-gradient(circle at 10% 35%, rgba(168, 206, 245, 0.62), transparent 52%),
+    radial-gradient(circle at 92% 72%, rgba(160, 222, 210, 0.45), transparent 50%),
+    linear-gradient(180deg, #D9E9F9 0%, #ECF4FC 46%, #FBF8F1 100%);
+  --hero-veil:
+    radial-gradient(ellipse 70% 50% at 30% 0%, rgba(255, 238, 196, 0.45), transparent 70%),
+    linear-gradient(90deg, rgba(247, 250, 254, 0.94) 0%, rgba(247, 250, 254, 0.84) 36%, rgba(247, 250, 254, 0.34) 70%, rgba(247, 250, 254, 0.12) 100%),
+    linear-gradient(180deg, transparent 72%, var(--bg-main) 100%);
+  --hero-veil-narrow:
+    radial-gradient(ellipse 90% 45% at 50% 0%, rgba(255, 238, 196, 0.5), transparent 70%),
+    linear-gradient(180deg, rgba(247, 250, 254, 0.78) 0%, rgba(247, 250, 254, 0.86) 55%, var(--bg-main) 100%);
+  --hero-text: #14294A;
+  --hero-text-muted: rgba(20, 41, 74, 0.82);
+  --hero-eyebrow: var(--gem-topaz-text);
+  --hero-title-glow: drop-shadow(0 10px 34px rgba(255, 255, 255, 0.85));
+  --hero-title-fill: linear-gradient(180deg, #1A3866 0%, #2A6BB5 100%);
+  --hero-primary-bg: var(--btn-primary-bg);
+  --hero-primary-text: #ffffff;
+  --hero-primary-shadow: 0 18px 40px rgba(42, 107, 181, 0.28);
+  --hero-secondary-text: #14294A;
+  --hero-secondary-border: rgba(20, 41, 74, 0.22);
+  --hero-secondary-bg: rgba(255, 255, 255, 0.55);
+  --hero-secondary-bg-hover: rgba(255, 255, 255, 0.85);
+  --hero-scroll: rgba(20, 41, 74, 0.5);
+
+  /* Barra superior sobre la portada (transparente) y ya con scroll */
+  --topnav-hero-bg: linear-gradient(180deg, rgba(247, 250, 254, 0.72), rgba(247, 250, 254, 0));
+  --topnav-hero-text: #14294A;
+  --topnav-hero-text-muted: rgba(20, 41, 74, 0.78);
+  --topnav-hero-chip: rgba(255, 255, 255, 0.6);
+  --topnav-hero-chip-strong: rgba(255, 255, 255, 0.85);
+  --topnav-hero-chip-border: rgba(20, 41, 74, 0.14);
+  --topnav-bg-scrolled: rgba(250, 252, 255, 0.86);
+
+  /* Compatibilidad: algunos módulos todavía leen este nombre */
+  --gradient-hero-overlay: var(--hero-veil);
 }
 
 :root[data-theme="dark"] {
   color-scheme: dark;
 
-  /* Piedras preciosas — dark (versiones brillantes) */
+  /* Piedras preciosas: modo oscuro (versiones brillantes) */
   --gem-sapphire: #6FA8DC;
   --gem-sapphire-soft: rgba(111, 168, 220, 0.16);
   --gem-sapphire-deep: #3D7AB0;
@@ -122,10 +197,12 @@
   --gem-emerald-deep: #1F8C75;
   --gem-topaz: #E8C46B;
   --gem-topaz-soft: rgba(232, 196, 107, 0.14);
+  --gem-topaz-text: #E8C46B;
   --gem-amethyst: #B084CC;
   --gem-amethyst-soft: rgba(176, 132, 204, 0.14);
   --gem-ruby: #E16880;
   --gem-ruby-soft: rgba(225, 104, 128, 0.16);
+  --gem-pearl: #15243A;
 
   --color-primary: var(--gem-sapphire);
   --color-primary-soft: var(--gem-sapphire-soft);
@@ -179,7 +256,61 @@
   --btn-hover: rgba(111, 168, 220, 0.12);
   --btn-border: rgba(220, 232, 250, 0.18);
 
-  /* Top-nav sólida en dark */
+  --on-accent: #ffffff;
+  --btn-primary-bg: linear-gradient(135deg, #2F6AA6, #3D7AB0);
+  --btn-primary-bg-hover: linear-gradient(135deg, #2A5F96, #366FA2);
+  --btn-primary-shadow: 0 12px 26px rgba(0, 0, 0, 0.34);
+  --btn-accent-bg: linear-gradient(135deg, #2F6AA6, #1F7A6C);
+  --fill-sapphire: #2F6AA6;
+  --fill-emerald: #1F7A6C;
+  --danger-strong: #C24760;
+  --danger-strong-hover: #A93A51;
+  --danger-line: rgba(225, 104, 128, 0.36);
+  --success: #4CC38A;
+  --success-strong: #23825A;
+  --success-weak: rgba(76, 195, 138, 0.14);
+  --warning: #F0C870;
+  --warning-weak: rgba(232, 196, 107, 0.16);
+
+  --hairline: rgba(255, 255, 255, 0.08);
+  --hairline-strong: rgba(255, 255, 255, 0.14);
+  --tint-1: rgba(255, 255, 255, 0.03);
+  --tint-2: rgba(255, 255, 255, 0.06);
+  --tint-3: rgba(255, 255, 255, 0.09);
+  --modal-bg: var(--bg-surface-strong);
+
+  --page-glow: none;
+
+  /* Portada en modo oscuro: la de siempre, cinematográfica y con texto claro */
+  --hero-fallback:
+    radial-gradient(circle at 20% 20%, rgba(15, 76, 129, 0.55), transparent 55%),
+    radial-gradient(circle at 80% 80%, rgba(15, 123, 108, 0.45), transparent 55%),
+    linear-gradient(150deg, #0A3A66, #06223c 60%, #0A5A4F);
+  --hero-veil:
+    radial-gradient(circle at 16% 10%, rgba(111, 168, 220, 0.26), transparent 36%),
+    radial-gradient(circle at 84% 14%, rgba(60, 179, 154, 0.22), transparent 34%),
+    linear-gradient(180deg, rgba(8, 22, 40, 0.28) 0%, rgba(8, 22, 40, 0.16) 34%, rgba(8, 22, 40, 0.55) 78%, rgba(8, 22, 40, 0.82) 100%);
+  --hero-veil-narrow: var(--hero-veil);
+  --hero-text: #ffffff;
+  --hero-text-muted: rgba(255, 255, 255, 0.9);
+  --hero-eyebrow: rgba(255, 255, 255, 0.86);
+  --hero-title-glow: drop-shadow(0 8px 30px rgba(0, 0, 0, 0.35));
+  --hero-title-fill: linear-gradient(180deg, #ffffff, #ffffff);
+  --hero-primary-bg: #ffffff;
+  --hero-primary-text: #0A3A66;
+  --hero-primary-shadow: 0 18px 40px rgba(0, 0, 0, 0.28);
+  --hero-secondary-text: #ffffff;
+  --hero-secondary-border: rgba(255, 255, 255, 0.4);
+  --hero-secondary-bg: rgba(255, 255, 255, 0.08);
+  --hero-secondary-bg-hover: rgba(255, 255, 255, 0.16);
+  --hero-scroll: rgba(255, 255, 255, 0.7);
+
+  --topnav-hero-bg: linear-gradient(180deg, rgba(8, 22, 40, 0.42), rgba(8, 22, 40, 0));
+  --topnav-hero-text: #ffffff;
+  --topnav-hero-text-muted: rgba(255, 255, 255, 0.86);
+  --topnav-hero-chip: rgba(255, 255, 255, 0.14);
+  --topnav-hero-chip-strong: rgba(255, 255, 255, 0.18);
+  --topnav-hero-chip-border: rgba(255, 255, 255, 0.28);
   --topnav-bg-scrolled: rgba(8, 18, 31, 0.86);
 }
 
@@ -194,13 +325,41 @@ html {
 body {
   margin: 0;
   min-height: 100vh;
-  /* Fondo base "tipo gemas". El hero de la home superpone el BackgroundRotator. */
+  /* El hero de la home superpone el BackgroundRotator. */
   background: var(--bg-main);
   color: var(--text-main);
   font-family: var(--font-sans);
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Luz de fondo fija (sin background-attachment, que hace saltar el scroll en
+   celulares). En modo oscuro no se pinta. */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: var(--page-glow);
+}
+
+/*
+ * Al cambiar de tonalidad, los colores se funden en vez de saltar. La clase
+ * la pone ThemeToggle durante el cambio y la quita al terminar.
+ */
+html.theme-switching,
+html.theme-switching *,
+html.theme-switching *::before,
+html.theme-switching *::after {
+  transition:
+    background-color 320ms ease,
+    color 320ms ease,
+    border-color 320ms ease,
+    fill 320ms ease,
+    stroke 320ms ease,
+    box-shadow 320ms ease !important;
 }
 
 a {
@@ -224,7 +383,7 @@ img {
 }
 
 ::selection {
-  background: rgba(15, 76, 129, 0.20);
+  background: color-mix(in srgb, var(--color-primary) 22%, transparent);
   color: var(--text-main);
 }
 
@@ -321,5 +480,12 @@ html:not(.js) [data-reveal] {
     opacity: 1;
     transform: none;
     transition: none;
+  }
+
+  html.theme-switching,
+  html.theme-switching *,
+  html.theme-switching *::before,
+  html.theme-switching *::after {
+    transition: none !important;
   }
 }

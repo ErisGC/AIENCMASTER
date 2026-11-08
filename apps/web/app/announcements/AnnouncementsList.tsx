@@ -37,6 +37,19 @@ export function AnnouncementsList({ initialItems, pageSize }: Props) {
 
   const [titleEnabled, setTitleEnabled] = useState(false);
   const [title, setTitle] = useState('');
+  // El título se consulta cuando la persona deja de escribir, no con cada
+  // tecla (antes cada letra lanzaba una consulta y vaciaba la cuadrícula).
+  const [debouncedTitle, setDebouncedTitle] = useState('');
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedTitle(title), 350);
+    return () => window.clearTimeout(timer);
+  }, [title]);
+
+  // Solo vale la respuesta de la consulta más reciente: si una vieja llega
+  // tarde, no pisa los resultados nuevos.
+  const requestId = useRef(0);
+  // Si el último fallo fue al traer "más", reintentar continúa desde ahí.
+  const [retryReset, setRetryReset] = useState(true);
 
   const [dateEnabled, setDateEnabled] = useState(false);
   const [fromDate, setFromDate] = useState('');
@@ -44,6 +57,7 @@ export function AnnouncementsList({ initialItems, pageSize }: Props) {
 
   const loadPage = useCallback(
     async (reset: boolean, currentOffset: number, query: string) => {
+      const id = ++requestId.current;
       if (reset) {
         setLoading(true);
       } else {
@@ -62,19 +76,28 @@ export function AnnouncementsList({ initialItems, pageSize }: Props) {
         }
 
         const data: Announcement[] = await res.json();
+        if (id !== requestId.current) return;
 
         setItems((prev) => (reset ? data : [...prev, ...data]));
         setOffset(reset ? data.length : currentOffset + data.length);
         setHasMore(data.length === pageSize);
       } catch {
-        setError('No se pudieron cargar los anuncios. Intenta de nuevo.');
+        if (id !== requestId.current) return;
+        setRetryReset(reset);
+        setError(
+          reset
+            ? 'No se pudieron cargar los anuncios. Intenta de nuevo.'
+            : 'No se pudieron traer más anuncios. Intenta de nuevo.',
+        );
         // No borramos lo que ya estaba visible: si una re-consulta falla,
         // el usuario conserva lo último que cargó bien (incluido lo que ya
         // había renderizado el servidor). Antes hacíamos setItems([]) aquí,
         // lo que tiraba a la basura datos buenos ante un fallo transitorio.
       } finally {
-        setLoading(false);
-        setLoadingMore(false);
+        if (id === requestId.current) {
+          setLoading(false);
+          setLoadingMore(false);
+        }
       }
     },
     [pageSize],
@@ -84,15 +107,15 @@ export function AnnouncementsList({ initialItems, pageSize }: Props) {
     const params = new URLSearchParams();
     params.set('limit', String(pageSize));
 
-    if (titleEnabled && title.trim()) {
-      params.set('title', title.trim());
+    if (titleEnabled && debouncedTitle.trim()) {
+      params.set('title', debouncedTitle.trim());
     }
     if (dateEnabled && fromDate) {
       params.set('fromDate', fromDate);
       if (toDate) params.set('toDate', toDate);
     }
     return params.toString();
-  }, [pageSize, titleEnabled, title, dateEnabled, fromDate, toDate]);
+  }, [pageSize, titleEnabled, debouncedTitle, dateEnabled, fromDate, toDate]);
 
   const isFirstRun = useRef(true);
   useEffect(() => {
@@ -155,25 +178,26 @@ export function AnnouncementsList({ initialItems, pageSize }: Props) {
         </div>
       )}
 
+      {/* El error va como aviso encima: lo que ya estaba cargado sigue a la
+          vista (antes cualquier fallo, incluso en "Mostrar más", lo ocultaba). */}
       {error && (
-        <div
-          className={styles.emptyState}
-          role="alert"
-          style={{ color: '#dc2626' }}
-        >
-          <h2 className={styles.emptyTitle}>Ocurrió un problema</h2>
-          <p className={styles.emptyText}>{error}</p>
+        <div className={styles.errorBanner} role="alert">
+          <span>{error}</span>
           <button
             type="button"
-            className={styles.loadMore}
-            onClick={() => void loadPage(true, 0, buildQuery())}
+            className={styles.errorRetry}
+            onClick={() =>
+              retryReset
+                ? void loadPage(true, 0, buildQuery())
+                : void loadPage(false, offset, buildQuery())
+            }
           >
             Reintentar
           </button>
         </div>
       )}
 
-      {!error && loading ? (
+      {loading && items.length === 0 ? (
         <div className={styles.grid}>
           {Array.from({ length: pageSize }).map((_, i) => (
             <div
@@ -184,8 +208,11 @@ export function AnnouncementsList({ initialItems, pageSize }: Props) {
             />
           ))}
         </div>
-      ) : !error && items.length > 0 ? (
-        <section className={styles.grid}>
+      ) : items.length > 0 ? (
+        <section
+          className={`${styles.grid} ${loading ? styles.gridBusy : ''}`}
+          aria-busy={loading}
+        >
           {items.map((announcement) => (
             <Link
               key={announcement.id}
@@ -216,15 +243,25 @@ export function AnnouncementsList({ initialItems, pageSize }: Props) {
         </section>
       ) : !error && !loading ? (
         <div className={styles.emptyState}>
-          <h2 className={styles.emptyTitle}>No hay anuncios para este filtro</h2>
-          <p className={styles.emptyText}>
-            Ajusta el título o el rango de fecha para volver a consultar el
-            listado.
-          </p>
+          {filtersActive ? (
+            <>
+              <h2 className={styles.emptyTitle}>No hay anuncios con esos filtros</h2>
+              <p className={styles.emptyText}>
+                Prueba con otra palabra del título o amplía el rango de fechas.
+              </p>
+            </>
+          ) : (
+            <>
+              <h2 className={styles.emptyTitle}>Todavía no hay anuncios publicados</h2>
+              <p className={styles.emptyText}>
+                Cuando la administración publique un comunicado, aparecerá aquí.
+              </p>
+            </>
+          )}
         </div>
       ) : null}
 
-      {!error && hasMore && !loading && (
+      {hasMore && !loading && items.length > 0 && (
         <button
           type="button"
           className={styles.loadMore}

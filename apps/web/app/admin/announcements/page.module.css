@@ -22,7 +22,7 @@
 
 /* Botón nuevo anuncio */
 .newButton {
-  background: linear-gradient(135deg, var(--accent), rgba(37, 99, 235, 0.65));
+  background: var(--btn-primary-bg);
   color: #fff;
   text-decoration: none;
   padding: 0.55rem 1.2rem;
@@ -34,7 +34,7 @@
 }
 
 :root[data-theme="dark"] .newButton {
-  background: linear-gradient(135deg, var(--accent), rgba(96, 165, 250, 0.55));
+  background: var(--btn-primary-bg-hover);
 }
 
 .newButton:hover {
@@ -54,7 +54,7 @@
 
 /* En oscuro, devuelve un poco de profundidad “admin” sin volverse negro duro */
 :root[data-theme="dark"] .tableWrapper {
-  background: linear-gradient(180deg, var(--surface), rgba(0, 0, 0, 0.18));
+  background: var(--gradient-surface);
 }
 
 .table {
@@ -113,11 +113,11 @@
   text-decoration: underline;
 }
 
-/* Delete: se deja rojo fijo (no hay token de danger) */
+/* Eliminar: tono de alerta del modo activo */
 .deleteButton {
   background: transparent;
-  border: 1px solid #ff5f5f;
-  color: #ff5f5f;
+  border: 1px solid var(--danger-line);
+  color: var(--danger);
   padding: 0.35rem 0.75rem;
   border-radius: 8px;
   font-size: 0.85rem;
@@ -126,7 +126,7 @@
 }
 
 .deleteButton:hover:not(:disabled) {
-  background: rgba(255, 95, 95, 0.12);
+  background: var(--danger-weak);
 }
 
 .deleteButton:disabled {
@@ -153,13 +153,13 @@
 }
 
 .toast.success {
-  background: #16a34a;
-  color: #fff;
+  background: var(--success-strong);
+  color: var(--on-accent);
 }
 
 .toast.error {
-  background: #dc2626;
-  color: #fff;
+  background: var(--danger-strong);
+  color: var(--on-accent);
 }
 
 .toastClose {
@@ -186,7 +186,7 @@
   position: fixed;
   inset: 0;
   z-index: 90;
-  background: rgba(0, 0, 0, 0.45);
+  background: var(--overlay);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -239,16 +239,16 @@
 .dialogConfirm {
   padding: 0.5rem 1rem;
   border-radius: 10px;
-  border: 1px solid #dc2626;
-  background: #dc2626;
-  color: #fff;
+  border: 1px solid var(--danger-strong);
+  background: var(--danger-strong);
+  color: var(--on-accent);
   font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
 }
 
 .dialogConfirm:hover {
-  background: #b91c1c;
+  background: var(--danger-strong-hover);
 }
 
 @keyframes fadeIn {
@@ -293,9 +293,9 @@
   gap: 1rem;
   padding: 0.75rem 1.25rem;
   border-radius: 12px;
-  background: rgba(220, 38, 38, 0.1);
-  border: 1px solid rgba(220, 38, 38, 0.3);
-  color: #dc2626;
+  background: var(--danger-weak);
+  border: 1px solid var(--danger-line);
+  color: var(--danger);
   font-size: 0.85rem;
   margin-bottom: 1.5rem;
 }
@@ -312,7 +312,7 @@
 }
 
 .retryButton:hover {
-  background: rgba(220, 38, 38, 0.08);
+  background: var(--danger-weak);
 }
 
 .emptyState {
@@ -339,3 +339,20 @@
     gap: 1rem;
   }
 }
+
+/* Aviso para quien no publica anuncios institucionales */
+.permissionNote {
+  margin: -0.5rem 0 1.5rem;
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  border: 1px solid var(--border-soft);
+  background: var(--accent-weak);
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.permissionNote a {
+  color: var(--color-primary);
+  font-weight: 600;
+}
+

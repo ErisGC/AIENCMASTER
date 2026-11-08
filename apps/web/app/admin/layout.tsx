@@ -9,11 +9,15 @@ import { EVENT_ALERTS_CHANGED, adminGetEventAlerts } from '@/app/lib/admin-event
 import {
   adminGetSession,
   adminLogout,
+  adminPing,
+  adminWindowClosed,
+  esDispositivoPrincipal,
   type AdminSessionResponse,
 } from '@/app/lib/admin-auth';
 import { useIsMobileDevice } from '@/app/lib/useIsMobileDevice';
 import { roleShortLabel } from '@/app/lib/i18n';
 import { SupportWidget } from '@/app/components/SupportWidget';
+import { ThemeToggle } from '@/app/components/ThemeToggle';
 import { ActiveChurchProvider } from './_components/ActiveChurchContext';
 import { ChurchSelector } from './_components/ChurchSelector';
 import styles from './layout.module.css';
@@ -57,6 +61,10 @@ export default function AdminLayout({
   const pathname = usePathname();
   const router = useRouter();
   const [session, setSession] = useState<AdminSessionResponse | null>(null);
+  // Si la sesión no se pudo consultar (red, servidor), se avisa con un botón
+  // para reintentar en vez de dejar el panel esperando para siempre.
+  const [sessionError, setSessionError] = useState(false);
+  const [sessionAttempt, setSessionAttempt] = useState(0);
   const [mobileOpen, setMobileOpen] = useState(false);
   // Eventos próximos con cruce de horario: se muestra como insignia junto a
   // "Eventos", que es el recordatorio para los encargados.
@@ -80,16 +88,51 @@ export default function AdminLayout({
     let mounted = true;
     void adminGetSession()
       .then((data) => {
-        if (mounted) setSession(data);
+        if (!mounted) return;
+        setSession(data);
+        setSessionError(false);
       })
       .catch(() => {
-        if (mounted) setSession(null);
+        if (!mounted) return;
+        setSession(null);
+        setSessionError(true);
       });
 
     return () => {
       mounted = false;
     };
-  }, [isPublic, pathname]);
+  }, [isPublic, pathname, sessionAttempt]);
+
+  // Señal de vida mientras el panel está a la vista (la app muestra si la
+  // sesión está en uso) y aviso al cerrar la ventana. Cerrar la página no
+  // cierra la sesión, salvo en ventanas privadas (lo decide la API).
+  useEffect(() => {
+    if (isPublic || session?.status !== 'ACTIVE') return;
+    const latido = () => {
+      if (document.visibilityState === 'visible') {
+        void adminPing().catch(() => {});
+      }
+    };
+    const intervalo = window.setInterval(latido, 60_000);
+    const alCerrar = (e: PageTransitionEvent) => {
+      if (!e.persisted) adminWindowClosed();
+    };
+    window.addEventListener('pagehide', alCerrar);
+    return () => {
+      window.clearInterval(intervalo);
+      window.removeEventListener('pagehide', alCerrar);
+    };
+  }, [isPublic, session?.status]);
+
+  // Escape cierra el menú lateral en pantallas angostas.
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMobileOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [mobileOpen]);
 
   // Cerrar el menú móvil al cambiar de ruta
   useEffect(() => {
@@ -126,16 +169,17 @@ export default function AdminLayout({
     }
   }
 
-  const canSeeSecurity = useMemo(() => {
-    return (
-      session?.status === 'ACTIVE' &&
-      session.account?.role === 'ROOT' &&
-      session.device?.roleScope === 'ROOT_DEVICE'
-    );
-  }, [session]);
+  const canSeeSecurity = useMemo(() => esDispositivoPrincipal(session), [session]);
 
   if (isPublic) {
-    return <main className={styles.publicMain}>{children}</main>;
+    return (
+      <main className={styles.publicMain}>
+        {/* Login, invitación, recuperación...: también se puede cambiar la
+            tonalidad antes de entrar. */}
+        <ThemeToggle className={styles.floatingTheme} />
+        {children}
+      </main>
+    );
   }
 
   const isActive = (href: string) =>
@@ -160,6 +204,7 @@ export default function AdminLayout({
         <div className={styles.mobileSelector}>
           <ChurchSelector />
         </div>
+        <ThemeToggle className={styles.mobileThemeBtn} />
       </header>
 
       {mobileOpen && (
@@ -268,22 +313,64 @@ export default function AdminLayout({
               Seguridad
             </Link>
           )}
+          {canSeeSecurity && (
+            <Link
+              href="/admin/site"
+              className={isActive('/admin/site') ? styles.navActive : ''}
+            >
+              Apariencia del portal
+            </Link>
+          )}
         </nav>
 
-        <button
-          type="button"
-          className={styles.logoutBtn}
-          onClick={handleLogout}
-        >
-          Cerrar sesión
-        </button>
+        <div className={styles.sidebarFooter}>
+          <a
+            href="/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={styles.siteLink}
+          >
+            Ver el portal ↗
+          </a>
+          <ThemeToggle className={styles.themeRow} withLabel />
+          <button
+            type="button"
+            className={styles.logoutBtn}
+            onClick={handleLogout}
+          >
+            Cerrar sesión
+          </button>
+        </div>
       </aside>
 
-      <main className={styles.main}>{children}</main>
+      <main className={styles.main}>
+        {sessionError ? (
+          <div className={styles.sessionError} role="alert">
+            <strong>No pudimos comprobar tu sesión.</strong>
+            <span>
+              Puede ser la conexión o el servidor. Revisa tu internet e
+              intenta de nuevo.
+            </span>
+            <button
+              type="button"
+              className={styles.sessionRetry}
+              onClick={() => setSessionAttempt((n) => n + 1)}
+            >
+              Reintentar
+            </button>
+          </div>
+        ) : (
+          children
+        )}
+      </main>
 
-      {/* Bandeja de soporte flotante: sólo la ve el administrador principal.
-          Se abre y se cierra cuando quiera, sin estorbar el trabajo. */}
+      {/* Soporte flotante. El administrador principal ve la bandeja de
+          mensajes; los demás administradores pueden reportar fallos por el
+          mismo canal que los visitantes. */}
       {session?.account?.role === 'ROOT' && <SupportWidget mode="root" />}
+      {session?.account && session.account.role !== 'ROOT' && (
+        <SupportWidget mode="guest" />
+      )}
     </div>
     </ActiveChurchProvider>
   );

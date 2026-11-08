@@ -29,12 +29,15 @@
   text-decoration: none;
   padding: 0.7rem 0.9rem;
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid transparent;
+  background: var(--btn-primary-bg);
+  color: var(--on-accent);
+  font-weight: 650;
+  box-shadow: var(--btn-primary-shadow);
 }
 
 .primaryBtn:hover {
-  background: rgba(255, 255, 255, 0.09);
+  background: var(--btn-primary-bg-hover);
 }
 
 .list {
@@ -49,8 +52,8 @@
   gap: 1rem;
   padding: 0.9rem 1rem;
   border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--hairline);
+  background: var(--tint-1);
 }
 
 .left {
@@ -72,16 +75,18 @@
   font-size: 0.78rem;
   padding: 0.25rem 0.55rem;
   border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  border: 1px solid var(--hairline-strong);
   opacity: 0.9;
 }
 
 .badgeOn {
-  background: rgba(0, 200, 120, 0.12);
+  background: var(--success-weak);
+  color: var(--success);
 }
 
 .badgeOff {
-  background: rgba(255, 180, 0, 0.10);
+  background: var(--warning-weak);
+  color: var(--warning);
 }
 
 .meta {
@@ -102,13 +107,13 @@
   text-decoration: none;
   padding: 0.55rem 0.75rem;
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--hairline-strong);
+  background: var(--tint-2);
   white-space: nowrap;
 }
 
 .btn:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--tint-3);
 }
 
 .hint {
@@ -119,7 +124,7 @@
 .empty {
   padding: 1rem;
   border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--hairline);
+  background: var(--tint-1);
   opacity: 0.8;
 }

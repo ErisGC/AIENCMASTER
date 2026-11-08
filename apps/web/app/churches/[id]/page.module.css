@@ -56,10 +56,10 @@
 .heroFallback {
   position: absolute;
   inset: 0;
+  /* Sin portada: cielo con luz dorada, para que el texto blanco luzca. */
   background:
-    radial-gradient(circle at top left, rgba(31, 79, 163, 0.22), transparent 32%),
-    radial-gradient(circle at bottom right, rgba(182, 123, 47, 0.16), transparent 28%),
-    linear-gradient(135deg, rgba(255, 255, 255, 0.88), rgba(232, 239, 250, 0.96));
+    radial-gradient(circle at 85% 0%, rgba(255, 228, 160, 0.55), transparent 45%),
+    linear-gradient(135deg, #1D4F8C, #2A6BB5 55%, #0E7C70);
 }
 
 :root[data-theme="dark"] .heroFallback {
@@ -368,7 +368,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, var(--gem-sapphire), var(--gem-emerald));
+  background: var(--btn-accent-bg);
   color: #fff;
   font-size: 1.3rem;
   font-weight: 800;
@@ -542,7 +542,7 @@
   padding: 0.7rem 1.1rem;
   border-radius: 999px;
   border: 1px solid var(--border-soft);
-  background: var(--gem-sapphire);
+  background: var(--fill-sapphire);
   color: #fff;
   font: inherit;
   font-weight: 700;

@@ -67,7 +67,7 @@ export function MapPicker({
         )}
       </MapContainer>
       <p className={styles.mapHint}>
-        Haz click en el mapa para fijar la ubicación.
+        Haz clic en el mapa para fijar la ubicación.
       </p>
     </div>
   );

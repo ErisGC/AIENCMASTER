@@ -44,10 +44,21 @@
 .placeholder {
   width: 100%;
   height: 100%;
+  display: grid;
+  place-items: center;
+  /* Sin foto: un cielo con luz dorada y las iniciales de la iglesia. */
   background:
-    radial-gradient(circle at top left, rgba(31, 79, 163, 0.18), transparent 32%),
-    radial-gradient(circle at bottom right, rgba(182, 123, 47, 0.14), transparent 28%),
-    linear-gradient(135deg, rgba(255, 255, 255, 0.92), rgba(232, 239, 250, 0.96));
+    radial-gradient(circle at 85% 0%, rgba(255, 228, 160, 0.55), transparent 45%),
+    linear-gradient(135deg, #1D4F8C, #2A6BB5 55%, #0E7C70);
+}
+
+.monogram {
+  font-family: var(--font-display);
+  font-size: 3.6rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.92);
+  text-shadow: 0 10px 30px rgba(10, 30, 60, 0.3);
 }
 
 :root[data-theme="dark"] .placeholder {
@@ -152,12 +163,12 @@
 }
 
 .cta {
-  background: rgba(31, 79, 163, 0.08);
+  background: var(--accent-weak);
   color: var(--color-primary);
 }
 
 .disabledCta {
-  background: rgba(24, 50, 95, 0.08);
+  background: var(--tint-2);
   color: var(--text-soft);
 }
 

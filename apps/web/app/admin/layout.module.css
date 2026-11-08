@@ -1,13 +1,45 @@
 .root {
   display: flex;
   min-height: 100vh;
-  background: var(--bg);
+  /* Sin fondo propio: se ve el del body con su luz suave (globals.css). */
+  background: transparent;
   color: var(--text);
 }
 
 .publicMain {
+  position: relative;
   min-height: 100vh;
-  background: var(--bg);
+  background: transparent;
+}
+
+/* Botón de tonalidad en las pantallas de acceso (login, invitación...). */
+.floatingTheme {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 40;
+  width: 42px;
+  height: 42px;
+  border-radius: 13px;
+  border: 1px solid var(--border-soft);
+  background: var(--bg-surface);
+  color: var(--text-main);
+  box-shadow: var(--shadow-1);
+  backdrop-filter: blur(10px);
+}
+
+.floatingTheme:hover {
+  border-color: var(--border-strong);
+}
+
+.mobileThemeBtn {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
 }
 
 /* ───────── Mobile topbar ───────── */
@@ -54,7 +86,7 @@
   display: none;
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.45);
+  background: var(--overlay);
   z-index: 60;
   border: none;
 }
@@ -73,6 +105,8 @@
   top: 0;
   align-self: flex-start;
   height: 100vh;
+  /* En pantallas bajas el menú se desplaza en vez de cortar el pie. */
+  overflow-y: auto;
 }
 
 .sidebarHeader {
@@ -165,7 +199,7 @@
   width: fit-content;
   padding: 0.18rem 0.55rem;
   border-radius: 100px;
-  background: var(--accent-emerald);
+  background: var(--gem-emerald-deep);
   color: #fff !important;
   font-size: 0.7rem !important;
   font-weight: 700;
@@ -206,7 +240,7 @@
   margin-left: 0.5rem;
   padding: 0 0.4rem;
   border-radius: 999px;
-  background: var(--danger);
+  background: var(--danger-strong);
   color: #fff;
   font-size: 0.72rem;
   font-weight: 800;
@@ -230,8 +264,30 @@
   min-width: 0;
 }
 
-.logoutBtn {
+.sidebarFooter {
   margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding-top: 1rem;
+}
+
+.themeRow {
+  width: 100%;
+  justify-content: flex-start;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  border-radius: 12px;
+  padding: 0.65rem 0.85rem;
+}
+
+.themeRow:hover {
+  background: var(--state-hover);
+  color: var(--text);
+}
+
+.logoutBtn {
   width: 100%;
   appearance: none;
   border: 1px solid var(--border);
@@ -252,7 +308,7 @@
 /* ───────── Dark polish ───────── */
 
 :root[data-theme="dark"] .sidebar {
-  background: linear-gradient(180deg, var(--surface), rgba(0, 0, 0, 0.18));
+  background: var(--gradient-surface);
 }
 
 /* ───────── Responsive ───────── */
@@ -272,12 +328,17 @@
     left: 0;
     height: 100vh;
     transform: translateX(-100%);
-    transition: transform 0.25s ease;
+    /* Oculto también para el teclado: sin visibility, sus enlaces seguían
+       recibiendo el foco con Tab aunque el menú estuviera cerrado. */
+    visibility: hidden;
+    transition: transform 0.25s ease, visibility 0s linear 0.25s;
     z-index: 70;
     width: 270px;
   }
 
   .sidebarOpen {
+    visibility: visible;
+    transition: transform 0.25s ease, visibility 0s;
     transform: translateX(0);
   }
 
@@ -314,3 +375,49 @@
     font-size: 0.78rem;
   }
 }
+
+/* Enlace al portal público desde el panel */
+.siteLink {
+  display: block;
+  padding: 0.55rem 0.85rem;
+  border-radius: 12px;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.siteLink:hover {
+  background: var(--state-hover);
+  color: var(--text);
+}
+
+/* Aviso cuando no se pudo consultar la sesión */
+.sessionError {
+  max-width: 520px;
+  margin: 3rem auto;
+  padding: 1.4rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--danger-line);
+  background: var(--danger-weak);
+  color: var(--text-main);
+}
+
+.sessionError span {
+  color: var(--text-muted);
+}
+
+.sessionRetry {
+  align-self: flex-start;
+  margin-top: 0.4rem;
+  padding: 0.55rem 1.1rem;
+  border-radius: 10px;
+  border: 0;
+  background: var(--btn-primary-bg);
+  color: var(--on-accent);
+  font-weight: 650;
+}
+

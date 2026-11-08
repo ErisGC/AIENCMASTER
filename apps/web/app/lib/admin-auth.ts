@@ -2,7 +2,12 @@ import { API_BASE_URL } from './api';
 import { manejarSesionExpirada } from './admin-session-expired';
 
 export type AdminRole = 'ROOT' | 'ADMIN';
-export type AdminDeviceStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'REVOKED';
+export type AdminDeviceStatus =
+  | 'PENDING'
+  | 'APPROVED'
+  | 'REJECTED'
+  | 'REVOKED'
+  | 'SIGNED_OUT';
 export type AdminDeviceScope = 'ROOT_DEVICE' | 'APPROVED_DEVICE';
 export type AdminSessionStatus =
   | 'UNAUTHENTICATED'
@@ -11,6 +16,7 @@ export type AdminSessionStatus =
   | 'REJECTED'
   | 'REVOKED'
   | 'INACTIVE_ACCOUNT'
+  | 'PAUSED'
   | 'ACTIVE';
 
 export type AdminSessionResponse = {
@@ -40,14 +46,33 @@ export type AdminSessionResponse = {
     roleScope: AdminDeviceScope;
     status: AdminDeviceStatus;
     lastSeenAt: string | null;
+    /** "APP" para la app del teléfono, "WEB" para navegadores. */
+    clientKind?: 'WEB' | 'APP';
+    /** Tiene los poderes del administrador principal en este dispositivo. */
+    principal?: boolean;
   };
   accessRequest?: {
     id: string;
     status: string;
     requestedAt: string;
     resolvedAt: string | null;
+    /** "APP": se aprueba desde la app de la cuenta, con el número. */
+    approvalChannel?: string;
+    confirmCode?: string | null;
   };
 };
+
+/**
+ * ¿Este dispositivo tiene los poderes del principal? Lo dice la API; si
+ * respondiera una versión anterior, se mira el dispositivo principal clásico.
+ */
+export function esDispositivoPrincipal(session: AdminSessionResponse | null) {
+  if (!session || session.status !== 'ACTIVE') return false;
+  if (session.account?.role !== 'ROOT') return false;
+  return (
+    session.device?.principal ?? session.device?.roleScope === 'ROOT_DEVICE'
+  );
+}
 
 export type AdminSecuritySummary = {
   adminAccounts: number;
@@ -83,6 +108,11 @@ export type SecurityAccessRequest = {
 
 export type SecurityDevice = {
   id: string;
+  /** "APP" para la app del teléfono, "WEB" para navegadores. */
+  clientKind?: 'WEB' | 'APP';
+  /** Nombre que le puso su dueño desde la app. */
+  customName?: string | null;
+  paused?: boolean;
   deviceId: string;
   deviceName: string;
   platform: string;
@@ -219,7 +249,17 @@ async function adminRequest<T>(path: string, init?: RequestInit): Promise<T> {
                 : res.status >= 500
                   ? 'Error del servidor. Intenta más tarde.'
                   : 'No se pudo completar la solicitud.';
-    throw new Error(friendly);
+    let serverMessage: string | undefined;
+    try {
+      const parsed = JSON.parse(text) as { message?: unknown };
+      if (typeof parsed.message === 'string') serverMessage = parsed.message;
+    } catch {
+      // Respuesta sin JSON: basta el mensaje amigable.
+    }
+    throw Object.assign(new Error(friendly), {
+      status: res.status,
+      serverMessage,
+    });
   }
 
   // Algunas respuestas (logout) pueden venir vacías.
@@ -260,7 +300,37 @@ export function adminRecoverRootDevice(payload: Record<string, string>) {
   });
 }
 
-export function adminLogin(payload: Record<string, string>) {
+/** Señal de vida del panel abierto (ver admin/layout.tsx). */
+export function adminPing() {
+  return adminRequest<{ ok: boolean }>('/admin/auth/ping', { method: 'POST' });
+}
+
+/**
+ * Aviso de que se cierra la ventana del panel. Va con keepalive para que
+ * salga aunque la página se esté cerrando; si falla no importa.
+ */
+export function adminWindowClosed() {
+  try {
+    void fetch(`${API_BASE_URL}/admin/auth/window-closed`, {
+      method: 'POST',
+      credentials: 'include',
+      keepalive: true,
+    }).catch(() => {});
+  } catch {
+    /* sin red al cerrar: no hay nada que hacer */
+  }
+}
+
+/**
+ * El navegador ya está vinculado a otra cuenta administrativa (un computador
+ * compartido, o alguien que probó una invitación en el suyo).
+ */
+export function esConflictoDeDispositivo(err: unknown) {
+  const e = err as { status?: number; serverMessage?: string } | null;
+  return e?.status === 409 && (e.serverMessage ?? '').includes('otra cuenta');
+}
+
+export function adminLogin(payload: Record<string, string | boolean>) {
   return adminRequest<AdminSessionResponse>('/admin/auth/login', {
     method: 'POST',
     body: JSON.stringify(payload),
