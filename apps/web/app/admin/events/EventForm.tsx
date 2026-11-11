@@ -6,11 +6,14 @@ import {
   EventConflictError,
   adminCheckEvent,
   adminCreateEvent,
+  adminDeleteEventType,
+  adminListEventTypes,
   adminUpdateEvent,
   describirCruce,
   type AdminEvent,
   type ConflictsForDate,
   type CreateEventPayload,
+  type EventCustomType,
   type RepeatFrequency,
 } from '@/app/lib/admin-events';
 import { getPublicChurchById, type ChurchPublicDirector } from '@/app/lib/churches';
@@ -25,6 +28,9 @@ import {
 } from '@/app/lib/events';
 
 import styles from './page.module.css';
+
+const PROPIO = 'propio:';
+const NUEVO_TIPO = '__nuevo__';
 
 interface Opcion {
   id: string;
@@ -105,7 +111,23 @@ export function EventForm({
   const finalInicial = initial ? aCampos(initial.endsAt) : null;
 
   const [title, setTitle] = useState(initial?.title ?? '');
-  const [type, setType] = useState<EventType>(initial?.type ?? 'CULTO');
+  // Tipo elegido: uno de la lista fija ("CULTO"…), uno propio ("propio:Vigilia")
+  // o NUEVO_TIPO, que muestra el campo para escribirlo.
+  const [tipoSel, setTipoSel] = useState<string>(
+    initial?.type === 'OTRO' && initial.customTypeName
+      ? `${PROPIO}${initial.customTypeName}`
+      : (initial?.type ?? 'CULTO'),
+  );
+  const [nuevoTipo, setNuevoTipo] = useState('');
+  const [tiposPropios, setTiposPropios] = useState<EventCustomType[]>([]);
+  const type: EventType = (EVENT_TYPES as string[]).includes(tipoSel)
+    ? (tipoSel as EventType)
+    : 'OTRO';
+  const nombrePropio = tipoSel.startsWith(PROPIO)
+    ? tipoSel.slice(PROPIO.length)
+    : tipoSel === NUEVO_TIPO
+      ? nuevoTipo.replace(/\s+/g, ' ').trim()
+      : null;
   const [scope, setScope] = useState<EventScope>(initial?.scope ?? 'LOCAL');
   const [churchId, setChurchId] = useState(initial?.churchId ?? defaultChurchId);
   const [date, setDate] = useState(inicial?.date ?? defaultDay ?? '');
@@ -145,6 +167,38 @@ export function EventForm({
   const [revisando, setRevisando] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Tipos propios disponibles: los de toda la Asociación y, en un evento
+  // local, los de su iglesia.
+  const iglesiaTipos = scope === 'LOCAL' ? churchId || null : null;
+  useEffect(() => {
+    let vivo = true;
+    adminListEventTypes(iglesiaTipos)
+      .then((lista) => {
+        if (vivo) setTiposPropios(lista);
+      })
+      .catch(() => {
+        if (vivo) setTiposPropios([]);
+      });
+    return () => {
+      vivo = false;
+    };
+  }, [iglesiaTipos]);
+
+  const propioSeleccionado = tipoSel.startsWith(PROPIO)
+    ? tiposPropios.find((t) => t.name === tipoSel.slice(PROPIO.length)) ?? null
+    : null;
+
+  async function quitarTipo(t: EventCustomType) {
+    if (!window.confirm(`¿Quitar "${t.name}" de la lista de tipos? Los eventos que ya lo usan no cambian.`)) return;
+    try {
+      await adminDeleteEventType(t.id);
+      setTiposPropios((prev) => prev.filter((x) => x.id !== t.id));
+      setTipoSel('OTRO');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'No se pudo quitar el tipo.');
+    }
+  }
 
   // Al elegir un tipo que suele ser de toda la Asociación, se sugiere el
   // alcance global (si la persona puede), sin imponerlo.
@@ -213,6 +267,9 @@ export function EventForm({
 
   function validar(): string | null {
     if (!title.trim()) return 'Escribe el nombre del evento.';
+    if (tipoSel === NUEVO_TIPO && (nombrePropio ?? '').length < 2) {
+      return 'Escribe el nombre del tipo nuevo.';
+    }
     if (!date) return 'Elige la fecha.';
     if (!startTime || !endTime) return 'Indica la hora de inicio y de fin.';
     if (scope === 'LOCAL' && !churchId) return 'Elige la iglesia del evento.';
@@ -259,6 +316,7 @@ export function EventForm({
         title: title.trim(),
         description: description.trim() || null,
         type,
+        customTypeName: type === 'OTRO' ? nombrePropio || null : null,
         ...payloadBase,
         location: location.trim() || null,
         directorIds: Array.from(seleccionados.keys()),
@@ -316,11 +374,50 @@ export function EventForm({
       <div className={styles.row}>
         <div className={styles.field}>
           <label htmlFor="ev-type">Tipo</label>
-          <select id="ev-type" value={type} onChange={(e) => setType(e.target.value as EventType)}>
-            {EVENT_TYPES.map((t) => (
+          <select id="ev-type" value={tipoSel} onChange={(e) => setTipoSel(e.target.value)}>
+            {EVENT_TYPES.filter((t) => t !== 'OTRO').map((t) => (
               <option key={t} value={t}>{EVENT_TYPE_LABELS[t]}</option>
             ))}
+            {(tiposPropios.length > 0 || tipoSel.startsWith(PROPIO)) && (
+              <optgroup label="Creados por ustedes">
+                {tiposPropios.map((t) => (
+                  <option key={t.id} value={`${PROPIO}${t.name}`}>{t.name}</option>
+                ))}
+                {/* El tipo del evento aunque ya no esté en la lista. */}
+                {tipoSel.startsWith(PROPIO) && !propioSeleccionado && (
+                  <option value={tipoSel}>{tipoSel.slice(PROPIO.length)}</option>
+                )}
+              </optgroup>
+            )}
+            <option value="OTRO">{EVENT_TYPE_LABELS.OTRO}</option>
+            <option value={NUEVO_TIPO}>Crear un tipo nuevo…</option>
           </select>
+          {tipoSel === NUEVO_TIPO && (
+            <>
+              <input
+                aria-label="Nombre del tipo nuevo"
+                value={nuevoTipo}
+                onChange={(e) => setNuevoTipo(e.target.value)}
+                maxLength={40}
+                placeholder="Ej. Vigilia, Campamento"
+                autoFocus
+              />
+              <small className={styles.hint}>
+                Queda en la lista para los próximos eventos
+                {scope === 'LOCAL' ? ' de esta iglesia.' : ' de toda la Asociación.'}
+              </small>
+            </>
+          )}
+          {propioSeleccionado?.removable && (
+            <button
+              type="button"
+              className={styles.linkBtn}
+              style={{ alignSelf: 'flex-start' }}
+              onClick={() => void quitarTipo(propioSeleccionado)}
+            >
+              Quitar este tipo de la lista
+            </button>
+          )}
         </div>
 
         <fieldset className={styles.fieldsetScope}>

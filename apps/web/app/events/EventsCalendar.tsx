@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { MonthCalendar } from '@/app/components/MonthCalendar';
 import {
   EVENT_SCOPE_LABELS,
-  EVENT_TYPE_LABELS,
+  etiquetaTipo,
   agruparPorDia,
   claveDia,
   formatDiaLargo,
@@ -22,6 +22,8 @@ interface Props {
   churches: Array<{ id: string; name: string }>;
   initialChurchId: string;
   today: string;
+  /** Día a mostrar al entrar (AAAA-MM-DD), por ejemplo desde la portada. */
+  initialDay?: string | null;
 }
 
 type FiltroAlcance = 'TODOS' | EventScope;
@@ -35,12 +37,14 @@ function ventanaDe(year: number, month: number) {
   return { from: desde.toISOString().slice(0, 10), to: hasta.toISOString().slice(0, 10) };
 }
 
-export function EventsCalendar({ initialEvents, churches, initialChurchId, today }: Props) {
+export function EventsCalendar({ initialEvents, churches, initialChurchId, today, initialDay }: Props) {
   const [anioHoy, mesHoy] = today.split('-').map(Number);
-  const [year, setYear] = useState(anioHoy);
-  const [month, setMonth] = useState(mesHoy - 1);
+  const diaInicial = initialDay && /^\d{4}-\d{2}-\d{2}$/.test(initialDay) ? initialDay : null;
+  const [anioIni, mesIni] = (diaInicial ?? today).split('-').map(Number);
+  const [year, setYear] = useState(anioIni);
+  const [month, setMonth] = useState(mesIni - 1);
   const [events, setEvents] = useState<PublicEvent[]>(initialEvents);
-  const [selectedDay, setSelectedDay] = useState<string | null>(null);
+  const [selectedDay, setSelectedDay] = useState<string | null>(diaInicial);
   const [alcance, setAlcance] = useState<FiltroAlcance>('TODOS');
   const [churchId, setChurchId] = useState(initialChurchId);
   const [loading, setLoading] = useState(false);
@@ -203,7 +207,7 @@ export function EventsCalendar({ initialEvents, churches, initialChurchId, today
                       <span className={styles.eventWhen}>{formatRango(e.startsAt, e.endsAt)}</span>
                       <h4 className={styles.eventTitle}>{e.title}</h4>
                       <p className={styles.eventMeta}>
-                        <span className={styles.eventType}>{EVENT_TYPE_LABELS[e.type]}</span>
+                        <span className={styles.eventType}>{etiquetaTipo(e)}</span>
                         {' · '}
                         {e.scope === 'GLOBAL'
                           ? e.churchName

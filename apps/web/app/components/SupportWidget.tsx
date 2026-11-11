@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 import {
   guestConversations,
@@ -12,14 +13,23 @@ import {
   inboxReply,
   inboxThread,
   inboxUnread,
+  myConversations,
+  myReply,
+  myStart,
+  myThread,
   setConversationStatus,
   type SupportConversation,
   type SupportMessage,
 } from '@/app/lib/support';
 import styles from './SupportWidget.module.css';
 
-type Mode = 'guest' | 'root';
-type View = 'list' | 'form' | 'thread';
+/**
+ * - `guest`: visitante del portal (se identifica con un token de su navegador).
+ * - `admin`: administrador del panel que no es el principal (su cuenta).
+ * - `root`: bandeja del administrador principal.
+ */
+type Mode = 'guest' | 'admin' | 'root';
+type View = 'list' | 'thread';
 
 const POLL_THREAD_MS = 5000;
 const POLL_LIST_MS = 20000;
@@ -34,24 +44,24 @@ function timeOf(iso: string) {
 }
 
 /**
- * Canal de soporte. El mismo componente sirve para el visitante del portal
- * (`guest`) y para la bandeja del administrador principal (`root`); cambian el
- * origen de los datos y quién aparece a cada lado de la conversación.
+ * Canal de soporte. Cada persona tiene UNA conversación con el administrador
+ * principal, como en un chat: el visitante y el administrador entran directo a
+ * ella; el principal ve la lista de personas con lo último que se dijo.
  */
 export function SupportWidget({ mode }: { mode: Mode }) {
+  const isRoot = mode === 'root';
   const [open, setOpen] = useState(false);
-  const [view, setView] = useState<View>('list');
+  const [view, setView] = useState<View>(isRoot ? 'list' : 'thread');
   const [convs, setConvs] = useState<SupportConversation[]>([]);
   const [current, setCurrent] = useState<SupportConversation | null>(null);
   const [messages, setMessages] = useState<SupportMessage[]>([]);
+  const [loadingThread, setLoadingThread] = useState(false);
   const [unread, setUnread] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Formulario de apertura (visitante)
+  // Nombre del visitante: solo se pide antes de su primer mensaje.
   const [name, setName] = useState('');
-  const [subject, setSubject] = useState('');
-  const [body, setBody] = useState('');
 
   // Redacción
   const [draft, setDraft] = useState('');
@@ -61,6 +71,10 @@ export function SupportWidget({ mode }: { mode: Mode }) {
   const chunksRef = useRef<Blob[]>([]);
   const endRef = useRef<HTMLDivElement | null>(null);
 
+  // Foto abierta en grande.
+  const [visor, setVisor] = useState<{ src: string; name: string } | null>(null);
+  const [zoom, setZoom] = useState(false);
+
   // Hilo que el usuario tiene abierto ahora mismo. Las cargas comparan contra
   // esta referencia antes de pintar: si se cambia de hilo mientras una carga
   // sigue en vuelo, la respuesta que llegue tarde pertenece al hilo anterior y
@@ -68,9 +82,14 @@ export function SupportWidget({ mode }: { mode: Mode }) {
   // responder en una conversación creyendo estar en otra.
   const currentIdRef = useRef<string | null>(null);
 
-  const isRoot = mode === 'root';
-
   /* ── Carga ── */
+
+  const fetchList = useCallback(async (): Promise<SupportConversation[]> => {
+    if (isRoot) return inbox();
+    if (mode === 'admin') return myConversations();
+    if (!guestToken()) return [];
+    return guestConversations();
+  }, [isRoot, mode]);
 
   const loadList = useCallback(async () => {
     try {
@@ -78,31 +97,38 @@ export function SupportWidget({ mode }: { mode: Mode }) {
         const [list, u] = await Promise.all([inbox(), inboxUnread()]);
         setConvs(list);
         setUnread(u.unread);
-      } else {
-        if (!guestToken()) { setConvs([]); return; }
-        const list = await guestConversations();
-        setConvs(list);
-        setUnread(list.filter((c) => c.unread > 0).length);
+        return list;
       }
+      const list = await fetchList();
+      setConvs(list);
+      setUnread(list.filter((c) => c.unread > 0).length);
+      return list;
     } catch {
       /* silencioso: el widget no debe estorbar si el servidor no responde */
+      return null;
     }
-  }, [isRoot]);
+  }, [isRoot, fetchList]);
 
   const loadThread = useCallback(
     async (id: string) => {
       try {
-        const t = isRoot ? await inboxThread(id) : await guestThread(id);
+        const t = isRoot
+          ? await inboxThread(id)
+          : mode === 'admin'
+            ? await myThread(id)
+            : await guestThread(id);
         // Llegó tarde y el usuario ya está en otro hilo: se descarta.
         if (currentIdRef.current !== id) return;
         setCurrent(t.conversation);
         setMessages(t.messages);
       } catch (e) {
         if (currentIdRef.current !== id) return;
-        setError(e instanceof Error ? e.message : 'No se pudo abrir el hilo.');
+        setError(e instanceof Error ? e.message : 'No se pudo abrir la conversación.');
+      } finally {
+        if (currentIdRef.current === id) setLoadingThread(false);
       }
     },
-    [isRoot],
+    [isRoot, mode],
   );
 
   useEffect(() => {
@@ -111,11 +137,9 @@ export function SupportWidget({ mode }: { mode: Mode }) {
     return () => clearInterval(t);
   }, [loadList]);
 
-  // Mientras un hilo está abierto se refresca seguido, que es lo que da la
-  // sensación de conversación en vivo.
-  // Depende del ID, no del objeto: cada respuesta del sondeo devuelve una
-  // conversación nueva, así que con el objeto como dependencia el temporizador
-  // se destruía y recreaba en cada vuelta.
+  // Mientras la conversación está abierta se refresca seguido, que es lo que
+  // da la sensación de chat en vivo. Depende del ID, no del objeto: cada
+  // respuesta trae una conversación nueva y el temporizador se recreaba.
   const currentId = current?.id ?? null;
   useEffect(() => {
     if (!open || view !== 'thread' || !currentId) return;
@@ -127,9 +151,8 @@ export function SupportWidget({ mode }: { mode: Mode }) {
     endRef.current?.scrollIntoView({ block: 'end' });
   }, [messages]);
 
-  // Cortar la grabación al desmontar. Si el usuario empieza una nota de voz y
-  // se va sin pulsar "detener", el micrófono se quedaba abierto: el navegador
-  // seguía mostrando el indicador de grabación indefinidamente.
+  // Cortar la grabación al desmontar: si se iba sin pulsar "detener", el
+  // micrófono quedaba abierto indefinidamente.
   useEffect(() => {
     return () => {
       const rec = recorderRef.current;
@@ -147,15 +170,48 @@ export function SupportWidget({ mode }: { mode: Mode }) {
     if (rec && rec.state !== 'inactive') rec.stop();
   }, [open]);
 
+  // Escape cierra primero la foto, después el panel.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      if (visor) {
+        setVisor(null);
+        setZoom(false);
+      } else {
+        setOpen(false);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open, visor]);
+
   /* ── Acciones ── */
 
   function openThread(c: SupportConversation) {
     currentIdRef.current = c.id;
     setCurrent(c);
     setMessages([]);
+    setLoadingThread(true);
     setView('thread');
     setError(null);
     void loadThread(c.id);
+  }
+
+  /** Abre el panel. El visitante y el administrador entran directo a su chat. */
+  async function abrir() {
+    setOpen(true);
+    setError(null);
+    const list = await loadList();
+    if (isRoot) return;
+    const propia = list?.[0];
+    if (propia) openThread(propia);
+    else {
+      currentIdRef.current = null;
+      setCurrent(null);
+      setMessages([]);
+      setView('thread');
+    }
   }
 
   function buildForm(text: string) {
@@ -165,41 +221,34 @@ export function SupportWidget({ mode }: { mode: Mode }) {
     return fd;
   }
 
-  async function submitNew(e: React.FormEvent) {
-    e.preventDefault();
-    if (busy) return;
-    setBusy(true);
-    setError(null);
-    try {
-      const fd = buildForm(body);
-      fd.append('name', name);
-      fd.append('subject', subject);
-      const out = await guestStart(fd);
-      setName('');
-      setSubject('');
-      setBody('');
-      setFiles([]);
-      await loadList();
-      openThread(out.conversation);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo enviar.');
-    } finally {
-      setBusy(false);
-    }
-  }
-
   async function send() {
-    if (busy || !current) return;
+    if (busy) return;
     if (!draft.trim() && files.length === 0) return;
+    if (!isRoot && !current && mode === 'guest' && name.trim().length < 2) {
+      setError('Escribe tu nombre para saber a quién respondemos.');
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
       const fd = buildForm(draft);
-      if (isRoot) await inboxReply(current.id, fd);
-      else await guestReply(current.id, fd);
+      if (current) {
+        if (isRoot) await inboxReply(current.id, fd);
+        else if (mode === 'admin') await myReply(current.id, fd);
+        else await guestReply(current.id, fd);
+      } else if (mode === 'admin') {
+        const conv = await myStart(fd);
+        currentIdRef.current = conv.id;
+        setCurrent(conv);
+      } else {
+        fd.append('name', name.trim());
+        const out = await guestStart(fd);
+        currentIdRef.current = out.conversation.id;
+        setCurrent(out.conversation);
+      }
       setDraft('');
       setFiles([]);
-      await loadThread(current.id);
+      if (currentIdRef.current) await loadThread(currentIdRef.current);
       await loadList();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo enviar.');
@@ -237,7 +286,7 @@ export function SupportWidget({ mode }: { mode: Mode }) {
 
   async function block() {
     if (!current) return;
-    if (!window.confirm(`¿Bloquear la conversación de ${current.authorName}?`)) return;
+    if (!window.confirm(`¿Bloquear la conversación de ${current.authorName}? Ya no podrá escribirte.`)) return;
     try {
       await setConversationStatus(current.id, 'BLOCKED');
       currentIdRef.current = null;
@@ -249,6 +298,13 @@ export function SupportWidget({ mode }: { mode: Mode }) {
     }
   }
 
+  function volverALista() {
+    currentIdRef.current = null;
+    setView('list');
+    setCurrent(null);
+    void loadList();
+  }
+
   /* ── Vistas ── */
 
   if (!open) {
@@ -256,8 +312,8 @@ export function SupportWidget({ mode }: { mode: Mode }) {
       <button
         type="button"
         className={styles.fab}
-        onClick={() => { setOpen(true); void loadList(); }}
-        aria-label={isRoot ? 'Abrir bandeja de soporte' : 'Reportar un problema'}
+        onClick={() => void abrir()}
+        aria-label={isRoot ? 'Abrir bandeja de soporte' : 'Escribirle al administrador'}
       >
         {isRoot ? 'Soporte' : '¿Algo no funciona?'}
         {unread > 0 && <span className={styles.badge}>{unread}</span>}
@@ -265,39 +321,101 @@ export function SupportWidget({ mode }: { mode: Mode }) {
     );
   }
 
-  const puedeEscribir =
-    !!current && current.status !== 'BLOCKED' && (isRoot || current.status !== 'CLOSED');
+  const bloqueada = current?.status === 'BLOCKED';
+  const nuevoVisitante = mode === 'guest' && !current;
+
+  const visorPortal =
+    visor && typeof document !== 'undefined'
+      ? createPortal(
+          <div
+            className={styles.lightbox}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Foto ampliada"
+            onClick={() => {
+              setVisor(null);
+              setZoom(false);
+            }}
+          >
+            <div className={styles.lightboxBar} onClick={(e) => e.stopPropagation()}>
+              <span className={styles.lightboxHint}>
+                {zoom ? 'Toca la foto para alejar' : 'Toca la foto para acercar'}
+              </span>
+              <a className={styles.lightboxBtn} href={visor.src} target="_blank" rel="noreferrer">
+                Abrir original
+              </a>
+              <button
+                type="button"
+                className={styles.lightboxBtn}
+                onClick={() => {
+                  setVisor(null);
+                  setZoom(false);
+                }}
+                aria-label="Cerrar foto"
+              >
+                ✕
+              </button>
+            </div>
+            <div
+              className={`${styles.lightboxStage} ${zoom ? styles.lightboxStageZoom : ''}`}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={visor.src}
+                alt={visor.name}
+                className={`${styles.lightboxImg} ${zoom ? styles.lightboxImgZoom : ''}`}
+                onClick={() => setZoom((z) => !z)}
+              />
+            </div>
+          </div>,
+          document.body,
+        )
+      : null;
 
   return (
     <section className={styles.panel} aria-label="Canal de soporte">
       <header className={styles.head}>
         <div>
           <p className={styles.headTitle}>
-            {view === 'thread' && current
-              ? isRoot ? current.authorName : current.subject
-              : isRoot ? 'Bandeja de soporte' : 'Escríbele al administrador'}
+            {isRoot
+              ? view === 'thread' && current
+                ? current.authorName
+                : 'Bandeja de soporte'
+              : 'Escríbele al administrador'}
           </p>
           <p className={styles.headSub}>
-            {view === 'thread' && current
-              ? isRoot ? current.subject : 'Te responderemos por aquí'
-              : isRoot ? 'Reportes recibidos' : 'Fallos, faltantes o sugerencias'}
+            {isRoot
+              ? view === 'thread' && current
+                ? current.authorKind === 'ADMIN'
+                  ? 'Administrador del panel'
+                  : 'Visitante del portal'
+                : 'Una conversación por persona'
+              : 'Fallos, faltantes o sugerencias. Te respondemos por aquí.'}
           </p>
         </div>
         <div style={{ display: 'flex', gap: 6 }}>
-          {view === 'thread' && (
-            <button type="button" className={styles.iconBtn}
-              onClick={() => { currentIdRef.current = null; setView('list'); setCurrent(null); void loadList(); }}
-              aria-label="Volver">←</button>
+          {isRoot && view === 'thread' && (
+            <button type="button" className={styles.iconBtn} onClick={volverALista} aria-label="Volver">
+              ←
+            </button>
           )}
-          <button type="button" className={styles.iconBtn}
-            onClick={() => setOpen(false)} aria-label="Cerrar">✕</button>
+          <button type="button" className={styles.iconBtn} onClick={() => setOpen(false)} aria-label="Cerrar">
+            ✕
+          </button>
         </div>
       </header>
 
       {view === 'thread' ? (
         <>
           <div className={styles.body}>
-            {messages.length === 0 && <p className={styles.empty}>Cargando…</p>}
+            {loadingThread && messages.length === 0 && <p className={styles.empty}>Cargando…</p>}
+            {!loadingThread && messages.length === 0 && !isRoot && (
+              <p className={styles.intro}>
+                Cuéntanos qué pasó, qué falta o qué se te ocurre. Puedes adjuntar fotos o una
+                nota de voz. Todo queda en esta misma conversación.
+              </p>
+            )}
             {messages.map((m) => {
               const mine = isRoot ? m.senderKind === 'ROOT' : m.senderKind === 'AUTHOR';
               return (
@@ -307,10 +425,19 @@ export function SupportWidget({ mode }: { mode: Mode }) {
                     a.kind === 'audio' ? (
                       <audio key={a.url} className={styles.audio} controls preload="none" src={a.url} />
                     ) : (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <a key={a.url} href={a.url} target="_blank" rel="noreferrer">
+                      <button
+                        key={a.url}
+                        type="button"
+                        className={styles.thumbBtn}
+                        onClick={() => {
+                          setZoom(false);
+                          setVisor({ src: a.url, name: a.name });
+                        }}
+                        aria-label="Ver la foto en grande"
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img className={styles.thumb} src={a.url} alt={a.name} loading="lazy" />
-                      </a>
+                      </button>
                     ),
                   )}
                   <span className={styles.msgTime}>{timeOf(m.createdAt)}</span>
@@ -325,32 +452,62 @@ export function SupportWidget({ mode }: { mode: Mode }) {
           {files.length > 0 && (
             <div className={styles.attachRow}>
               {files.length} archivo(s) listo(s)
-              <button type="button" className={styles.ghost} onClick={() => setFiles([])}>Quitar</button>
-            </div>
-          )}
-
-          {puedeEscribir ? (
-            <div className={styles.composer}>
-              <label className={styles.ghost} style={{ cursor: 'pointer' }}>
-                Foto
-                <input type="file" accept="image/*" multiple hidden
-                  onChange={(e) => setFiles((p) => [...p, ...Array.from(e.target.files ?? [])])} />
-              </label>
-              <button type="button" className={styles.ghost} onClick={() => void toggleRecording()}>
-                {recording ? 'Detener' : 'Voz'}
+              <button type="button" className={styles.ghost} onClick={() => setFiles([])}>
+                Quitar
               </button>
-              <textarea rows={1} value={draft} placeholder="Escribe un mensaje"
-                onChange={(e) => setDraft(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void send(); }
-                }} />
-              <button type="button" className={styles.send} disabled={busy} onClick={() => void send()} aria-label="Enviar">➤</button>
             </div>
-          ) : (
-            <p className={styles.empty}>Esta conversación está cerrada.</p>
           )}
 
-          {isRoot && current && current.status !== 'BLOCKED' && (
+          {bloqueada ? (
+            <p className={styles.empty}>Esta conversación está bloqueada.</p>
+          ) : (
+            <>
+              {nuevoVisitante && (
+                <label className={`${styles.field} ${styles.nameRow}`}>
+                  <span>Tu nombre</span>
+                  <input value={name} onChange={(e) => setName(e.target.value)} maxLength={80} />
+                </label>
+              )}
+              <div className={styles.composer}>
+                <label className={styles.ghost} style={{ cursor: 'pointer' }}>
+                  Foto
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    hidden
+                    onChange={(e) => setFiles((p) => [...p, ...Array.from(e.target.files ?? [])])}
+                  />
+                </label>
+                <button type="button" className={styles.ghost} onClick={() => void toggleRecording()}>
+                  {recording ? 'Detener' : 'Voz'}
+                </button>
+                <textarea
+                  rows={1}
+                  value={draft}
+                  placeholder="Escribe un mensaje"
+                  onChange={(e) => setDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      void send();
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  className={styles.send}
+                  disabled={busy}
+                  onClick={() => void send()}
+                  aria-label="Enviar"
+                >
+                  ➤
+                </button>
+              </div>
+            </>
+          )}
+
+          {isRoot && current && !bloqueada && (
             <div className={styles.attachRow}>
               <button type="button" className={styles.ghost} onClick={() => void block()}>
                 Bloquear a esta persona
@@ -358,56 +515,10 @@ export function SupportWidget({ mode }: { mode: Mode }) {
             </div>
           )}
         </>
-      ) : view === 'form' ? (
-        <form className={styles.body} onSubmit={submitNew}>
-          <p className={styles.intro}>
-            Cuéntanos qué pasó. Puedes adjuntar una captura para que se entienda mejor.
-          </p>
-          <label className={styles.field}>
-            <span>Tu nombre</span>
-            <input value={name} onChange={(e) => setName(e.target.value)} maxLength={80} required />
-          </label>
-          <label className={styles.field}>
-            <span>Asunto</span>
-            <input value={subject} onChange={(e) => setSubject(e.target.value)}
-              maxLength={150} placeholder="Ej: no carga la página de una iglesia" required />
-          </label>
-          <label className={styles.field}>
-            <span>Descripción</span>
-            <textarea rows={4} value={body} onChange={(e) => setBody(e.target.value)} maxLength={4000} />
-          </label>
-          <div className={styles.actions}>
-            <label className={styles.ghost} style={{ cursor: 'pointer' }}>
-              Adjuntar captura
-              <input type="file" accept="image/*" multiple hidden
-                onChange={(e) => setFiles((p) => [...p, ...Array.from(e.target.files ?? [])])} />
-            </label>
-            <button type="button" className={styles.ghost} onClick={() => void toggleRecording()}>
-              {recording ? 'Detener' : 'Nota de voz'}
-            </button>
-          </div>
-          {files.length > 0 && (
-            <p className={styles.intro}>{files.length} archivo(s) adjunto(s).</p>
-          )}
-          {error && <p className={styles.error}>{error}</p>}
-          <div className={styles.actions}>
-            <button type="submit" className={styles.primary} disabled={busy}>
-              {busy ? 'Enviando…' : 'Enviar reporte'}
-            </button>
-            <button type="button" className={styles.ghost} onClick={() => setView('list')}>Cancelar</button>
-          </div>
-        </form>
       ) : (
         <div className={styles.body}>
-          {!isRoot && (
-            <button type="button" className={styles.primary} onClick={() => { setView('form'); setError(null); }}>
-              Escribir un reporte
-            </button>
-          )}
           {convs.length === 0 ? (
-            <p className={styles.empty}>
-              {isRoot ? 'Todavía no hay reportes.' : 'Aquí verás tus conversaciones.'}
-            </p>
+            <p className={styles.empty}>Todavía no te han escrito.</p>
           ) : (
             <ul className={styles.list}>
               {convs.map((c) => (
@@ -415,12 +526,14 @@ export function SupportWidget({ mode }: { mode: Mode }) {
                   <button type="button" className={styles.item} onClick={() => openThread(c)}>
                     <span className={styles.itemTop}>
                       <span className={styles.itemSubject}>
-                        {isRoot ? c.authorName : c.subject}
-                        {c.unread > 0 && <span className={styles.dot} />}
+                        {c.authorName}
+                        {c.unread > 0 && <span className={styles.dot} aria-label="Sin leer" />}
                       </span>
                       <span className={styles.itemMeta}>{timeOf(c.lastMessageAt)}</span>
                     </span>
-                    {isRoot && <span className={styles.itemMeta}>{c.subject}</span>}
+                    <span className={styles.itemPreview}>
+                      {c.preview ? `${c.previewMine ? 'Tú: ' : ''}${c.preview}` : c.subject}
+                    </span>
                   </button>
                 </li>
               ))}
@@ -429,6 +542,7 @@ export function SupportWidget({ mode }: { mode: Mode }) {
           {error && <p className={styles.error}>{error}</p>}
         </div>
       )}
+      {visorPortal}
     </section>
   );
 }

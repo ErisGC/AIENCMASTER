@@ -29,16 +29,14 @@ function formatCop(value: number): string {
 }
 
 /**
- * Devuelve los últimos 6 meses por defecto (fromDate inclusivo).
+ * Por defecto, el mes en curso: del día 1 a hoy. Es lo que se consulta casi
+ * siempre; para comparar meses se amplía el rango con los filtros.
  */
 function defaultFromDate(): string {
-  // Se fija el día 1 ANTES de restar meses. Al revés, un 31 de julio menos
-  // cinco meses daba "31 de febrero", que desborda a marzo, y el rango salía
-  // de cinco meses en vez de seis.
   const hoy = new Date();
-  const d = new Date(Date.UTC(hoy.getFullYear(), hoy.getMonth(), 1));
-  d.setUTCMonth(d.getUTCMonth() - 5);
-  return d.toISOString().slice(0, 10);
+  return new Date(Date.UTC(hoy.getFullYear(), hoy.getMonth(), 1))
+    .toISOString()
+    .slice(0, 10);
 }
 
 function defaultToDate(): string {

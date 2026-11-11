@@ -56,6 +56,8 @@ export interface CreateEventPayload {
   title: string;
   description?: string | null;
   type: EventType;
+  /** Con type OTRO: nombre del tipo propio. Si es nuevo, queda en la lista. */
+  customTypeName?: string | null;
   scope: EventScope;
   churchId?: string | null;
   startsAt: string;
@@ -213,6 +215,28 @@ export function adminUpdateEvent(id: string, payload: UpdateEventPayload) {
     `/admin/events/${id}`,
     { method: 'PATCH', body: JSON.stringify(payload) },
   );
+}
+
+/** Tipo de evento propio que alguien creó al guardar un evento. */
+export interface EventCustomType {
+  id: string;
+  name: string;
+  churchId: string | null;
+  /** Si quien consulta lo puede quitar de la lista. */
+  removable: boolean;
+}
+
+/** Los de toda la Asociación y, si se indica, los de esa iglesia. */
+export function adminListEventTypes(churchId?: string | null) {
+  const q = churchId ? `?churchId=${encodeURIComponent(churchId)}` : '';
+  return eventsRequest<EventCustomType[]>(`/admin/events/types${q}`);
+}
+
+/** Quita un tipo de la lista. Los eventos que ya lo usan no cambian. */
+export function adminDeleteEventType(id: string) {
+  return eventsRequest<{ ok: boolean; name: string }>(`/admin/events/types/${id}`, {
+    method: 'DELETE',
+  });
 }
 
 export function adminDeleteEvent(id: string, wholeSeries = false) {

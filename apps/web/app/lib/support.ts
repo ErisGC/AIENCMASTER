@@ -16,6 +16,10 @@ export type SupportConversation = {
   status: 'OPEN' | 'CLOSED' | 'BLOCKED';
   lastMessageAt: string;
   unread: number;
+  /** Lo último que se dijo (texto, "Foto" o "Nota de voz"). */
+  preview?: string | null;
+  /** Si ese último mensaje lo escribió quien mira la lista. */
+  previewMine?: boolean;
 };
 
 export type SupportThread = {
@@ -111,6 +115,31 @@ export function guestReply(id: string, form: FormData) {
   const token = guestToken();
   if (token) form.append('token', token);
   return req<SupportMessage>(`/support/guest/conversations/${id}/messages`, {
+    method: 'POST',
+    body: form,
+  });
+}
+
+/* ── Administrador del panel (no principal): su conversación ── */
+
+export function myConversations() {
+  return req<SupportConversation[]>('/admin/support/conversations');
+}
+
+/** Primer mensaje: si la cuenta ya tenía conversación, se suma a esa. */
+export function myStart(form: FormData) {
+  return req<SupportConversation>('/admin/support/conversations', {
+    method: 'POST',
+    body: form,
+  });
+}
+
+export function myThread(id: string) {
+  return req<SupportThread>(`/admin/support/conversations/${id}`);
+}
+
+export function myReply(id: string, form: FormData) {
+  return req<SupportMessage>(`/admin/support/conversations/${id}/messages`, {
     method: 'POST',
     body: form,
   });

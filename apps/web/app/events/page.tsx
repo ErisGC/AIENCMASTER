@@ -34,9 +34,10 @@ async function safeLoadChurches(): Promise<Church[]> {
 export default async function EventsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ churchId?: string }>;
+  searchParams: Promise<{ churchId?: string; dia?: string }>;
 }) {
-  const { churchId } = await searchParams;
+  const { churchId, dia } = await searchParams;
+  const diaInicial = dia && /^\d{4}-\d{2}-\d{2}$/.test(dia) ? dia : null;
   const iglesiaInicial = churchId && /^[0-9a-f-]{36}$/i.test(churchId) ? churchId : '';
 
   const [events, churches] = await Promise.all([
@@ -73,6 +74,7 @@ export default async function EventsPage({
         churches={churches.map((c) => ({ id: c.id, name: c.name }))}
         initialChurchId={iglesiaInicial}
         today={hoy}
+        initialDay={diaInicial}
       />
     </main>
   );

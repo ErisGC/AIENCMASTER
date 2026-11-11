@@ -12,7 +12,7 @@ import {
   type ChurchStudy,
 } from '@/app/lib/church-studies';
 import {
-  EVENT_TYPE_LABELS,
+  etiquetaTipo,
   formatDiaCorto,
   formatRango,
   getPublicChurchEvents,
@@ -211,7 +211,7 @@ export default async function ChurchDetailPage({ params }: ChurchPageProps) {
                   <div className={styles.eventBody}>
                     <span className={styles.eventTitle}>{e.title}</span>
                     <span className={styles.eventMeta}>
-                      {formatRango(e.startsAt, e.endsAt)} · {EVENT_TYPE_LABELS[e.type]}
+                      {formatRango(e.startsAt, e.endsAt)} · {etiquetaTipo(e)}
                       {e.scope === 'GLOBAL' && ' · Toda la Asociación'}
                       {e.location ? ` · ${e.location}` : ''}
                     </span>

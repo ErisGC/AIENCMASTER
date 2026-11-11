@@ -34,6 +34,8 @@ export interface PublicEvent {
   title: string;
   description: string | null;
   type: EventType;
+  /** Tipo propio ("Vigilia", "Campamento"…) cuando `type` es OTRO. */
+  customTypeName?: string | null;
   scope: EventScope;
   churchId: string | null;
   churchName: string | null;
@@ -55,6 +57,11 @@ export const EVENT_TYPE_LABELS: Record<EventType, string> = {
   INTENSIVO: 'Intensivo',
   OTRO: 'Otro',
 };
+
+/** Etiqueta del tipo: el nombre propio si lo tiene, si no la de la lista. */
+export function etiquetaTipo(e: { type: EventType; customTypeName?: string | null }) {
+  return (e.type === 'OTRO' && e.customTypeName) || EVENT_TYPE_LABELS[e.type];
+}
 
 export const EVENT_TYPES: EventType[] = [
   'CULTO',

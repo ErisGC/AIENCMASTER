@@ -338,6 +338,125 @@
   color: var(--text-muted);
 }
 
+/* Lo último que se dijo, debajo del nombre (bandeja del principal). */
+.itemPreview {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Nombre del visitante: solo antes de su primer mensaje. */
+.nameRow {
+  padding: 0.6rem 0.7rem 0;
+  border-top: 1px solid var(--border-soft);
+  background: var(--surface);
+}
+
+/* La miniatura es un botón: abre la foto en grande. */
+.thumbBtn {
+  display: block;
+  margin-top: 0.4rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  max-width: 100%;
+  cursor: zoom-in;
+  border-radius: 10px;
+}
+
+.thumbBtn .thumb {
+  margin-top: 0;
+}
+
+.thumbBtn:focus-visible {
+  outline: 2px solid var(--gem-sapphire);
+  outline-offset: 2px;
+}
+
+/* ── Foto en grande ── */
+
+.lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  flex-direction: column;
+  background: rgba(6, 12, 24, 0.94);
+}
+
+.lightboxBar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  padding: 0.75rem 1rem;
+  color: #fff;
+}
+
+.lightboxHint {
+  margin-right: auto;
+  font-size: 0.82rem;
+  opacity: 0.75;
+}
+
+.lightboxBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  min-width: 40px;
+  padding: 0 0.9rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  font: inherit;
+  font-size: 0.85rem;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.lightboxBtn:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.lightboxStage {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 1rem 1rem;
+  overflow: hidden;
+}
+
+/* Acercada: la foto crece y se recorre desplazándose. */
+.lightboxStageZoom {
+  display: block;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.lightboxImg {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: 6px;
+  cursor: zoom-in;
+}
+
+.lightboxImgZoom {
+  max-width: none;
+  max-height: none;
+  width: 220%;
+  height: auto;
+  cursor: zoom-out;
+}
+
 .empty {
   margin: 0;
   padding: 1.2rem 0;

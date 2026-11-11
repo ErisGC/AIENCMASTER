@@ -365,11 +365,11 @@ export default function AdminLayout({
       </main>
 
       {/* Soporte flotante. El administrador principal ve la bandeja de
-          mensajes; los demás administradores pueden reportar fallos por el
-          mismo canal que los visitantes. */}
+          mensajes; los demás administradores escriben desde su cuenta, en la
+          misma conversación que tienen en la app. */}
       {session?.account?.role === 'ROOT' && <SupportWidget mode="root" />}
       {session?.account && session.account.role !== 'ROOT' && (
-        <SupportWidget mode="guest" />
+        <SupportWidget mode="admin" />
       )}
     </div>
     </ActiveChurchProvider>

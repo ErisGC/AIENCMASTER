@@ -2,7 +2,9 @@ import Link from 'next/link';
 
 import { getLatestAnnouncements } from './lib/announcements';
 import { getPublicChurches } from './lib/churches';
+import { claveDia, getPublicEvents } from './lib/events';
 import { AnnouncementsCarousel } from './components/AnnouncementsCarousel';
+import { EventsCarousel } from './components/EventsCarousel';
 import { BackgroundRotator } from './components/BackgroundRotator';
 import { ChurchCard } from './components/ChurchCard';
 import styles from './page.module.css';
@@ -12,6 +14,19 @@ export const metadata = {
   description:
     'Anuncios oficiales, iglesias asociadas, cronograma de eventos e información institucional de la AIENC, en Valledupar y el norte de Colombia.',
 };
+
+/** Próximos eventos (lo que aún no termina), los más cercanos primero. */
+async function cargarProximosEventos() {
+  try {
+    const ahora = Date.now();
+    return (await getPublicEvents())
+      .filter((e) => new Date(e.endsAt).getTime() >= ahora)
+      .sort((a, b) => a.startsAt.localeCompare(b.startsAt))
+      .slice(0, 12);
+  } catch {
+    return [];
+  }
+}
 
 export default async function HomePage() {
   // El sitio público NUNCA debe caerse por una intermitencia de la API: si
@@ -23,6 +38,9 @@ export default async function HomePage() {
   } catch {
     announcements = [];
   }
+
+  const upcoming = await cargarProximosEventos();
+  const hoy = claveDia(new Date());
 
   let previewChurches: Awaited<ReturnType<typeof getPublicChurches>> = [];
   try {
@@ -88,6 +106,25 @@ export default async function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* ─────────────────  BANDA: PRÓXIMOS EVENTOS  ───────────────── */}
+      {upcoming.length > 0 && (
+        <section className={styles.band} data-reveal>
+          <div className={styles.bandInner}>
+            <header className={styles.bandHeader}>
+              <div>
+                <span className={styles.eyebrow}>Cronograma</span>
+                <h2 className={styles.bandTitle}>Próximos eventos</h2>
+              </div>
+              <Link href="/events" className={styles.textLink}>
+                Ver el calendario →
+              </Link>
+            </header>
+
+            <EventsCarousel events={upcoming} today={hoy} />
+          </div>
+        </section>
+      )}
 
       {/* ─────────────────  BANDA: ÚLTIMOS ANUNCIOS  ───────────────── */}
       {/* Sin anuncios (o si la API no respondió) la banda no se muestra: antes

@@ -17,7 +17,7 @@ import {
 } from '@/app/lib/admin-events';
 import {
   EVENT_SCOPE_LABELS,
-  EVENT_TYPE_LABELS,
+  etiquetaTipo,
   agruparPorDia,
   claveDia,
   formatDiaLargo,
@@ -340,7 +340,7 @@ export function EventsAdminClient() {
                       <span className={styles.eventWhen}>{formatRango(e.startsAt, e.endsAt)}</span>
                       <h4 className={styles.eventTitle}>{e.title}</h4>
                       <p className={styles.eventMeta}>
-                        {EVENT_TYPE_LABELS[e.type]} ·{' '}
+                        {etiquetaTipo(e)} ·{' '}
                         {e.scope === 'GLOBAL'
                           ? EVENT_SCOPE_LABELS.GLOBAL + (e.churchName ? ` · organiza ${e.churchName}` : '')
                           : (e.churchName ?? EVENT_SCOPE_LABELS.LOCAL)}
