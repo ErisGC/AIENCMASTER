@@ -890,7 +890,7 @@ class _EventCard extends StatelessWidget {
                     ),
                   ),
                 ),
-                GemBadge(label: eventTypeLabel(item.type), color: color),
+                GemBadge(label: item.typeLabel, color: color),
               ],
             ),
             const SizedBox(height: 4),

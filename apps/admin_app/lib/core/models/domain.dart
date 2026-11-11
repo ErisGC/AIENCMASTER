@@ -1349,6 +1349,12 @@ class SupportConversation {
   final DateTime? lastMessageAt;
   final int unread;
 
+  /// Lo último que se dijo ("Foto", "Nota de voz" o el texto), para la lista.
+  final String? preview;
+
+  /// Si ese último mensaje lo escribió quien mira la lista.
+  final bool previewMine;
+
   SupportConversation({
     required this.id,
     required this.subject,
@@ -1357,6 +1363,8 @@ class SupportConversation {
     required this.status,
     this.lastMessageAt,
     this.unread = 0,
+    this.preview,
+    this.previewMine = false,
   });
 
   factory SupportConversation.fromJson(Map<String, dynamic> j) =>
@@ -1368,6 +1376,8 @@ class SupportConversation {
         status: j['status'] as String? ?? 'OPEN',
         lastMessageAt: DateTime.tryParse(j['lastMessageAt'] as String? ?? ''),
         unread: (j['unread'] as num?)?.toInt() ?? 0,
+        preview: j['preview'] as String?,
+        previewMine: j['previewMine'] as bool? ?? false,
       );
 }
 
@@ -1471,6 +1481,9 @@ class ChurchEvent {
   final String title;
   final String? description;
   final EventType type;
+
+  /// Tipo propio ("Vigilia", "Campamento"…) cuando [type] es OTRO.
+  final String? customTypeName;
   final EventScope scope;
   final String? churchId;
   final String? churchName;
@@ -1507,15 +1520,23 @@ class ChurchEvent {
     required this.seriesLabel,
     required this.createdByDisplayName,
     required this.editable,
+    this.customTypeName,
   });
 
   bool get isGlobal => scope == EventScope.GLOBAL;
+
+  /// Etiqueta del tipo: el nombre propio si lo tiene.
+  String get typeLabel =>
+      type == EventType.OTRO && (customTypeName?.isNotEmpty ?? false)
+      ? customTypeName!
+      : eventTypeLabel(type);
 
   factory ChurchEvent.fromJson(Map<String, dynamic> j) => ChurchEvent(
     id: j['id'] as String,
     title: j['title'] as String? ?? '',
     description: j['description'] as String?,
     type: eventTypeFromString(j['type'] as String?),
+    customTypeName: j['customTypeName'] as String?,
     scope: eventScopeFromString(j['scope'] as String?),
     churchId: j['churchId'] as String?,
     churchName: j['churchName'] as String?,
@@ -1531,6 +1552,30 @@ class ChurchEvent {
     seriesLabel: j['seriesLabel'] as String?,
     createdByDisplayName: j['createdByDisplayName'] as String? ?? '',
     editable: j['editable'] as bool? ?? false,
+  );
+}
+
+/// Tipo de evento creado por la propia gente al guardar un evento.
+class EventCustomType {
+  EventCustomType({
+    required this.id,
+    required this.name,
+    required this.churchId,
+    required this.removable,
+  });
+
+  final String id;
+  final String name;
+  final String? churchId;
+
+  /// Si quien consulta lo puede quitar de la lista.
+  final bool removable;
+
+  factory EventCustomType.fromJson(Map<String, dynamic> j) => EventCustomType(
+    id: j['id'] as String,
+    name: j['name'] as String? ?? '',
+    churchId: j['churchId'] as String?,
+    removable: j['removable'] as bool? ?? false,
   );
 }
 

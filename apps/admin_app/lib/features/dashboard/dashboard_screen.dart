@@ -38,9 +38,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
   bool _loading = true;
   String? _error;
 
-  DateTime _from =
-      DateTime(DateTime.now().year, DateTime.now().month - 5, 1);
+  // Por defecto, el mes en curso: del día 1 a hoy. Para comparar meses se
+  // amplía con el calendario de arriba.
+  DateTime _from = DateTime(DateTime.now().year, DateTime.now().month, 1);
   DateTime _to = DateTime.now();
+
+  /// "1 – 11 nov 2026", "20 oct – 11 nov 2026" o con los dos años.
+  String get _rangoTexto {
+    final largo = DateFormat('d MMM yyyy', 'es');
+    if (_from.year != _to.year) {
+      return '${largo.format(_from)} – ${largo.format(_to)}';
+    }
+    if (_from.month != _to.month) {
+      return '${DateFormat('d MMM', 'es').format(_from)} – ${largo.format(_to)}';
+    }
+    return '${_from.day} – ${largo.format(_to)}';
+  }
 
   @override
   void initState() {
@@ -142,7 +155,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
               KpiTile(
                 label: 'Asistencia',
-                value: _cifra(() => NumberFormat.decimalPattern('es').format(attendance)),
+                value: _cifra(
+                  () => NumberFormat.decimalPattern('es').format(attendance),
+                ),
                 subtitle: 'Suma del período',
                 borderGradient: LinearGradient(
                   colors: [GemPalette.sapphire, GemPalette.amethyst],
@@ -156,16 +171,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text('Ofrendas vs Egresos por mes',
-                    style: Theme.of(context).textTheme.titleMedium),
+                Text(
+                  'Ofrendas vs Egresos por mes',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
                 const SizedBox(height: 14),
                 SizedBox(
                   height: 220,
                   child: _loading
                       ? const Center(child: CircularProgressIndicator())
                       : m == null || _monthlyData(m).isEmpty
-                          ? _emptyChart()
-                          : _buildBarChart(_monthlyData(m)),
+                      ? _emptyChart()
+                      : _buildBarChart(_monthlyData(m)),
                 ),
               ],
             ),
@@ -175,16 +192,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text('Asistencia mensual',
-                    style: Theme.of(context).textTheme.titleMedium),
+                Text(
+                  'Asistencia mensual',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
                 const SizedBox(height: 14),
                 SizedBox(
                   height: 200,
                   child: _loading
                       ? const Center(child: CircularProgressIndicator())
                       : m == null || _monthlyData(m).isEmpty
-                          ? _emptyChart()
-                          : _buildLineChart(_monthlyData(m)),
+                      ? _emptyChart()
+                      : _buildLineChart(_monthlyData(m)),
                 ),
               ],
             ),
@@ -199,8 +218,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final header = GemSectionHeader(
       eyebrow: 'Panel',
       title: 'Resumen',
-      subtitle:
-          '${DateFormat('MMM yyyy', 'es').format(_from)} – ${DateFormat('MMM yyyy', 'es').format(_to)}',
+      subtitle: _rangoTexto,
       margin: EdgeInsets.zero,
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
@@ -212,9 +230,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
               tooltip: 'Ver el tutorial',
             ),
           IconButton(
-            icon: const Icon(Icons.tune_outlined),
+            icon: const Icon(Icons.calendar_month_outlined),
             onPressed: _pickRange,
-            tooltip: 'Rango de fechas',
+            tooltip: 'Elegir las fechas',
           ),
         ],
       ),
@@ -233,22 +251,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _emptyChart() => Center(
-        child: Text(
-          'Sin datos en este rango',
-          style: TextStyle(color: GemPalette.textMuted),
-        ),
-      );
+    child: Text(
+      'Sin datos en este rango',
+      style: TextStyle(color: GemPalette.textMuted),
+    ),
+  );
 
   List<_MonthlyRow> _monthlyData(MetricsTimeline m) {
     final map = <String, _MonthlyRow>{};
     for (final p in m.offerings) {
-      map.putIfAbsent(p.month, () => _MonthlyRow(month: p.month)).offerings = p.total;
+      map.putIfAbsent(p.month, () => _MonthlyRow(month: p.month)).offerings =
+          p.total;
     }
     for (final p in m.expenses) {
-      map.putIfAbsent(p.month, () => _MonthlyRow(month: p.month)).expenses = p.total;
+      map.putIfAbsent(p.month, () => _MonthlyRow(month: p.month)).expenses =
+          p.total;
     }
     for (final p in m.attendance) {
-      map.putIfAbsent(p.month, () => _MonthlyRow(month: p.month)).attendance = p.total;
+      map.putIfAbsent(p.month, () => _MonthlyRow(month: p.month)).attendance =
+          p.total;
     }
     final list = map.values.toList()
       ..sort((a, b) => a.month.compareTo(b.month));
@@ -260,72 +281,68 @@ class _DashboardScreenState extends State<DashboardScreen> {
         .map((r) => [r.offerings, r.expenses])
         .expand((e) => e)
         .fold<double>(1, (m, v) => v > m ? v : m);
-    return BarChart(BarChartData(
-      gridData: FlGridData(
-        show: true,
-        drawVerticalLine: false,
-        getDrawingHorizontalLine: (_) => FlLine(
-          color: GemPalette.borderSoft.withValues(alpha: 0.4),
-          strokeWidth: 1,
+    return BarChart(
+      BarChartData(
+        gridData: FlGridData(
+          show: true,
+          drawVerticalLine: false,
+          getDrawingHorizontalLine: (_) => FlLine(
+            color: GemPalette.borderSoft.withValues(alpha: 0.4),
+            strokeWidth: 1,
+          ),
         ),
-      ),
-      borderData: FlBorderData(show: false),
-      maxY: maxV * 1.15,
-      titlesData: FlTitlesData(
-        leftTitles: AxisTitles(
-          sideTitles: SideTitles(
-            showTitles: true,
-            reservedSize: 44,
-            getTitlesWidget: (v, _) => Text(
-              _shortCop(v),
-              style: TextStyle(
-                color: GemPalette.textMuted,
-                fontSize: 10,
+        borderData: FlBorderData(show: false),
+        maxY: maxV * 1.15,
+        titlesData: FlTitlesData(
+          leftTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 44,
+              getTitlesWidget: (v, _) => Text(
+                _shortCop(v),
+                style: TextStyle(color: GemPalette.textMuted, fontSize: 10),
               ),
             ),
           ),
+          rightTitles: const AxisTitles(),
+          topTitles: const AxisTitles(),
+          bottomTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 28,
+              getTitlesWidget: (v, _) {
+                final idx = v.toInt();
+                if (idx < 0 || idx >= data.length) return const SizedBox();
+                return Text(
+                  _formatMonth(data[idx].month),
+                  style: TextStyle(color: GemPalette.textMuted, fontSize: 10),
+                );
+              },
+            ),
+          ),
         ),
-        rightTitles: const AxisTitles(),
-        topTitles: const AxisTitles(),
-        bottomTitles: AxisTitles(
-          sideTitles: SideTitles(
-            showTitles: true,
-            reservedSize: 28,
-            getTitlesWidget: (v, _) {
-              final idx = v.toInt();
-              if (idx < 0 || idx >= data.length) return const SizedBox();
-              return Text(
-                _formatMonth(data[idx].month),
-                style: TextStyle(
-                  color: GemPalette.textMuted,
-                  fontSize: 10,
+        barGroups: [
+          for (var i = 0; i < data.length; i++)
+            BarChartGroupData(
+              x: i,
+              barRods: [
+                BarChartRodData(
+                  toY: data[i].offerings,
+                  color: GemPalette.emerald,
+                  width: 10,
+                  borderRadius: BorderRadius.circular(3),
                 ),
-              );
-            },
-          ),
-        ),
+                BarChartRodData(
+                  toY: data[i].expenses,
+                  color: GemPalette.ruby,
+                  width: 10,
+                  borderRadius: BorderRadius.circular(3),
+                ),
+              ],
+            ),
+        ],
       ),
-      barGroups: [
-        for (var i = 0; i < data.length; i++)
-          BarChartGroupData(
-            x: i,
-            barRods: [
-              BarChartRodData(
-                toY: data[i].offerings,
-                color: GemPalette.emerald,
-                width: 10,
-                borderRadius: BorderRadius.circular(3),
-              ),
-              BarChartRodData(
-                toY: data[i].expenses,
-                color: GemPalette.ruby,
-                width: 10,
-                borderRadius: BorderRadius.circular(3),
-              ),
-            ],
-          ),
-      ],
-    ));
+    );
   }
 
   Widget _buildLineChart(List<_MonthlyRow> data) {
@@ -333,70 +350,71 @@ class _DashboardScreenState extends State<DashboardScreen> {
         .map((r) => r.attendance)
         .fold<double>(1, (m, v) => v > m ? v : m);
     final spots = [
-      for (var i = 0; i < data.length; i++) FlSpot(i.toDouble(), data[i].attendance),
+      for (var i = 0; i < data.length; i++)
+        FlSpot(i.toDouble(), data[i].attendance),
     ];
-    return LineChart(LineChartData(
-      maxY: maxV * 1.2,
-      gridData: FlGridData(
-        show: true,
-        drawVerticalLine: false,
-        getDrawingHorizontalLine: (_) => FlLine(
-          color: GemPalette.borderSoft.withValues(alpha: 0.4),
-          strokeWidth: 1,
+    return LineChart(
+      LineChartData(
+        maxY: maxV * 1.2,
+        gridData: FlGridData(
+          show: true,
+          drawVerticalLine: false,
+          getDrawingHorizontalLine: (_) => FlLine(
+            color: GemPalette.borderSoft.withValues(alpha: 0.4),
+            strokeWidth: 1,
+          ),
         ),
-      ),
-      borderData: FlBorderData(show: false),
-      titlesData: FlTitlesData(
-        leftTitles: AxisTitles(
-          sideTitles: SideTitles(
-            showTitles: true,
-            reservedSize: 30,
-            getTitlesWidget: (v, _) => Text(
-              v.toInt().toString(),
-              style: TextStyle(
-                color: GemPalette.textMuted,
-                fontSize: 10,
+        borderData: FlBorderData(show: false),
+        titlesData: FlTitlesData(
+          leftTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 30,
+              getTitlesWidget: (v, _) => Text(
+                v.toInt().toString(),
+                style: TextStyle(color: GemPalette.textMuted, fontSize: 10),
               ),
             ),
           ),
-        ),
-        rightTitles: const AxisTitles(),
-        topTitles: const AxisTitles(),
-        bottomTitles: AxisTitles(
-          sideTitles: SideTitles(
-            showTitles: true,
-            reservedSize: 26,
-            getTitlesWidget: (v, _) {
-              final idx = v.toInt();
-              if (idx < 0 || idx >= data.length) return const SizedBox();
-              return Text(_formatMonth(data[idx].month),
-                  style: TextStyle(
-                      color: GemPalette.textMuted, fontSize: 10));
-            },
-          ),
-        ),
-      ),
-      lineBarsData: [
-        LineChartBarData(
-          spots: spots,
-          isCurved: true,
-          color: GemPalette.sapphire,
-          barWidth: 3,
-          dotData: const FlDotData(show: true),
-          belowBarData: BarAreaData(
-            show: true,
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                GemPalette.sapphire.withValues(alpha: 0.35),
-                GemPalette.sapphire.withValues(alpha: 0.0),
-              ],
+          rightTitles: const AxisTitles(),
+          topTitles: const AxisTitles(),
+          bottomTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 26,
+              getTitlesWidget: (v, _) {
+                final idx = v.toInt();
+                if (idx < 0 || idx >= data.length) return const SizedBox();
+                return Text(
+                  _formatMonth(data[idx].month),
+                  style: TextStyle(color: GemPalette.textMuted, fontSize: 10),
+                );
+              },
             ),
           ),
         ),
-      ],
-    ));
+        lineBarsData: [
+          LineChartBarData(
+            spots: spots,
+            isCurved: true,
+            color: GemPalette.sapphire,
+            barWidth: 3,
+            dotData: const FlDotData(show: true),
+            belowBarData: BarAreaData(
+              show: true,
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  GemPalette.sapphire.withValues(alpha: 0.35),
+                  GemPalette.sapphire.withValues(alpha: 0.0),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _pickRange() async {
@@ -432,9 +450,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return DateFormat('MMM', 'es').format(DateTime(y, mo));
   }
 
-  String _formatCop(double v) =>
-      NumberFormat.currency(locale: 'es-CO', symbol: r'$', decimalDigits: 0)
-          .format(v);
+  String _formatCop(double v) => NumberFormat.currency(
+    locale: 'es-CO',
+    symbol: r'$',
+    decimalDigits: 0,
+  ).format(v);
 
   String _shortCop(double v) {
     if (v.abs() >= 1000000) return '${(v / 1000000).toStringAsFixed(1)}M';

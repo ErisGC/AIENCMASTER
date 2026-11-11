@@ -61,6 +61,10 @@ class _EventEditScreenState extends State<EventEditScreen> {
   late final TextEditingController _description;
 
   late EventType _type;
+
+  /// Nombre del tipo propio cuando [_type] es OTRO ("Vigilia"…), o null.
+  String? _customType;
+  List<EventCustomType> _tiposPropios = [];
   late EventScope _scope;
   String? _churchId;
 
@@ -91,6 +95,7 @@ class _EventEditScreenState extends State<EventEditScreen> {
     _description = TextEditingController(text: ex?.description ?? '');
     _vigilarCambios();
     _type = ex?.type ?? EventType.CULTO;
+    _customType = ex?.type == EventType.OTRO ? ex?.customTypeName : null;
     _scope =
         ex?.scope ??
         (widget.churches.isEmpty && widget.canGlobal
@@ -122,6 +127,211 @@ class _EventEditScreenState extends State<EventEditScreen> {
     _location.dispose();
     _description.dispose();
     super.dispose();
+  }
+
+  // ── Tipo ─────────────────────────────────────────────────────────────────
+
+  /// Hoja para elegir el tipo: los de siempre, los que han creado (de toda la
+  /// Asociación y de la iglesia del evento) y la opción de crear uno nuevo,
+  /// que queda en la lista para los próximos eventos.
+  Future<void> _elegirTipo() async {
+    try {
+      final lista = await Locator.events.types(
+        churchId: _scope == EventScope.LOCAL ? _churchId : null,
+      );
+      if (mounted) setState(() => _tiposPropios = lista);
+    } catch (_) {
+      // Sin red: se muestran los de siempre y los ya cargados.
+    }
+    if (!mounted) return;
+    final elegido = await showModalBottomSheet<(EventType, String?)>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setLocal) {
+          Widget opcion(String label, (EventType, String?) valor) {
+            final marcado = valor.$1 == _type && valor.$2 == _customType;
+            return ListTile(
+              title: Text(label),
+              trailing: marcado
+                  ? Icon(Icons.check, color: GemPalette.emerald)
+                  : null,
+              onTap: () => Navigator.pop(ctx, valor),
+            );
+          }
+
+          return ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(ctx).size.height * 0.8,
+            ),
+            child: ListView(
+              shrinkWrap: true,
+              padding: const EdgeInsets.only(bottom: 16),
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+                  child: Text(
+                    'Tipo de evento',
+                    style: Theme.of(ctx).textTheme.titleMedium,
+                  ),
+                ),
+                for (final t in EventType.values.where(
+                  (t) => t != EventType.OTRO,
+                ))
+                  opcion(eventTypeLabel(t), (t, null)),
+                if (_tiposPropios.isNotEmpty) ...[
+                  const Divider(),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 4, 20, 4),
+                    child: Text(
+                      'Creados por ustedes',
+                      style: TextStyle(
+                        color: GemPalette.textMuted,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  for (final c in _tiposPropios)
+                    ListTile(
+                      title: Text(c.name),
+                      onTap: () => Navigator.pop(ctx, (EventType.OTRO, c.name)),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (_type == EventType.OTRO && _customType == c.name)
+                            Icon(Icons.check, color: GemPalette.emerald),
+                          if (c.removable)
+                            IconButton(
+                              tooltip: 'Quitar de la lista',
+                              icon: const Icon(Icons.delete_outline),
+                              onPressed: () async {
+                                final ok = await _confirmarQuitarTipo(ctx, c);
+                                if (!ok) return;
+                                try {
+                                  await Locator.events.deleteType(c.id);
+                                  setLocal(() => _tiposPropios.remove(c));
+                                  if (mounted) setState(() {});
+                                } catch (e) {
+                                  if (!ctx.mounted) return;
+                                  ScaffoldMessenger.of(ctx).showSnackBar(
+                                    SnackBar(content: Text(userMessageFor(e))),
+                                  );
+                                }
+                              },
+                            ),
+                        ],
+                      ),
+                    ),
+                ],
+                const Divider(),
+                opcion(eventTypeLabel(EventType.OTRO), (EventType.OTRO, null)),
+                ListTile(
+                  leading: const Icon(Icons.add),
+                  title: const Text('Crear un tipo nuevo…'),
+                  subtitle: Text(
+                    _scope == EventScope.LOCAL
+                        ? 'Queda en la lista de esta iglesia'
+                        : 'Queda en la lista de toda la Asociación',
+                  ),
+                  onTap: () async {
+                    final nombre = await _pedirNombreTipo(ctx);
+                    if (nombre != null && ctx.mounted) {
+                      Navigator.pop(ctx, (EventType.OTRO, nombre));
+                    }
+                  },
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+    if (elegido == null || !mounted) return;
+    setState(() {
+      _type = elegido.$1;
+      _customType = elegido.$2;
+      // Sugerencia, no imposición: un culto unido o una asamblea suelen ser
+      // de toda la Asociación.
+      if (!_isEditing &&
+          widget.canGlobal &&
+          tiposNormalmenteGlobales.contains(_type)) {
+        _scope = EventScope.GLOBAL;
+      }
+    });
+  }
+
+  Future<bool> _confirmarQuitarTipo(BuildContext ctx, EventCustomType c) async {
+    final r = await showDialog<bool>(
+      context: ctx,
+      builder: (d) => AlertDialog(
+        title: Text('¿Quitar "${c.name}"?'),
+        content: const Text(
+          'Deja de aparecer en la lista. Los eventos que ya lo usan no cambian.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(d, false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(d, true),
+            child: const Text('Quitar'),
+          ),
+        ],
+      ),
+    );
+    return r == true;
+  }
+
+  Future<String?> _pedirNombreTipo(BuildContext ctx) async {
+    final ctrl = TextEditingController();
+    String? error;
+    final r = await showDialog<String>(
+      context: ctx,
+      builder: (d) => StatefulBuilder(
+        builder: (d, setLocal) {
+          void aceptar() {
+            final nombre = ctrl.text.replaceAll(RegExp(r'\s+'), ' ').trim();
+            if (nombre.length < 2) {
+              setLocal(() => error = 'Escribe al menos dos letras.');
+              return;
+            }
+            // Como lo guarda el servidor: con mayúscula inicial.
+            Navigator.pop(d, nombre[0].toUpperCase() + nombre.substring(1));
+          }
+
+          return AlertDialog(
+            title: const Text('Tipo nuevo'),
+            content: TextField(
+              controller: ctrl,
+              autofocus: true,
+              maxLength: 40,
+              textCapitalization: TextCapitalization.sentences,
+              decoration: InputDecoration(
+                hintText: 'Ej. Vigilia, Campamento',
+                errorText: error,
+              ),
+              onSubmitted: (_) => aceptar(),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(d),
+                child: const Text('Cancelar'),
+              ),
+              TextButton(
+                onPressed: aceptar,
+                child: const Text('Usar este tipo'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+    ctrl.dispose();
+    return r;
   }
 
   // ── Fechas ───────────────────────────────────────────────────────────────
@@ -480,6 +690,7 @@ class _EventEditScreenState extends State<EventEditScreen> {
           title: title,
           description: description,
           type: _type,
+          customTypeName: _customType,
           scope: _scope,
           churchId: _churchId,
           startsAt: _startsAt,
@@ -494,6 +705,7 @@ class _EventEditScreenState extends State<EventEditScreen> {
           title: title,
           description: description,
           type: _type,
+          customTypeName: _customType,
           scope: _scope,
           churchId: _churchId,
           startsAt: _startsAt,
@@ -566,29 +778,20 @@ class _EventEditScreenState extends State<EventEditScreen> {
                         ),
                       ),
                       const SizedBox(height: 6),
-                      DropdownButtonFormField<EventType>(
-                        initialValue: _type,
-                        decoration: const InputDecoration(labelText: 'Tipo'),
-                        items: [
-                          for (final t in EventType.values)
-                            DropdownMenuItem(
-                              value: t,
-                              child: Text(eventTypeLabel(t)),
-                            ),
-                        ],
-                        onChanged: (v) {
-                          if (v == null) return;
-                          setState(() {
-                            _type = v;
-                            // Sugerencia, no imposición: un culto unido o una
-                            // asamblea suelen ser de toda la Asociación.
-                            if (!_isEditing &&
-                                widget.canGlobal &&
-                                tiposNormalmenteGlobales.contains(v)) {
-                              _scope = EventScope.GLOBAL;
-                            }
-                          });
-                        },
+                      InkWell(
+                        borderRadius: BorderRadius.circular(12),
+                        onTap: _elegirTipo,
+                        child: InputDecorator(
+                          decoration: const InputDecoration(
+                            labelText: 'Tipo',
+                            suffixIcon: Icon(Icons.arrow_drop_down),
+                          ),
+                          child: Text(
+                            _customType ?? eventTypeLabel(_type),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
                       ),
                       const SizedBox(height: 16),
                       _label('¿A quién compete?'),

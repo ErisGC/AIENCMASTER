@@ -605,8 +605,10 @@ class SupportService {
     return SupportThread.fromJson(res.data as Map<String, dynamic>);
   }
 
+  /// Primer mensaje. Cada cuenta tiene una sola conversación: si ya existe,
+  /// el servidor suma el mensaje a esa.
   Future<SupportConversation> start({
-    required String subject,
+    String subject = '',
     required String body,
     List<MultipartFile> files = const [],
   }) async {
@@ -622,6 +624,14 @@ class SupportService {
     );
     _api.ensureOk(res);
     return SupportConversation.fromJson(res.data as Map<String, dynamic>);
+  }
+
+  /// Cambia el estado de una conversación (solo el principal): bloquear.
+  Future<void> setStatus(String id, String status) async {
+    await _api.patchJson<Map<String, dynamic>>(
+      '/admin/support/inbox/$id/status',
+      body: {'status': status},
+    );
   }
 
   Future<SupportMessage> reply(
@@ -756,6 +766,7 @@ class EventService {
     required String title,
     String? description,
     required EventType type,
+    String? customTypeName,
     required EventScope scope,
     required String? churchId,
     required DateTime startsAt,
@@ -772,6 +783,7 @@ class EventService {
           'title': title,
           'description': description,
           'type': type.name,
+          'customTypeName': type == EventType.OTRO ? customTypeName : null,
           ..._cuerpo(
             scope: scope,
             churchId: churchId,
@@ -801,6 +813,7 @@ class EventService {
     required String title,
     String? description,
     required EventType type,
+    String? customTypeName,
     required EventScope scope,
     required String? churchId,
     required DateTime startsAt,
@@ -816,6 +829,7 @@ class EventService {
           'title': title,
           'description': description,
           'type': type.name,
+          'customTypeName': type == EventType.OTRO ? customTypeName : null,
           ..._cuerpo(
             scope: scope,
             churchId: churchId,
@@ -831,6 +845,21 @@ class EventService {
     } on ApiException catch (e) {
       throw _conCruces(e);
     }
+  }
+
+  /// Tipos propios: los de toda la Asociación y, si se indica, los de esa
+  /// iglesia.
+  Future<List<EventCustomType>> types({String? churchId}) {
+    return _api.getList(
+      '/admin/events/types',
+      EventCustomType.fromJson,
+      query: {'churchId': ?churchId},
+    );
+  }
+
+  /// Quita un tipo de la lista. Los eventos que ya lo usan no cambian.
+  Future<void> deleteType(String id) async {
+    await _api.deleteJson<dynamic>('/admin/events/types/$id');
   }
 
   /// Elimina una fecha o, con [wholeSeries], toda la serie. Devuelve cuántas.

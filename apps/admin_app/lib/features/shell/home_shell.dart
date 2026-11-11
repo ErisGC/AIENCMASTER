@@ -487,8 +487,8 @@ class _HomeShellState extends State<HomeShell>
     if (isRoot) {
       body =
           'Aquí tienes el resumen consolidado de todas las iglesias: ofrendas, '
-          'egresos, balance y asistencia del período. Toca el ícono de filtro '
-          'de la esquina superior derecha para cambiar el rango de fechas.';
+          'egresos, balance y asistencia del mes en curso. Toca el calendario '
+          'de la esquina superior derecha para ver otras fechas.';
     } else if ((account?.churchAssignments as List?)?.isEmpty ?? true) {
       body =
           'Aquí verás el resumen económico y de asistencia en cuanto tengas una '
@@ -498,8 +498,8 @@ class _HomeShellState extends State<HomeShell>
       final c = _churchLabel(account);
       body =
           'Aquí ves el resumen de $c: ofrendas, egresos, balance y asistencia '
-          'del período. Toca el ícono de filtro de la esquina superior derecha '
-          'para cambiar el rango de fechas.';
+          'del mes en curso. Toca el calendario de la esquina superior derecha '
+          'para ver otras fechas.';
     }
     return _coachCard(
       ctx,
