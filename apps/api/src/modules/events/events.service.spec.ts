@@ -15,6 +15,7 @@ import { Church } from "../churches/church.entity";
 import { CreateEventDto } from "./dto/create-event.dto";
 import { EventScope, EventType } from "./enums/event.enums";
 import { Event } from "./event.entity";
+import { EventCustomType } from "./event-custom-type.entity";
 import { EventsService } from "./events.service";
 
 /**
@@ -113,6 +114,10 @@ describe("EventsService", () => {
         { provide: getRepositoryToken(ChurchDirector), useValue: directorRepo },
         { provide: PermissionsService, useValue: permissions },
         { provide: DataSource, useValue: dataSource },
+        {
+          provide: getRepositoryToken(EventCustomType),
+          useValue: { findOne: jest.fn(), insert: jest.fn(), delete: jest.fn() },
+        },
       ],
     }).compile();
 

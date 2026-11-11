@@ -22,6 +22,7 @@ import { SiteSettings } from "../modules/site/site-settings.entity";
 import { SupportConversation } from "../modules/support/support-conversation.entity";
 import { SupportMessage } from "../modules/support/support-message.entity";
 import { Event } from "../modules/events/event.entity";
+import { EventCustomType } from "../modules/events/event-custom-type.entity";
 
 function required(name: string) {
   const value = process.env[name]?.trim();
@@ -62,6 +63,7 @@ const ENTITIES = [
   SupportConversation,
   SupportMessage,
   Event,
+  EventCustomType,
 ];
 
 const databaseUrl = process.env.DATABASE_URL?.trim();

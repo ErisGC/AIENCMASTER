@@ -30,6 +30,12 @@ export class CreateEventDto {
   @IsEnum(EventType)
   type!: EventType;
 
+  /** Tipo propio (solo con type OTRO). Si es nuevo, queda en la lista. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  customTypeName?: string | null;
+
   @IsEnum(EventScope)
   scope!: EventScope;
 

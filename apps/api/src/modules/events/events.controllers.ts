@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -79,6 +80,39 @@ export class AdminEventsController {
   @Post("check")
   check(@Body() dto: CheckEventDto) {
     return this.service.comprobar(dto);
+  }
+
+  /** Tipos propios disponibles para una iglesia (y los de la Asociación). */
+  @Get("types")
+  types(
+    @Query("churchId") churchId: string | undefined,
+    @AdminAuth() actor: AuthenticatedAdminContext,
+  ) {
+    const id = (churchId ?? "").trim();
+    if (id && !/^[0-9a-f-]{36}$/i.test(id)) {
+      throw new BadRequestException("Iglesia no válida.");
+    }
+    return this.service.listarTipos(actor.account, id || null);
+  }
+
+  @Delete("types/:id")
+  async removeType(
+    @Param("id", new ParseUUIDPipe({ version: "4" })) id: string,
+    @Req() req: AdminRequest,
+    @AdminAuth() actor: AuthenticatedAdminContext,
+  ) {
+    const out = await this.service.eliminarTipo(actor.account, id);
+    await this.auditService.log({
+      actorAdminAccountId: actor.account.id,
+      actorDeviceId: actor.device.id,
+      actionType: "EVENT_TYPE_REMOVED",
+      targetType: "EVENT_TYPE",
+      targetId: id,
+      description: `Tipo de evento quitado de la lista: ${out.name}`,
+      ip: req.ip ?? null,
+      userAgent: userAgentDe(req),
+    });
+    return out;
   }
 
   @Get()

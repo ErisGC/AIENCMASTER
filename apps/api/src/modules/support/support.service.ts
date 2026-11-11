@@ -64,7 +64,12 @@ export class SupportService {
     };
   }
 
-  private toConversation(c: SupportConversation, unread = 0) {
+  private toConversation(
+    c: SupportConversation,
+    unread = 0,
+    last?: SupportMessage | null,
+    viewer?: "root" | "author",
+  ) {
     return {
       id: c.id,
       subject: c.subject,
@@ -73,7 +78,74 @@ export class SupportService {
       status: c.status,
       lastMessageAt: c.lastMessageAt,
       unread,
+      /** Lo último que se dijo, para la lista (como en un chat). */
+      preview: last ? this.previewOf(last) : null,
+      /** Si ese último mensaje lo escribió quien mira la lista. */
+      previewMine:
+        !!last &&
+        !!viewer &&
+        (viewer === "root"
+          ? last.senderKind === SupportSenderKind.ROOT
+          : last.senderKind === SupportSenderKind.AUTHOR),
     };
+  }
+
+  private previewOf(m: SupportMessage) {
+    const texto = decryptBody(m.bodyCipher).replace(/\s+/g, " ").trim();
+    if (texto) return texto.length > 90 ? `${texto.slice(0, 90)}…` : texto;
+    const adjuntos = m.attachments ?? [];
+    if (adjuntos.some((a) => a.kind === "audio")) return "Nota de voz";
+    if (adjuntos.length > 1) return `${adjuntos.length} fotos`;
+    return adjuntos.length === 1 ? "Foto" : "";
+  }
+
+  /** Último mensaje de cada conversación, en una sola consulta. */
+  private async lastMessages(ids: string[]) {
+    const out = new Map<string, SupportMessage>();
+    if (ids.length === 0) return out;
+    const rows = (await this.msgRepo.query(
+      `SELECT DISTINCT ON ("conversationId") *
+         FROM support_messages
+        WHERE "conversationId" = ANY($1)
+        ORDER BY "conversationId", "createdAt" DESC`,
+      [ids],
+    )) as SupportMessage[];
+    for (const r of rows) out.set(r.conversationId, r);
+    return out;
+  }
+
+  private async withPreviews(
+    convs: SupportConversation[],
+    viewer: "root" | "author",
+  ) {
+    const last = await this.lastMessages(convs.map((c) => c.id));
+    return convs.map((c) =>
+      this.toConversation(
+        c,
+        this.unreadFor(c, viewer),
+        last.get(c.id) ?? null,
+        viewer,
+      ),
+    );
+  }
+
+  /**
+   * Asunto interno de la conversación: el que se escribió o, si no, el
+   * comienzo del primer mensaje. Ya no se le pide a nadie: cada persona tiene
+   * una sola conversación, como en un chat.
+   */
+  private subjectFrom(
+    subject: string | undefined,
+    body: string,
+    files: ValidatableFile[],
+  ) {
+    const s = (subject ?? "").replace(/\s+/g, " ").trim();
+    if (s.length >= 3) return s.slice(0, 150);
+    const t = body.replace(/\s+/g, " ").trim();
+    if (t) return t.length > 60 ? `${t.slice(0, 60)}…` : t;
+    return files.some((f) => f.mimetype.startsWith("audio/"))
+      ? "Nota de voz"
+      : "Foto";
   }
 
   /* ── Adjuntos ── */
@@ -125,19 +197,31 @@ export class SupportService {
     files: ValidatableFile[];
     existingToken?: string | null;
   }) {
+    const body = this.assertBody(input.body, input.files);
+
+    // Una sola conversación por persona: si este navegador ya escribió antes,
+    // el mensaje se suma a su conversación en vez de abrir otra.
+    const previo = input.existingToken?.trim() || null;
+    if (previo) {
+      const hash = hashGuestToken(previo);
+      await this.assertGuestNotFlooding(hash);
+      const conv = await this.convRepo.findOne({
+        where: { guestTokenHash: hash },
+        order: { lastMessageAt: "DESC" },
+      });
+      if (conv) {
+        await this.append(conv, SupportSenderKind.AUTHOR, body, input.files, null);
+        return { token: previo, conversation: this.toConversation(conv) };
+      }
+    }
+
     const name = input.name.trim();
     if (name.length < 2 || name.length > 80) {
       throw new BadRequestException("Escribe tu nombre (entre 2 y 80 letras).");
     }
-    const subject = input.subject.trim();
-    if (subject.length < 3 || subject.length > 150) {
-      throw new BadRequestException("Describe el asunto en pocas palabras.");
-    }
-    const body = this.assertBody(input.body, input.files);
+    const subject = this.subjectFrom(input.subject, body, input.files);
 
-    // Reutilizamos el token si el navegador ya tenía uno, para que todos sus
-    // hilos queden bajo la misma identidad.
-    const token = input.existingToken?.trim() || createGuestToken();
+    const token = previo || createGuestToken();
     const tokenHash = hashGuestToken(token);
 
     await this.assertGuestNotFlooding(tokenHash);
@@ -207,9 +291,7 @@ export class SupportService {
       where: { guestTokenHash: tokenHash },
       order: { lastMessageAt: "DESC" },
     });
-    return convs.map((c) =>
-      this.toConversation(c, this.unreadFor(c, "author")),
-    );
+    return this.withPreviews(convs, "author");
   }
 
   private unreadFor(c: SupportConversation, who: "root" | "author") {
@@ -304,6 +386,14 @@ export class SupportService {
     conv.lastMessageAt = msg.createdAt;
     if (senderKind === SupportSenderKind.ROOT) conv.rootReadAt = msg.createdAt;
     else conv.authorReadAt = msg.createdAt;
+    // Es una sola conversación por persona: si estaba cerrada y vuelve a
+    // escribir, se reabre (bloqueada sigue bloqueada).
+    if (
+      senderKind === SupportSenderKind.AUTHOR &&
+      conv.status === SupportConversationStatus.CLOSED
+    ) {
+      conv.status = SupportConversationStatus.OPEN;
+    }
     await this.convRepo.save(conv);
     return this.toMessage(msg);
   }
@@ -314,11 +404,29 @@ export class SupportService {
     account: AdminAccount,
     input: { subject: string; body: string; files: ValidatableFile[] },
   ) {
-    const subject = input.subject.trim();
-    if (subject.length < 3 || subject.length > 150) {
-      throw new BadRequestException("Describe el asunto en pocas palabras.");
-    }
     const body = this.assertBody(input.body, input.files);
+
+    // Una sola conversación por cuenta: si ya existe, el mensaje se suma ahí
+    // (antes cada "nuevo reporte" abría otra y la bandeja se llenaba de
+    // conversaciones repetidas de la misma persona).
+    const previa = await this.convRepo.findOne({
+      where: { authorAdminAccountId: account.id },
+      order: { lastMessageAt: "DESC" },
+    });
+    if (previa) {
+      if (previa.status === SupportConversationStatus.BLOCKED) {
+        throw new ForbiddenException("Esta conversación fue bloqueada.");
+      }
+      await this.append(
+        previa,
+        SupportSenderKind.AUTHOR,
+        body,
+        input.files,
+        account.id,
+      );
+      return this.toConversation(previa);
+    }
+    const subject = this.subjectFrom(input.subject, body, input.files);
 
     // Igual que en el canal de visitantes: los adjuntos primero, para que un
     // fallo de subida no deje un hilo sin mensajes en la bandeja.
@@ -353,7 +461,7 @@ export class SupportService {
       where: { authorAdminAccountId: account.id },
       order: { lastMessageAt: "DESC" },
     });
-    return convs.map((c) => this.toConversation(c, this.unreadFor(c, "author")));
+    return this.withPreviews(convs, "author");
   }
 
   /* ── Bandeja del administrador principal ── */
@@ -370,7 +478,7 @@ export class SupportService {
       order: { lastMessageAt: "DESC" },
       take: 200,
     });
-    return convs.map((c) => this.toConversation(c, this.unreadFor(c, "root")));
+    return this.withPreviews(convs, "root");
   }
 
   /** Número de hilos con mensajes que el principal aún no ha visto. */

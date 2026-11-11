@@ -54,6 +54,13 @@ export class Event {
   @Column({ type: "enum", enum: EventType, enumName: "event_type" })
   type!: EventType;
 
+  /**
+   * Nombre del tipo propio cuando `type` es OTRO ("Vigilia", "Campamento"…).
+   * Es una copia: quitar el tipo de la lista no cambia este evento.
+   */
+  @Column({ type: "text", nullable: true })
+  customTypeName!: string | null;
+
   @Column({ type: "enum", enum: EventScope, enumName: "event_scope" })
   scope!: EventScope;
 

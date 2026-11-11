@@ -22,6 +22,7 @@ import { CreateEventDto } from "./dto/create-event.dto";
 import { QueryEventsDto } from "./dto/query-events.dto";
 import { UpdateEventDto } from "./dto/update-event.dto";
 import { EventConflictKind, EventScope, EventType } from "./enums/event.enums";
+import { EventCustomType } from "./event-custom-type.entity";
 import { Event } from "./event.entity";
 import {
   describirRepeticion,
@@ -92,6 +93,8 @@ export class EventsService {
     private readonly directorRepo: Repository<ChurchDirector>,
     private readonly permissions: PermissionsService,
     private readonly dataSource: DataSource,
+    @InjectRepository(EventCustomType)
+    private readonly typeRepo: Repository<EventCustomType>,
   ) {}
 
   /* ── Proyecciones ── */
@@ -102,6 +105,8 @@ export class EventsService {
       title: e.title,
       description: e.description,
       type: e.type,
+      /** Tipo propio cuando `type` es OTRO; si no, null. */
+      customTypeName: e.customTypeName ?? null,
       scope: e.scope,
       churchId: e.churchId,
       churchName: e.church?.name ?? null,
@@ -620,6 +625,14 @@ export class EventsService {
     const seriesId = fechas.length > 1 ? randomUUID() : null;
     const seriesRule =
       fechas.length > 1 ? (dto.repeat?.frequency ?? null) : null;
+    const customTypeName =
+      dto.type === EventType.OTRO
+        ? await this.registrarTipo(
+            this.normalizarTipo(dto.customTypeName),
+            dto.scope === EventScope.GLOBAL ? null : churchId,
+            actor.id,
+          )
+        : null;
 
     const creados = await this.dataSource.transaction(async (manager) => {
       const repo = manager.getRepository(Event);
@@ -629,6 +642,7 @@ export class EventsService {
           title: dto.title.trim(),
           description: dto.description?.trim() || null,
           type: dto.type,
+          customTypeName,
           scope: dto.scope,
           startsAt: f,
           endsAt: new Date(f.getTime() + duracion),
@@ -709,7 +723,21 @@ export class EventsService {
       }
     }
 
+    const tipoFinal = dto.type ?? e.type;
+    let customTypeName: string | null = null;
+    if (tipoFinal === EventType.OTRO) {
+      customTypeName =
+        dto.customTypeName !== undefined
+          ? await this.registrarTipo(
+              this.normalizarTipo(dto.customTypeName),
+              scope === EventScope.GLOBAL ? null : churchId,
+              actor.id,
+            )
+          : (e.customTypeName ?? null);
+    }
+
     Object.assign(e, {
+      customTypeName,
       ...(dto.title !== undefined && { title: dto.title.trim() }),
       ...(dto.description !== undefined && {
         description: dto.description?.trim() || null,
@@ -731,6 +759,92 @@ export class EventsService {
       event: this.toAdmin(await this.cargar(e.id), await this.alcanceDe(actor)),
       conflicts,
     };
+  }
+
+  /* ── Tipos propios ── */
+
+  private normalizarTipo(raw?: string | null): string | null {
+    const s = (raw ?? "").replace(/\s+/g, " ").trim();
+    if (!s) return null;
+    if (s.length < 2 || s.length > 40) {
+      throw new BadRequestException(
+        "El tipo de evento debe tener entre 2 y 40 caracteres.",
+      );
+    }
+    return s.charAt(0).toLocaleUpperCase("es") + s.slice(1);
+  }
+
+  /**
+   * Deja el tipo en la lista (si no estaba) y devuelve el nombre con el que
+   * quedó escrito, para que "vigilia" y "Vigilia" no sean dos tipos.
+   */
+  private async registrarTipo(
+    nombre: string | null,
+    churchId: string | null,
+    actorId: string,
+  ): Promise<string | null> {
+    if (!nombre) return null;
+    const existente = await this.typeRepo
+      .createQueryBuilder("t")
+      .where("lower(t.name) = lower(:n)", { n: nombre })
+      .andWhere(
+        churchId
+          ? '(t."churchId" IS NULL OR t."churchId" = :c)'
+          : 't."churchId" IS NULL',
+        { c: churchId },
+      )
+      .orderBy('t."churchId"', "ASC", "NULLS FIRST")
+      .getOne();
+    if (existente) return existente.name;
+    try {
+      await this.typeRepo.insert({
+        name: nombre,
+        churchId,
+        createdByAdminAccountId: actorId,
+      });
+    } catch {
+      // Otra persona lo registró en el mismo instante: el índice único lo
+      // evita y basta con usar el nombre.
+    }
+    return nombre;
+  }
+
+  /** Tipos propios disponibles: los de la Asociación y los de esa iglesia. */
+  async listarTipos(actor: Actor, churchId?: string | null) {
+    const qb = this.typeRepo
+      .createQueryBuilder("t")
+      .where(
+        churchId
+          ? '(t."churchId" IS NULL OR t."churchId" = :c)'
+          : 't."churchId" IS NULL',
+        { c: churchId },
+      )
+      .orderBy("lower(t.name)", "ASC");
+    const tipos = await qb.getMany();
+    const alcance = await this.alcanceDe(actor);
+    return tipos.map((t) => ({
+      id: t.id,
+      name: t.name,
+      churchId: t.churchId,
+      /** Si quien consulta lo puede quitar de la lista. */
+      removable: this.gestionableCon(alcance, {
+        scope: t.churchId ? EventScope.LOCAL : EventScope.GLOBAL,
+        churchId: t.churchId,
+      }),
+    }));
+  }
+
+  /** Quita un tipo de la lista. Los eventos que ya lo usan no cambian. */
+  async eliminarTipo(actor: Actor, id: string) {
+    const t = await this.typeRepo.findOne({ where: { id } });
+    if (!t) throw new NotFoundException("Ese tipo ya no está en la lista.");
+    await this.assertPuedeGestionar(
+      actor,
+      t.churchId ? EventScope.LOCAL : EventScope.GLOBAL,
+      t.churchId,
+    );
+    await this.typeRepo.delete({ id });
+    return { ok: true, name: t.name };
   }
 
   /** Elimina un evento, o toda su serie semanal si `series` es verdadero. */
