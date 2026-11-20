@@ -7,6 +7,7 @@ import '../services/data_services.dart';
 import '../services/device_identity_service.dart';
 import '../services/linked_devices_service.dart';
 import '../services/local_auth_service.dart';
+import '../services/stats_service.dart';
 import '../theme/theme_controller.dart';
 import 'auth_state.dart';
 
@@ -27,6 +28,7 @@ class Locator {
   static late final SupportService support;
   static late final EventService events;
   static late final LinkedDevicesService linkedDevices;
+  static late final StatsService stats;
   static late final AuthState authState;
 
   /// Tonalidad clara u oscura. Se crea y carga antes que todo lo demás para
@@ -63,6 +65,7 @@ class Locator {
     support = SupportService(ApiClient.I);
     events = EventService(ApiClient.I);
     linkedDevices = LinkedDevicesService(ApiClient.I);
+    stats = StatsService(ApiClient.I);
     authState = AuthState(auth: auth, localAuth: localAuth);
     onAdminSessionExpired = () => authState.sessionExpired();
   }

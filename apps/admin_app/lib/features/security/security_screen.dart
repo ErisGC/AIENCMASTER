@@ -9,6 +9,7 @@ import '../../core/theme/gem_palette.dart';
 import '../../core/widgets/gem_widgets.dart';
 import 'account_permissions_screen.dart';
 import 'invitations_screen.dart';
+import '../stats/stats_screen.dart';
 import '../support/support_screen.dart';
 import '../../core/widgets/theme_toggle.dart';
 import 'linked_devices_screen.dart';
@@ -134,6 +135,59 @@ class _SecurityScreenState extends State<SecurityScreen> {
                     children: [
                       if (_esPrincipal && !_esDispositivoPrincipal) ...[
                         _dispositivoPrincipalCard(context),
+                        const SizedBox(height: 10),
+                      ],
+                      if (_gestionaCuentas) ...[
+                        GemCard(
+                          onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const StatsScreen(),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 44,
+                                height: 44,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(12),
+                                  gradient: GemPalette.primaryGradient,
+                                ),
+                                alignment: Alignment.center,
+                                child: const Icon(
+                                  Icons.insights_outlined,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Estadísticas',
+                                      style: Theme.of(
+                                        context,
+                                      ).textTheme.titleMedium,
+                                    ),
+                                    Text(
+                                      'Visitas al portal, descargas, audios escuchados y la actividad del panel',
+                                      style: TextStyle(
+                                        color: GemPalette.textMuted,
+                                        fontSize: 12.5,
+                                        height: 1.35,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Icon(
+                                Icons.chevron_right,
+                                color: GemPalette.textMuted,
+                              ),
+                            ],
+                          ),
+                        ),
                         const SizedBox(height: 10),
                       ],
                       if (_gestionaCuentas)

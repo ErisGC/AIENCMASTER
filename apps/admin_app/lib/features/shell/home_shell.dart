@@ -521,7 +521,7 @@ class _HomeShellState extends State<HomeShell>
           'avisa si dos se cruzan.\n'
           '•  Iglesias: gestiona los datos, el logo y el mapa de cada iglesia.\n'
           '•  Informes: registra ofrendas, egresos y asistencia.\n'
-          '•  Seguridad: atiende la bandeja de soporte, configura tu PIN o '
+          '•  Seguridad: atiende la bandeja de soporte, mira las estadísticas, configura tu PIN o '
           'huella y cierra sesión. Las cuentas y la auditoría se gestionan '
           'desde el dispositivo principal, en el panel web.\n\n'
           'Crear o eliminar iglesias se hace solo desde la web, por control.';
