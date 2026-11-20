@@ -62,6 +62,50 @@ class StatsRow {
   final int total;
 }
 
+/// Zona de unos 11 km desde donde visitaron (solo quien aceptó compartirla).
+class StatsLugar {
+  StatsLugar({
+    required this.lat,
+    required this.lon,
+    required this.nombre,
+    required this.personas,
+  });
+  final double lat;
+  final double lon;
+
+  /// "Valledupar, Cesar" o "Quito, Pichincha (Ecuador)".
+  final String nombre;
+  final int personas;
+
+  factory StatsLugar.fromJson(Map<String, dynamic> j) {
+    final ciudad = (j['ciudad'] as String?)?.replaceFirst(
+      RegExp(r'\s+ciudad$', caseSensitive: false),
+      '',
+    );
+    final region = j['region'] as String?;
+    final pais = j['pais'] as String?;
+    final codigo = j['codigoPais'] as String?;
+    // Si el departamento ya lleva el nombre de la ciudad ("Bogotá ciudad" en
+    // "Bogotá, Distrito Capital") se deja solo el departamento.
+    final repite =
+        ciudad != null &&
+        (region?.toLowerCase().startsWith(ciudad.toLowerCase()) ?? false);
+    final base = (repite ? [region] : [ciudad, region])
+        .whereType<String>()
+        .where((s) => s.isNotEmpty)
+        .join(', ');
+    final fuera = codigo != null && codigo != 'co' && pais != null
+        ? ' ($pais)'
+        : '';
+    return StatsLugar(
+      lat: (j['lat'] as num?)?.toDouble() ?? 0,
+      lon: (j['lon'] as num?)?.toDouble() ?? 0,
+      nombre: (base.isEmpty ? 'Zona sin nombre todavía' : base) + fuera,
+      personas: _n(j['personas']),
+    );
+  }
+}
+
 class StatsReport {
   StatsReport({
     required this.visitas,
@@ -77,6 +121,8 @@ class StatsReport {
     required this.estudios,
     required this.panel,
     required this.seriePanel,
+    required this.zonasTotal,
+    required this.lugares,
   });
 
   final int visitas;
@@ -95,11 +141,16 @@ class StatsReport {
   final Map<String, int> panel;
   final List<StatsDay> seriePanel;
 
+  /// Veces que alguien compartió su zona en el periodo (una por persona al día).
+  final int zonasTotal;
+  final List<StatsLugar> lugares;
+
   factory StatsReport.fromJson(Map<String, dynamic> j) {
     final p = (j['publico'] as Map<String, dynamic>?) ?? const {};
     final t = (p['totales'] as Map<String, dynamic>?) ?? const {};
     final a = (j['panel'] as Map<String, dynamic>?) ?? const {};
     final at = (a['totales'] as Map<String, dynamic>?) ?? const {};
+    final u = (j['ubicaciones'] as Map<String, dynamic>?) ?? const {};
     String detalle(List<String> partes) =>
         partes.where((s) => s.isNotEmpty).join(' · ');
     return StatsReport(
@@ -163,6 +214,8 @@ class StatsReport {
           .toList(),
       panel: {for (final e in at.entries) e.key: _n(e.value)},
       seriePanel: _lista(a['serie']).map(StatsDay.fromJson).toList(),
+      zonasTotal: _n(u['total']),
+      lugares: _lista(u['lugares']).map(StatsLugar.fromJson).toList(),
     );
   }
 }

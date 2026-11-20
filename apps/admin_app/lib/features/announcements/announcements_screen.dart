@@ -7,6 +7,7 @@ import '../../core/models/domain.dart';
 import '../../core/state/locator.dart';
 import '../../core/theme/gem_palette.dart';
 import '../../core/widgets/gem_widgets.dart';
+import '../../core/widgets/nuevo_chip.dart';
 import 'announcement_edit_screen.dart';
 
 class AnnouncementsScreen extends StatefulWidget {
@@ -275,6 +276,8 @@ class _AnnouncementCard extends StatelessWidget {
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
               ),
+              NuevoChip(fecha: item.createdAt),
+              const SizedBox(width: 8),
               Text(
                 DateFormat('d MMM', 'es').format(item.createdAt),
                 style: TextStyle(

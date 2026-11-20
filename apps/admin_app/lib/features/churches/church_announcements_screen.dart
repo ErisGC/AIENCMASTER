@@ -6,6 +6,7 @@ import '../../core/models/domain.dart';
 import '../../core/state/locator.dart';
 import '../../core/theme/gem_palette.dart';
 import '../../core/widgets/gem_widgets.dart';
+import '../../core/widgets/nuevo_chip.dart';
 import '../announcements/announcement_edit_screen.dart';
 import '../../core/widgets/theme_toggle.dart';
 
@@ -140,10 +141,17 @@ class _ChurchAnnouncementsScreenState extends State<ChurchAnnouncementsScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(a.title,
-                                    style: const TextStyle(
-                                        fontWeight: FontWeight.w700,
-                                        fontSize: 15)),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(a.title,
+                                          style: const TextStyle(
+                                              fontWeight: FontWeight.w700,
+                                              fontSize: 15)),
+                                    ),
+                                    NuevoChip(fecha: a.createdAt),
+                                  ],
+                                ),
                                 const SizedBox(height: 2),
                                 Text(
                                   '${a.author}  ·  ${df.format(a.createdAt)}',
