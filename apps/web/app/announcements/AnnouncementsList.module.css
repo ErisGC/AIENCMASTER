@@ -115,6 +115,13 @@
   margin-bottom: 1rem;
 }
 
+.cardTags {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+}
+
 .cardBadge {
   display: inline-flex;
   align-items: center;

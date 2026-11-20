@@ -8,6 +8,7 @@ import {
   AnnouncementDetail,
   getAnnouncementById,
 } from '@/app/lib/announcements';
+import { NuevoBadge } from '@/app/components/NuevoBadge';
 import { formatDateTimeWithSeconds } from '@/app/lib/formatDate';
 
 import styles from './page.module.css';
@@ -115,6 +116,7 @@ export default async function AnnouncementPage({ params }: Props) {
             </svg>
             {formatDateTimeWithSeconds(announcement.createdAt)}
           </span>
+          <NuevoBadge fecha={announcement.createdAt} />
         </div>
       </header>
 

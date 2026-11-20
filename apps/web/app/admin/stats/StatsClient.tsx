@@ -1,12 +1,20 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import dynamic from 'next/dynamic';
 
-import { adminGetStats, type StatsReport } from '@/app/lib/admin-stats';
+import { adminGetStats, nombreLugar, type StatsReport } from '@/app/lib/admin-stats';
 
 import base from '../dashboard/page.module.css';
+import type { VistaMapa } from './MapaZonas';
 import { SerieChart } from './SerieChart';
 import styles from './stats.module.css';
+
+// Leaflet usa window: el mapa se carga solo en el navegador.
+const MapaZonas = dynamic(() => import('./MapaZonas').then((m) => m.MapaZonas), {
+  ssr: false,
+  loading: () => <div className={styles.mapa} aria-hidden />,
+});
 
 type Rango = '7' | '30' | '90' | '365' | 'propio';
 
@@ -81,6 +89,7 @@ export function StatsClient() {
   const [datos, setDatos] = useState<StatsReport | null>(null);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [vistaMapa, setVistaMapa] = useState<VistaMapa>('colombia');
 
   const cargar = useCallback(async (d: string, h: string) => {
     setCargando(true);
@@ -107,6 +116,7 @@ export function StatsClient() {
 
   const p = datos?.publico;
   const a = datos?.panel;
+  const zonas = datos?.ubicaciones;
   const sinVisitas = p ? p.totales.visitas + p.totales.descargas + p.totales.reproducciones === 0 : false;
 
   return (
@@ -226,6 +236,48 @@ export function StatsClient() {
               ]}
             />
           </section>
+
+          {zonas && (
+            <section className={base.chartCard}>
+              <div className={base.chartHead}>
+                <h3 className={base.chartTitle}>Desde dónde nos visitan</h3>
+                <div className={styles.segmented} role="group" aria-label="Zona del mapa">
+                  {(
+                    [
+                      ['colombia', 'Colombia'],
+                      ['todo', 'Todo el mapa'],
+                    ] as const
+                  ).map(([clave, etiqueta]) => (
+                    <button
+                      key={clave}
+                      type="button"
+                      className={vistaMapa === clave ? styles.segOn : ''}
+                      aria-pressed={vistaMapa === clave}
+                      onClick={() => setVistaMapa(clave)}
+                    >
+                      {etiqueta}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <p className={styles.hint}>
+                {zonas.total === 0
+                  ? 'Todavía nadie ha compartido su zona en este periodo. El portal se lo pregunta a cada visitante una sola vez y solo cuenta a quien acepta.'
+                  : `Solo cuentan quienes aceptan compartir su zona (unos 10 km a la redonda, nunca la ubicación exacta): ${cuenta(zonas.total, 'vez', 'veces')} en este periodo, una por persona al día.`}
+              </p>
+              <div className={styles.mapaGrid}>
+                <MapaZonas lugares={zonas.lugares} vista={vistaMapa} />
+                {zonas.lugares.length > 0 && (
+                  <Barras
+                    filas={zonas.lugares.slice(0, 8).map((l) => ({
+                      etiqueta: nombreLugar(l),
+                      total: l.personas,
+                    }))}
+                  />
+                )}
+              </div>
+            </section>
+          )}
 
           <div className={styles.grid2}>
             <section className={base.chartCard}>

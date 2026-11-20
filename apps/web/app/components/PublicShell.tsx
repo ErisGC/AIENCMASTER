@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 
+import { AvisoUbicacion } from './AvisoUbicacion';
 import { Medidor } from './Medidor';
 import styles from './PublicShell.module.css';
 import { ScrollReveal } from './ScrollReveal';
@@ -201,6 +202,7 @@ export function PublicShell({ children }: { children: React.ReactNode }) {
 
       {/* Canal para que cualquier visitante reporte fallos o sugerencias. */}
       <SupportWidget mode="guest" />
+      <AvisoUbicacion />
     </div>
   );
 }

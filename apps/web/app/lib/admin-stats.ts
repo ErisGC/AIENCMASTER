@@ -20,6 +20,30 @@ export interface StatsPanelDay {
   mensajes: number;
 }
 
+/** Zona de unos 11 km desde donde visitaron (solo quien aceptó compartirla). */
+export interface StatsLugar {
+  lat: number;
+  lon: number;
+  ciudad: string | null;
+  region: string | null;
+  pais: string | null;
+  codigoPais: string | null;
+  personas: number;
+}
+
+/**
+ * "Valledupar, Cesar" o "Quito, Pichincha (Ecuador)". Si el departamento ya
+ * lleva el nombre de la ciudad ("Bogotá ciudad" en "Bogotá, Distrito
+ * Capital") se deja solo el departamento, para no repetir.
+ */
+export function nombreLugar(l: StatsLugar): string {
+  const ciudad = l.ciudad?.replace(/\s+ciudad$/i, '') ?? null;
+  const repite = ciudad && l.region?.toLowerCase().startsWith(ciudad.toLowerCase());
+  const base = (repite ? [l.region] : [ciudad, l.region]).filter(Boolean).join(', ');
+  const fuera = l.codigoPais && l.codigoPais !== 'co' && l.pais ? ` (${l.pais})` : '';
+  return (base || 'Zona sin nombre todavía') + fuera;
+}
+
 export interface StatsReport {
   from: string;
   to: string;
@@ -66,6 +90,8 @@ export interface StatsReport {
     };
     serie: StatsPanelDay[];
   };
+  /** Puede faltar si la API todavía no se actualizó. */
+  ubicaciones?: { total: number; lugares: StatsLugar[] };
 }
 
 export async function adminGetStats(from: string, to: string): Promise<StatsReport> {

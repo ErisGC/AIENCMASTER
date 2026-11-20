@@ -1,0 +1,93 @@
+.nuevo {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  line-height: 1.3;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+/* Primer día: brilla y va cambiando de color. */
+.brilla {
+  background: linear-gradient(
+    110deg,
+    #e8a317,
+    #e5487a,
+    #8a4fe0,
+    #2a8fe0,
+    #14b39a,
+    #e8a317
+  );
+  background-size: 300% 100%;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  animation:
+    tono 5s linear infinite,
+    pulso 2.4s ease-in-out infinite;
+}
+
+/* Destello que cruza la etiqueta. */
+.brilla::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(
+    100deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.75) 50%,
+    transparent 70%
+  );
+  transform: translateX(-120%);
+  animation: destello 2.4s ease-in-out infinite;
+}
+
+/* Segundo día: azul quieto. */
+.azul {
+  background: #2563eb;
+}
+
+@keyframes tono {
+  to {
+    background-position: 300% 0;
+  }
+}
+
+@keyframes pulso {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(229, 72, 122, 0);
+  }
+  50% {
+    box-shadow: 0 0 12px 1px rgba(138, 79, 224, 0.55);
+  }
+}
+
+@keyframes destello {
+  0%,
+  35% {
+    transform: translateX(-120%);
+  }
+  75%,
+  100% {
+    transform: translateX(120%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brilla,
+  .brilla::after {
+    animation: none;
+  }
+
+  .brilla::after {
+    display: none;
+  }
+}

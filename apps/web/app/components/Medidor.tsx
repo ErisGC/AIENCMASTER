@@ -19,7 +19,7 @@ import { API_DIRECT_URL } from '@/app/lib/api';
 const CLAVE_VISITANTE = 'aienc-visitante';
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-function visitante(): string | null {
+export function visitante(): string | null {
   try {
     let v = localStorage.getItem(CLAVE_VISITANTE);
     if (!v) {
@@ -34,7 +34,7 @@ function visitante(): string | null {
   }
 }
 
-function esNavegadorDeAdministrador(): boolean {
+export function esNavegadorDeAdministrador(): boolean {
   try {
     return Boolean(localStorage.getItem('aienc-admin-device-id'));
   } catch {
@@ -45,7 +45,21 @@ function esNavegadorDeAdministrador(): boolean {
 /** Suma uno a lo indicado. No espera respuesta ni frena la navegación. */
 export function contar(tipo: string, objetivo?: string | null) {
   if (typeof window === 'undefined' || !tipo || esNavegadorDeAdministrador()) return;
-  const cuerpo = JSON.stringify({ k: tipo, t: objetivo || undefined, v: visitante() ?? undefined });
+  enviar({ k: tipo, t: objetivo || undefined, v: visitante() ?? undefined });
+}
+
+/**
+ * Zona desde donde visita quien aceptó compartirla. Sale ya redondeada a una
+ * décima de grado (unos 11 km): la ubicación exacta no deja el equipo.
+ */
+export function contarZona(lat: number, lon: number) {
+  if (typeof window === 'undefined' || esNavegadorDeAdministrador()) return;
+  const redondo = (x: number) => Math.round(x * 10) / 10;
+  enviar({ k: 'ubicacion', la: redondo(lat), lo: redondo(lon), v: visitante() ?? undefined });
+}
+
+function enviar(datos: Record<string, unknown>) {
+  const cuerpo = JSON.stringify(datos);
   const url = `${API_DIRECT_URL}/analytics/hit`;
   try {
     const blob = new Blob([cuerpo], { type: 'text/plain;charset=UTF-8' });

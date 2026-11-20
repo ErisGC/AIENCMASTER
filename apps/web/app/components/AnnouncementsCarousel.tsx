@@ -6,6 +6,8 @@ import Link from 'next/link';
 import { Announcement } from '@/app/lib/announcements';
 import { formatDateTime } from '@/app/lib/formatDate';
 
+import { NuevoBadge } from './NuevoBadge';
+
 import styles from './AnnouncementsCarousel.module.css';
 
 interface Props {
@@ -76,6 +78,7 @@ export function AnnouncementsCarousel({ announcements }: Props) {
 
             <div className={styles.metaRow}>
               <span className={styles.badge}>Comunicado</span>
+              <NuevoBadge fecha={current.createdAt} />
               <p className={styles.meta}>
                 {current.author} · {formatDateTime(current.createdAt)}
               </p>

@@ -5,6 +5,7 @@ import Link from 'next/link';
 
 import { Announcement } from '@/app/lib/announcements';
 import { API_BASE_URL } from '@/app/lib/api';
+import { NuevoBadge } from '@/app/components/NuevoBadge';
 import { formatDateTime } from '@/app/lib/formatDate';
 
 import { FiltersPanel } from './FiltersPanel';
@@ -221,7 +222,10 @@ export function AnnouncementsList({ initialItems, pageSize }: Props) {
             >
               <article className={styles.card}>
                 <div className={styles.cardHeader}>
-                  <span className={styles.cardBadge}>Publicación</span>
+                  <span className={styles.cardTags}>
+                    <span className={styles.cardBadge}>Publicación</span>
+                    <NuevoBadge fecha={announcement.createdAt} />
+                  </span>
                   <span className={styles.cardDate}>
                     {formatDateTime(announcement.createdAt)}
                   </span>

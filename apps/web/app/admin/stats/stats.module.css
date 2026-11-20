@@ -257,3 +257,39 @@
     padding: 0.5rem 0.3rem;
   }
 }
+
+/* ── Mapa de zonas ── */
+
+.mapaGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: 1.25rem;
+  align-items: start;
+  margin-top: 0.75rem;
+}
+
+.mapaGrid > :only-child {
+  grid-column: 1 / -1;
+}
+
+.mapa {
+  position: relative;
+  z-index: 0;
+  isolation: isolate;
+  height: 380px;
+  width: 100%;
+  border-radius: 14px;
+  border: 1px solid var(--border-soft);
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+@media (max-width: 860px) {
+  .mapaGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .mapa {
+    height: 300px;
+  }
+}

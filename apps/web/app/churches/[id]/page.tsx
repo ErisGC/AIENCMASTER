@@ -2,6 +2,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { cache } from 'react';
+import { NuevoBadge } from '@/app/components/NuevoBadge';
 import { getPublicChurchById } from '@/app/lib/churches';
 import {
   getPublicChurchAnnouncements,
@@ -246,6 +247,7 @@ export default async function ChurchDetailPage({ params }: ChurchPageProps) {
                     <span className={styles.announcementDate}>
                       {dateFormatter.format(new Date(a.createdAt))}
                     </span>
+                    <NuevoBadge fecha={a.createdAt} />
                   </div>
                   <h3 className={styles.announcementTitle}>{a.title}</h3>
                   <p className={styles.announcementDesc}>{a.description}</p>
