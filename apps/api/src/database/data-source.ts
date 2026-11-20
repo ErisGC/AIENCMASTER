@@ -23,6 +23,10 @@ import { SupportConversation } from "../modules/support/support-conversation.ent
 import { SupportMessage } from "../modules/support/support-message.entity";
 import { Event } from "../modules/events/event.entity";
 import { EventCustomType } from "../modules/events/event-custom-type.entity";
+import {
+  AnalyticsDaily,
+  AnalyticsVisitor,
+} from "../modules/analytics/analytics.entities";
 
 function required(name: string) {
   const value = process.env[name]?.trim();
@@ -64,6 +68,8 @@ const ENTITIES = [
   SupportMessage,
   Event,
   EventCustomType,
+  AnalyticsDaily,
+  AnalyticsVisitor,
 ];
 
 const databaseUrl = process.env.DATABASE_URL?.trim();
