@@ -198,7 +198,10 @@ async function proxy(
     );
   }
 
-  const responseBuffer = await upstream.arrayBuffer();
+  // 204, 205 y 304 no llevan cuerpo: pasarle uno (aunque vacío) hace que el
+  // constructor de Response lance y el proxy respondía 500.
+  const sinCuerpo = [204, 205, 304].includes(upstream.status);
+  const responseBuffer = sinCuerpo ? null : await upstream.arrayBuffer();
 
   const response = new NextResponse(responseBuffer, {
     status: upstream.status,
