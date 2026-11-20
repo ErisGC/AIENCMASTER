@@ -1,0 +1,259 @@
+.rangeBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.75rem;
+}
+
+.segmented {
+  display: inline-flex;
+  padding: 3px;
+  border-radius: 12px;
+  border: 1px solid var(--border-soft);
+  background: var(--surface);
+}
+
+.segmented button {
+  border: 0;
+  background: none;
+  padding: 0.5rem 0.8rem;
+  border-radius: 9px;
+  font: inherit;
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.segmented button:hover {
+  color: var(--text);
+}
+
+.segmented .segOn {
+  background: var(--btn-primary-bg, var(--gem-sapphire));
+  color: #fff;
+}
+
+.sectionTitle {
+  margin: 0.8rem 0 0;
+  font-size: 1.15rem;
+}
+
+.sectionTitle:first-child {
+  margin-top: 0;
+}
+
+.hint {
+  margin: 0;
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  background: var(--tint-2);
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.loading,
+.empty {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+}
+
+.report {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.refreshing {
+  opacity: 0.6;
+  transition: opacity 160ms ease;
+}
+
+.grid2 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1rem;
+}
+
+/* Tonos de las tarjetas */
+.tVisitas {
+  --kpiBorder: linear-gradient(135deg, var(--gem-sapphire), var(--gem-emerald));
+}
+.tPersonas {
+  --kpiBorder: linear-gradient(135deg, var(--gem-emerald), var(--gem-topaz));
+}
+.tDescargas {
+  --kpiBorder: linear-gradient(135deg, var(--gem-topaz), var(--gem-sapphire));
+}
+.tAudios {
+  --kpiBorder: linear-gradient(135deg, var(--gem-amethyst, #7d4cdb), var(--gem-sapphire));
+}
+.tMensajes {
+  --kpiBorder: linear-gradient(135deg, var(--danger, #c0392b), var(--gem-topaz));
+}
+
+/* ── Gráfico ── */
+
+.chartBox {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.legendRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.legendBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.65rem;
+  border-radius: 999px;
+  border: 1px solid var(--border-soft);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.legendOff {
+  opacity: 0.45;
+  text-decoration: line-through;
+}
+
+.legendDot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.chartArea {
+  position: relative;
+}
+
+.chartSvg {
+  display: block;
+  touch-action: pan-y;
+}
+
+.tooltip {
+  position: absolute;
+  top: 6px;
+  transform: translateX(-10%);
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.5rem 0.7rem;
+  border-radius: 10px;
+  border: 1px solid var(--border-soft);
+  background: var(--surface);
+  box-shadow: var(--shadow-2);
+  font-size: 0.78rem;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.tooltip span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+/* ── Barras ── */
+
+.bars {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.barTop {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-size: 0.86rem;
+}
+
+.barLabel {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-wrap: anywhere;
+}
+
+.barLabel small {
+  color: var(--text-muted);
+  font-size: 0.74rem;
+}
+
+.barValue {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.barTrack {
+  display: block;
+  margin-top: 0.3rem;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--tint-2);
+  overflow: hidden;
+}
+
+.barFill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--gem-sapphire), var(--gem-emerald));
+}
+
+/* ── Tabla ── */
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.86rem;
+}
+
+.table th {
+  text-align: left;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  padding: 0 0.4rem 0.5rem;
+}
+
+.table td {
+  padding: 0.55rem 0.4rem;
+  border-top: 1px solid var(--border-soft);
+  overflow-wrap: anywhere;
+}
+
+.table td:not(:first-child),
+.table th:not(:first-child) {
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 640px) {
+  .segmented {
+    width: 100%;
+  }
+  .segmented button {
+    flex: 1;
+    padding: 0.5rem 0.3rem;
+  }
+}

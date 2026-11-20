@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useMemo } from 'react';
 
+import { contar } from '@/app/components/Medidor';
 import styles from './page.module.css';
 
 /**
@@ -97,7 +98,7 @@ export function MobileRequiredClient() {
         </div>
 
         <div className={styles.actions}>
-          <a className={styles.primaryBtn} href={APK_URL} download>
+          <a className={styles.primaryBtn} href={APK_URL} download onClick={() => contar('apk')}>
             Descargar APK
           </a>
           {deeplink && (

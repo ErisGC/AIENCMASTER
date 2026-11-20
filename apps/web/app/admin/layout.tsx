@@ -307,6 +307,14 @@ export default function AdminLayout({
           </Link>
           {canSeeSecurity && (
             <Link
+              href="/admin/stats"
+              className={isActive('/admin/stats') ? styles.navActive : ''}
+            >
+              Estadísticas
+            </Link>
+          )}
+          {canSeeSecurity && (
+            <Link
               href="/admin/security"
               className={isActive('/admin/security') ? styles.navActive : ''}
             >

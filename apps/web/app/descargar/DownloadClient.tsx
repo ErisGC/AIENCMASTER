@@ -20,6 +20,7 @@ export function DownloadClient() {
       <a
         className={styles.button}
         href={APK_URL}
+        data-contar="apk"
         onClick={() => setStarted(true)}
       >
         Descargar app AIENC
@@ -50,7 +51,7 @@ export function DownloadClient() {
           </ol>
           <p className={styles.stepsFoot}>
             Si no empezó la descarga,{' '}
-            <a className={styles.inlineLink} href={APK_URL}>
+            <a className={styles.inlineLink} href={APK_URL} data-contar="apk">
               tócalo aquí de nuevo
             </a>
             .

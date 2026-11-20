@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 
+import { Medidor } from './Medidor';
 import styles from './PublicShell.module.css';
 import { ScrollReveal } from './ScrollReveal';
 import { SiteFooter } from './SiteFooter';
@@ -97,6 +98,7 @@ export function PublicShell({ children }: { children: React.ReactNode }) {
   return (
     <div className={styles.shell}>
       <ScrollReveal />
+      <Medidor />
 
       <header className={topnavClass}>
         <div className={styles.navInner}>

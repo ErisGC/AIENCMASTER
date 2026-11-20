@@ -254,6 +254,8 @@ export default async function ChurchDetailPage({ params }: ChurchPageProps) {
                       {a.attachments.map((att) => (
                         <a
                           key={att.id}
+                          data-contar="descarga_iglesia"
+                          data-objetivo={church.id}
                           href={att.url}
                           target="_blank"
                           rel="noreferrer"
@@ -293,6 +295,8 @@ export default async function ChurchDetailPage({ params }: ChurchPageProps) {
                     className={styles.studyAudio}
                     controls
                     preload="none"
+                    data-contar="estudio"
+                    data-objetivo={s.id}
                     src={s.audioUrl}
                   >
                     Tu navegador no soporta la reproducción de audio.

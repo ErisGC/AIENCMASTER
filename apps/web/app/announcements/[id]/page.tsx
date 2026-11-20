@@ -157,6 +157,8 @@ export default async function AnnouncementPage({ params }: Props) {
                       <span className={styles.captionName}>{att.name}</span>
                       <a
                         href={downloadUrl}
+                        data-contar="descarga_anuncio"
+                        data-objetivo={announcement.id}
                         className={styles.downloadLink}
                         rel="noopener noreferrer"
                       >
@@ -170,7 +172,13 @@ export default async function AnnouncementPage({ params }: Props) {
               if (isVideo) {
                 return (
                   <figure key={att.id} className={styles.videoCard}>
-                    <video controls preload="metadata" className={styles.videoEl}>
+                    <video
+                      controls
+                      preload="metadata"
+                      className={styles.videoEl}
+                      data-contar="video_anuncio"
+                      data-objetivo={announcement.id}
+                    >
                       <source src={att.url} />
                     </video>
                     <figcaption className={styles.imageCaption}>
@@ -180,6 +188,8 @@ export default async function AnnouncementPage({ params }: Props) {
                       <span className={styles.captionName}>{att.name}</span>
                       <a
                         href={downloadUrl}
+                        data-contar="descarga_anuncio"
+                        data-objetivo={announcement.id}
                         className={styles.downloadLink}
                         rel="noopener noreferrer"
                       >
@@ -196,6 +206,8 @@ export default async function AnnouncementPage({ params }: Props) {
                   <article key={att.id} className={styles.pdfCard}>
                     <a
                       href={att.url}
+                      data-contar="descarga_anuncio"
+                      data-objetivo={announcement.id}
                       target="_blank"
                       rel="noopener noreferrer"
                       className={styles.pdfPreview}
@@ -233,6 +245,8 @@ export default async function AnnouncementPage({ params }: Props) {
                       <div className={styles.pdfActions}>
                         <a
                           href={att.url}
+                          data-contar="descarga_anuncio"
+                          data-objetivo={announcement.id}
                           target="_blank"
                           rel="noopener noreferrer"
                           className={styles.pdfOpenBtn}
@@ -241,6 +255,8 @@ export default async function AnnouncementPage({ params }: Props) {
                         </a>
                         <a
                           href={downloadUrl}
+                          data-contar="descarga_anuncio"
+                          data-objetivo={announcement.id}
                           className={styles.pdfDownloadBtn}
                           rel="noopener noreferrer"
                         >
@@ -261,6 +277,8 @@ export default async function AnnouncementPage({ params }: Props) {
                   <span className={styles.captionName}>{att.name}</span>
                   <a
                     href={downloadUrl}
+                    data-contar="descarga_anuncio"
+                    data-objetivo={announcement.id}
                     target="_blank"
                     rel="noopener noreferrer"
                     className={styles.downloadLink}
