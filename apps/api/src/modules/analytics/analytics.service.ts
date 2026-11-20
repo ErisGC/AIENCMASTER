@@ -10,10 +10,15 @@ import {
   ZERO_UUID,
   diaBogota,
   validarConteo,
+  validarUbicacion,
+  type UbicacionValida,
 } from "./analytics.kinds";
+import { LugaresService } from "./analytics.places";
 
 /** Una misma persona viendo lo mismo varias veces seguidas cuenta una vez. */
 const VENTANA_REPETIDO_MS = 30 * 60 * 1000;
+/** La zona de una persona cuenta una vez al día. */
+const VENTANA_UBICACION_MS = 20 * 60 * 60 * 1000;
 /** Lo más largo que se puede consultar de una vez. */
 const MAX_DIAS = 366;
 /** Las huellas de visitantes se guardan algo más de un año. */
@@ -38,7 +43,10 @@ export class AnalyticsService {
   private readonly vistos = new Map<string, number>();
   private ultimaLimpieza = "";
 
-  constructor(@InjectDataSource() private readonly db: DataSource) {}
+  constructor(
+    @InjectDataSource() private readonly db: DataSource,
+    private readonly lugares: LugaresService,
+  ) {}
 
   /* ── Conteo público ── */
 
@@ -49,6 +57,8 @@ export class AnalyticsService {
   async registrar(raw: unknown, userAgent: string | undefined, ip: string | null) {
     const ua = (userAgent ?? "").trim();
     if (!ua || NO_HUMANO.test(ua)) return false;
+    const zona = validarUbicacion(raw);
+    if (zona) return this.registrarZona(zona, ip);
     const conteo = validarConteo(raw);
     if (!conteo) return false;
 
@@ -95,9 +105,30 @@ export class AnalyticsService {
     return true;
   }
 
+  /** Una persona que aceptó compartir su zona: suma uno a esa celda del día. */
+  private async registrarZona(zona: UbicacionValida, ip: string | null) {
+    const ahora = Date.now();
+    const clave = `${zona.visitante ?? `ip:${ip ?? "?"}`}|ubicacion`;
+    const antes = this.vistos.get(clave);
+    if (antes && ahora - antes < VENTANA_UBICACION_MS) return false;
+    this.vistos.set(clave, ahora);
+    if (this.vistos.size > 20_000) this.olvidarViejos(ahora);
+
+    await this.db.query(
+      `INSERT INTO analytics_places_daily (day, lat10, lon10, count)
+       VALUES ($1, $2, $3, 1)
+       ON CONFLICT (day, lat10, lon10)
+       DO UPDATE SET count = analytics_places_daily.count + 1`,
+      [diaBogota(), zona.lat10, zona.lon10],
+    );
+    await this.lugares.conocer(zona.lat10, zona.lon10);
+    return true;
+  }
+
   private olvidarViejos(ahora: number) {
     for (const [k, t] of this.vistos) {
-      if (ahora - t >= VENTANA_REPETIDO_MS) this.vistos.delete(k);
+      const ventana = k.endsWith("|ubicacion") ? VENTANA_UBICACION_MS : VENTANA_REPETIDO_MS;
+      if (ahora - t >= ventana) this.vistos.delete(k);
     }
   }
 
@@ -117,11 +148,51 @@ export class AnalyticsService {
 
   async reporte(desde?: string, hasta?: string) {
     const { inicio, fin, dias } = this.rango(desde, hasta);
-    const [publico, panel] = await Promise.all([
+    const [publico, panel, ubicaciones] = await Promise.all([
       this.publico(inicio, fin, dias),
       this.panel(inicio, fin, dias),
+      this.ubicaciones(inicio, fin),
     ]);
-    return { from: inicio, to: fin, publico, panel };
+    return { from: inicio, to: fin, publico, panel, ubicaciones };
+  }
+
+  /** Zonas desde donde visitan, de quienes aceptaron compartirla. */
+  private async ubicaciones(inicio: string, fin: string) {
+    const filas = (await this.db.query(
+      `SELECT d.lat10, d.lon10, SUM(d.count)::int AS n,
+              p.city, p.region, p.country, p."countryCode", p."resolvedAt", COALESCE(p.ok, false) AS ok
+         FROM analytics_places_daily d
+         LEFT JOIN analytics_places p ON p.lat10 = d.lat10 AND p.lon10 = d.lon10
+        WHERE d.day BETWEEN $1 AND $2
+        GROUP BY d.lat10, d.lon10, p.city, p.region, p.country, p."countryCode", p."resolvedAt", p.ok
+        ORDER BY n DESC
+        LIMIT 500`,
+      [inicio, fin],
+    )) as Array<{
+      lat10: number;
+      lon10: number;
+      n: number;
+      city: string | null;
+      region: string | null;
+      country: string | null;
+      countryCode: string | null;
+      resolvedAt: Date | null;
+      ok: boolean;
+    }>;
+    // Las que aún no tienen nombre se piden ahora; saldrán en la próxima consulta.
+    this.lugares.pendientes(filas);
+    return {
+      total: filas.reduce((t, f) => t + f.n, 0),
+      lugares: filas.map((f) => ({
+        lat: f.lat10 / 10,
+        lon: f.lon10 / 10,
+        ciudad: f.city,
+        region: f.region,
+        pais: f.country,
+        codigoPais: f.countryCode,
+        personas: f.n,
+      })),
+    };
   }
 
   private async publico(inicio: string, fin: string, dias: string[]) {

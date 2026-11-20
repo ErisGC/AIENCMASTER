@@ -61,7 +61,7 @@ export interface ConteoValido {
  * Valida lo que manda el navegador ({k, t, v}). Devuelve null si no es algo
  * que se cuente; nunca lanza, para que un envío raro no deje rastro de error.
  */
-export function validarConteo(raw: unknown): ConteoValido | null {
+function leerCuerpo(raw: unknown): Record<string, unknown> | null {
   let body: unknown = raw;
   if (typeof raw === "string") {
     try {
@@ -70,8 +70,15 @@ export function validarConteo(raw: unknown): ConteoValido | null {
       return null;
     }
   }
-  if (!body || typeof body !== "object") return null;
-  const b = body as Record<string, unknown>;
+  return body && typeof body === "object" ? (body as Record<string, unknown>) : null;
+}
+
+const visitanteDe = (b: Record<string, unknown>) =>
+  typeof b.v === "string" && VISITANTE.test(b.v) ? b.v : null;
+
+export function validarConteo(raw: unknown): ConteoValido | null {
+  const b = leerCuerpo(raw);
+  if (!b) return null;
   const tipo = typeof b.k === "string" ? b.k : "";
   const def = TIPOS_CONTEO[tipo];
   if (!def) return null;
@@ -80,9 +87,33 @@ export function validarConteo(raw: unknown): ConteoValido | null {
     if (typeof b.t !== "string" || !UUID.test(b.t)) return null;
     objetivo = b.t.toLowerCase();
   }
-  const visitante =
-    typeof b.v === "string" && VISITANTE.test(b.v) ? b.v : null;
-  return { tipo, objetivo, visitante };
+  return { tipo, objetivo, visitante: visitanteDe(b) };
+}
+
+export interface UbicacionValida {
+  /** Latitud y longitud en décimas de grado (unos 11 km). */
+  lat10: number;
+  lon10: number;
+  visitante: string | null;
+}
+
+/**
+ * Zona que la persona aceptó compartir ({k: "ubicacion", la, lo, v}). El
+ * navegador ya la manda redondeada; aquí se vuelve a redondear a una décima
+ * de grado para que nunca se guarde nada más preciso que eso.
+ */
+export function validarUbicacion(raw: unknown): UbicacionValida | null {
+  const b = leerCuerpo(raw);
+  if (!b || b.k !== "ubicacion") return null;
+  const { la, lo } = b;
+  if (typeof la !== "number" || typeof lo !== "number") return null;
+  if (!Number.isFinite(la) || !Number.isFinite(lo)) return null;
+  if (Math.abs(la) > 90 || Math.abs(lo) > 180) return null;
+  return {
+    lat10: Math.round(la * 10),
+    lon10: Math.round(lo * 10),
+    visitante: visitanteDe(b),
+  };
 }
 
 /** Día calendario en Colombia ("AAAA-MM-DD"). */

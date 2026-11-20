@@ -1,4 +1,4 @@
-import { NO_HUMANO, ZERO_UUID, validarConteo } from "./analytics.kinds";
+import { NO_HUMANO, ZERO_UUID, validarConteo, validarUbicacion } from "./analytics.kinds";
 
 const ID = "2f1c8a3e-9b7d-4c1a-8e2f-3a4b5c6d7e8f";
 
@@ -38,5 +38,30 @@ describe("validarConteo", () => {
         "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/126.0 Mobile Safari/537.36",
       ),
     ).toBe(false);
+  });
+});
+
+describe("validarUbicacion", () => {
+  it("redondea la zona a una décima de grado", () => {
+    expect(validarUbicacion({ k: "ubicacion", la: 10.4736, lo: -73.2532, v: "abcdefgh12" })).toEqual({
+      lat10: 105,
+      lon10: -733,
+      visitante: "abcdefgh12",
+    });
+  });
+
+  it("lee el cuerpo enviado como texto", () => {
+    expect(validarUbicacion(JSON.stringify({ k: "ubicacion", la: 4.61, lo: -74.08 }))?.lat10).toBe(46);
+  });
+
+  it("rechaza coordenadas fuera de rango o que no son números", () => {
+    expect(validarUbicacion({ k: "ubicacion", la: 95, lo: 0 })).toBeNull();
+    expect(validarUbicacion({ k: "ubicacion", la: "4.6", lo: "-74" })).toBeNull();
+    expect(validarUbicacion({ k: "ubicacion", la: Number.NaN, lo: 1 })).toBeNull();
+    expect(validarUbicacion({ k: "inicio", la: 4.6, lo: -74 })).toBeNull();
+  });
+
+  it("no la confunde con un conteo normal", () => {
+    expect(validarConteo({ k: "ubicacion", la: 4.6, lo: -74 })).toBeNull();
   });
 });

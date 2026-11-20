@@ -26,6 +26,8 @@ import { EventCustomType } from "../modules/events/event-custom-type.entity";
 import {
   AnalyticsDaily,
   AnalyticsVisitor,
+  AnalyticsPlaceDaily,
+  AnalyticsPlace,
 } from "../modules/analytics/analytics.entities";
 
 function required(name: string) {
@@ -70,6 +72,8 @@ const ENTITIES = [
   EventCustomType,
   AnalyticsDaily,
   AnalyticsVisitor,
+  AnalyticsPlaceDaily,
+  AnalyticsPlace,
 ];
 
 const databaseUrl = process.env.DATABASE_URL?.trim();
