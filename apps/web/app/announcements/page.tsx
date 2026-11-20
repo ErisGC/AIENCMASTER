@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
+import { PuertaUbicacion } from '@/app/components/PuertaUbicacion';
 import { Announcement, getAnnouncementsPage } from '@/app/lib/announcements';
+import { zonaCompartida } from '@/app/lib/zona';
 
 import { AnnouncementsList } from './AnnouncementsList';
 import styles from './page.module.css';
@@ -20,6 +22,9 @@ async function getInitialAnnouncements(): Promise<Announcement[]> {
 }
 
 export default async function AnnouncementsPage() {
+  // Sin la zona compartida no se manda ningún anuncio al navegador.
+  if (!(await zonaCompartida())) return <PuertaUbicacion que="anuncios" />;
+
   const initialAnnouncements = await getInitialAnnouncements();
 
   return (

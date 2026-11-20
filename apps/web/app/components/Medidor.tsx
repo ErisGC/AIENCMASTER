@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 
 import { API_DIRECT_URL } from '@/app/lib/api';
+import { anunciosAbiertos } from '@/app/lib/zona-cookie';
 
 /**
  * Conteo de visitas y descargas del portal, para las estadísticas de la cuenta
@@ -14,6 +15,8 @@ import { API_DIRECT_URL } from '@/app/lib/api';
  * - Un enlace o un audio/video con `data-contar` (y `data-objetivo`) cuenta
  *   al tocarlo o reproducirlo.
  * - El navegador de un administrador no cuenta: no es visita del público.
+ * - Los anuncios cuentan solo cuando se abren de verdad, es decir, con la
+ *   zona compartida; si no, quien llega ve la pantalla que la pide.
  */
 
 const CLAVE_VISITANTE = 'aienc-visitante';
@@ -95,12 +98,22 @@ function vistaDe(path: string): [string, string?] | null {
   }
 }
 
+const PROTEGIDAS = new Set(['anuncio', 'anuncios']);
+
+/** Cuenta la visita a una página. */
+export function contarPagina(path: string) {
+  const vista = vistaDe(path);
+  if (vista) contar(vista[0], vista[1]);
+}
+
 export function Medidor() {
   const pathname = usePathname();
 
   useEffect(() => {
     const vista = vistaDe(pathname ?? '');
-    if (vista) contar(vista[0], vista[1]);
+    if (!vista) return;
+    if (PROTEGIDAS.has(vista[0]) && !anunciosAbiertos()) return;
+    contar(vista[0], vista[1]);
   }, [pathname]);
 
   useEffect(() => {

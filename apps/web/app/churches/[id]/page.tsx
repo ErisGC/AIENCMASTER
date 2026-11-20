@@ -3,6 +3,8 @@ import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { cache } from 'react';
 import { NuevoBadge } from '@/app/components/NuevoBadge';
+import { PuertaUbicacion } from '@/app/components/PuertaUbicacion';
+import { zonaCompartida } from '@/app/lib/zona';
 import { getPublicChurchById } from '@/app/lib/churches';
 import {
   getPublicChurchAnnouncements,
@@ -80,11 +82,12 @@ async function safeLoadStudies(id: string): Promise<ChurchStudy[]> {
 
 export default async function ChurchDetailPage({ params }: ChurchPageProps) {
   const { id } = await params;
-  const [church, announcements, studies, events] = await Promise.all([
+  const [church, announcements, studies, events, conZona] = await Promise.all([
     loadChurch(id),
     safeLoadAnnouncements(id),
     safeLoadStudies(id),
     safeLoadEvents(id),
+    zonaCompartida(),
   ]);
   const proximosEventos = events.slice(0, 8);
 
@@ -233,44 +236,48 @@ export default async function ChurchDetailPage({ params }: ChurchPageProps) {
               </span>
             </header>
 
-            <ul className={styles.announcementsList}>
-              {announcements.map((a) => (
-                <li
-                  key={a.id}
-                  id={`anuncio-${a.id}`}
-                  className={styles.announcementCard}
-                >
-                  <div className={styles.announcementMeta}>
-                    <span className={styles.announcementAuthor}>
-                      {a.author}
-                    </span>
-                    <span className={styles.announcementDate}>
-                      {dateFormatter.format(new Date(a.createdAt))}
-                    </span>
-                    <NuevoBadge fecha={a.createdAt} />
-                  </div>
-                  <h3 className={styles.announcementTitle}>{a.title}</h3>
-                  <p className={styles.announcementDesc}>{a.description}</p>
-                  {a.attachments && a.attachments.length > 0 && (
-                    <div className={styles.announcementAttachments}>
-                      {a.attachments.map((att) => (
-                        <a
-                          key={att.id}
-                          data-contar="descarga_iglesia"
-                          data-objetivo={church.id}
-                          href={att.url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className={styles.announcementAttachLink}
-                        >
-                          {att.name || att.format.toUpperCase()}
-                        </a>
-                      ))}
+            {!conZona ? (
+              <PuertaUbicacion que="iglesia" />
+            ) : (
+              <ul className={styles.announcementsList}>
+                {announcements.map((a) => (
+                  <li
+                    key={a.id}
+                    id={`anuncio-${a.id}`}
+                    className={styles.announcementCard}
+                  >
+                    <div className={styles.announcementMeta}>
+                      <span className={styles.announcementAuthor}>
+                        {a.author}
+                      </span>
+                      <span className={styles.announcementDate}>
+                        {dateFormatter.format(new Date(a.createdAt))}
+                      </span>
+                      <NuevoBadge fecha={a.createdAt} />
                     </div>
-                  )}
-                </li>
-              ))}
-            </ul>
+                    <h3 className={styles.announcementTitle}>{a.title}</h3>
+                    <p className={styles.announcementDesc}>{a.description}</p>
+                    {a.attachments && a.attachments.length > 0 && (
+                      <div className={styles.announcementAttachments}>
+                        {a.attachments.map((att) => (
+                          <a
+                            key={att.id}
+                            data-contar="descarga_iglesia"
+                            data-objetivo={church.id}
+                            href={att.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className={styles.announcementAttachLink}
+                          >
+                            {att.name || att.format.toUpperCase()}
+                          </a>
+                        ))}
+                      </div>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
           </section>
         )}
 

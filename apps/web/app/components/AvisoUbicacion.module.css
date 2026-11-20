@@ -54,6 +54,11 @@
   filter: brightness(1.06);
 }
 
+.si:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
 .no {
   border: 1px solid var(--btn-border);
   background: transparent;
@@ -70,6 +75,35 @@
   outline-offset: 2px;
 }
 
+/* El aviso de quien intentó abrir un anuncio: centrado y más visible. */
+.destacado {
+  left: 0;
+  right: 0;
+  bottom: 28px;
+  margin-inline: auto;
+  width: min(460px, calc(100vw - 32px));
+  border-top: 4px solid var(--fill-sapphire, var(--gem-sapphire));
+  box-shadow: 0 24px 60px rgba(8, 20, 40, 0.3);
+}
+
+.destacado .titulo {
+  font-size: 1.05rem;
+  line-height: 1.35;
+}
+
+.error {
+  margin: 0.6rem 0 0;
+  font-size: 0.84rem;
+  line-height: 1.5;
+  color: var(--danger, #c0392b);
+}
+
+.espera {
+  margin: 0.6rem 0 0;
+  font-size: 0.84rem;
+  color: var(--text-muted);
+}
+
 /* En el teléfono va encima del botón de soporte, sin taparlo. */
 @media (max-width: 640px) {
   .aviso {
@@ -77,6 +111,10 @@
     right: 16px;
     bottom: 84px;
     width: auto;
+  }
+
+  .destacado {
+    margin-inline: 0;
   }
 }
 

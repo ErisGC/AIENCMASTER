@@ -9,7 +9,9 @@ import {
   getAnnouncementById,
 } from '@/app/lib/announcements';
 import { NuevoBadge } from '@/app/components/NuevoBadge';
+import { PuertaUbicacion } from '@/app/components/PuertaUbicacion';
 import { formatDateTimeWithSeconds } from '@/app/lib/formatDate';
+import { zonaCompartida } from '@/app/lib/zona';
 
 import styles from './page.module.css';
 
@@ -85,6 +87,10 @@ export default async function AnnouncementPage({ params }: Props) {
   } catch {
     notFound();
   }
+
+  // El título y el resumen siguen en los metadatos (la vista previa al
+  // compartir el enlace), pero el anuncio solo se abre con la zona compartida.
+  if (!(await zonaCompartida())) return <PuertaUbicacion que="anuncio" />;
 
   return (
     <main className={styles.container}>
