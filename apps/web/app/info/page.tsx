@@ -252,7 +252,7 @@ export default function InfoPage() {
           <ul className={styles.contactList}>
             <li>
               <span className={styles.contactLabel}>Correo:</span>{' '}
-              contacto@aienc.org
+              aienc.iglesias@gmail.com
             </li>
             <li>
               <span className={styles.contactLabel}>Teléfono:</span>{' '}

@@ -57,7 +57,9 @@ export function SiteFooter() {
           <h4 className={styles.colTitle}>Contacto</h4>
           <span className={styles.line}>Valledupar, Cesar — Colombia</span>
           <span className={styles.line}>Calle 6D # 19-60, Los Músicos</span>
-          <span className={styles.line}>contacto@aienc.org</span>
+          <a href="mailto:aienc.iglesias@gmail.com" className={styles.link}>
+            aienc.iglesias@gmail.com
+          </a>
         </div>
 
         <div className={styles.col}>
